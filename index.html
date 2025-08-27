@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Wild Pals — v10.5 (markets & 100 animals)</title>
+<title>Wild Pals — v11 (minigames, biomes & happiness)</title>
 <style>
   :root{
     --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
@@ -293,6 +293,25 @@
     width:240px;
     text-align:center;
   }
+
+  /* Mini-game overlay styling: center a small dialog with progress bar */
+  #catchGame{
+    position:fixed;
+    top:calc(var(--headerH) + 20px);
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--panel);
+    border:1px solid #1f2d54;
+    padding:12px;
+    border-radius:10px;
+    width:320px;
+    max-width:90vw;
+    z-index:360;
+    text-align:center;
+    color:var(--ink);
+  }
+  #catchGame h2{ margin:0 0 8px 0; font-size:18px; }
+  #catchGame p{ margin:6px 0; font-size:14px; }
   #startMenu button{margin-top:8px;width:100%;}
 
 /* Instructions overlay: similar styling to the start menu but wider and scrollable */
@@ -353,7 +372,7 @@
 </head>
 <body>
 <header id="topbar">
-  <h1>Wild Pals <small>— v10.5 full build</small></h1>
+  <h1>Wild Pals <small>— v11 full build</small></h1>
 </header>
 
 <div class="wrap">
@@ -456,14 +475,15 @@
   <h2 style="margin-top:0;margin-bottom:8px;">How to Play</h2>
   <p>Welcome to <strong>Wild Pals</strong>! Explore diverse biomes, befriend exotic animals and build the ultimate sanctuary.</p>
   <p><strong>Movement:</strong> Use the arrow keys or WASD to move. On mobile, use the on‑screen D‑pad. Press E/Enter (or tap A) to interact with houses, portals, and NPCs.</p>
-  <p><strong>Catch animals:</strong> Simply walk into an animal to collect it. Each species has a unique ability &mdash; swim, climb, scout, and more. Press Q (or tap B) to cycle through your companions and activate their ability.</p>
+  <p><strong>Catch animals:</strong> Common animals are collected automatically by walking into them. Uncommon, rare and legendary species trigger a quick tapping mini‑game &mdash; tap or click rapidly to fill the bar before time runs out to catch the creature!</p>
   <p><strong>Complete quests:</strong> Speak to the guide in each biome to see what animals they need. Deliver the required species to complete the quest and unlock the next biome.</p>
-  <p><strong>Manage your sanctuary:</strong> Your house contains land, water, and air enclosures. Place animals in their correct habitat to keep them happy. Decor boosts maximum happiness. Return home to feed or clean enclosures via the Enclosures sidebar.</p>
-  <p><strong>Travel through biomes:</strong> Portals appear after finishing each quest. Journey through Meadow → Forest → Desert → Wetlands and repeat to find every species.</p>
-  <p><strong>Level up companions:</strong> Catching multiple copies of the same species grants XP. Every 5 XP increases the companion's level, boosting its ability (e.g., speed or reveal radius).</p>
+  <p><strong>Unlock special biomes:</strong> Collect rare animals to unlock secret biomes beyond the starting loop. Volcano, Glacier and Mystic biomes become available as you discover more uncommon and rare creatures. Each new land has its own quest.</p>
+  <p><strong>Manage your sanctuary:</strong> Your house contains land, water and air enclosures. You can showcase any animal without removing it from your inventory. Keep them happy by feeding, cleaning and adding plants or decor to increase their happiness cap.</p>
+  <p><strong>Travel through biomes:</strong> Portals appear after finishing each quest. Journey through Meadow → Forest → Desert → Wetlands → Volcano → Glacier → Mystic and repeat to find every species.</p>
+  <p><strong>Level up companions:</strong> Catching multiple copies of the same species grants XP. Every 5 XP increases the companion's level, boosting its ability (e.g., movement speed or reveal radius).</p>
   <p><strong>Shop upgrades:</strong> Access the Shop from the start menu to purchase <em>Speed Boots</em>, a <em>Lantern</em> or a <em>Sand Cloak</em> with your coins. Upgrades improve your speed, reveal radius and sandstorm resistance.</p>
-  <p><strong>Achievements &amp; legendary events:</strong> Earn bonus coins for collecting many species or completing all quests. Occasionally, a legendary creature appears &mdash; follow the toast prompts and catch it before it disappears!</p>
-  <p><strong>Win the game:</strong> Discover all 50 animals, complete all quests, level up your companions, and build a thriving sanctuary filled with happy animals!</p>
+  <p><strong>Achievements, happiness &amp; legendary events:</strong> Earn bonus coins for collecting many species or completing all quests. Keep animals happy in enclosures to earn gifts. Occasionally, a legendary creature appears &mdash; follow the toast prompts and catch it before it disappears!</p>
+  <p><strong>Win the game:</strong> Discover all 100 animals, unlock every biome, complete all quests, level up your companions and build a thriving sanctuary!</p>
   <button id="instructionsClose" class="pill" style="margin-top:8px;width:100%;">Close</button>
 </div>
 
@@ -485,6 +505,18 @@
   </div>
   <button id="shopClose" class="pill" style="margin-top:8px;width:100%;">Close</button>
 </div>
+
+  <!-- Catch mini-game overlay -->
+  <!-- This overlay appears when the player encounters a rare animal.  The player must tap/click
+       repeatedly to fill the progress bar before time runs out to successfully catch the creature. -->
+  <div id="catchGame" style="display:none;">
+    <h2 id="catchTitle" style="margin-top:0;margin-bottom:8px;">Catch!</h2>
+    <p id="catchMessage">Tap/click repeatedly to catch the animal before it escapes!</p>
+    <div id="catchProgress" style="width:100%;height:12px;background:#234;border-radius:6px;margin:8px 0;cursor:pointer;">
+      <div id="catchBar" style="height:100%;width:0%;background:var(--accent);border-radius:6px;"></div>
+    </div>
+    <button id="catchClose" class="pill" style="margin-top:8px;width:100%;">Abort</button>
+  </div>
 
 <!-- Sidebars -->
 <aside class="sidebar left" id="sbInventory" aria-label="Inventory">
@@ -546,14 +578,17 @@ const TILE=24;
 const TYPES={
   GRASS:0, FOREST:1, WATER:2, MOUNTAIN:3, SAND:4, HOUSE:5, BRIDGE:6, PATH:7,
   WALL:8, FLOOR:9, DOOR:10, SIGN:11, ENC_WATER:12, ENC_LAND:13, ENC_AIR:14,
-  PORTAL:15, NPC:16, THEME_MEADOW:18, THEME_WATER:19, THEME_DESERT:20, THEME_AIR:21
+  PORTAL:15, NPC:16, THEME_MEADOW:18, THEME_WATER:19, THEME_DESERT:20, THEME_AIR:21,
+  // Additional terrain types for new biomes
+  LAVA:22, ICE:23, SNOW:24
 };
 const typeColor={
   0:'#2d6b3d',1:'#1f4d2b',2:'#1b4c84',3:'#565c6f',4:'#9b8a56',5:'#7d3cff',6:'#8b5a2b',7:'#4b5f3b',
   8:'#394055',9:'#232b3f',10:'#ffcc00',11:'#cccccc',12:'#1f6c8f',13:'#3a5f3a',14:'#6b6b2b',15:'#df7d00',16:'#c7f464',
   18:'#2f5636',19:'#1d466e',20:'#8f7a3f',21:'#8087b0'
+  ,22:'#e25822',23:'#bcdffb',24:'#f2f2f2'
 };
-const SCENES=['meadow','forest','desert','wetlands'];
+const SCENES=['meadow','forest','desert','wetlands','volcano','glacier','mystic'];
 const WEATHER={CLEAR:'Clear', RAIN:'Rain', SAND:'Sandstorm'};
 
 /* ===== Animals ===== */
@@ -704,6 +739,14 @@ let rngRare=0.03;
 
 // Market pricing state.  Recomputed each time the market opens.
 let currentMarketPrices = {};
+
+// Tracking for special unlock conditions and mini-games
+let rareCollectedCount = 0; // number of epic or legendary animals collected
+let catchActive = false;    // whether a mini-game is in progress
+let catchAnimal = null;     // record of the animal being caught via mini-game
+let catchClicks = 0;        // clicks accumulated in the mini-game
+let catchTarget = 0;        // required clicks to succeed
+let catchTimerId = null;    // timer id for mini-game timeout
 // Track XP for each companion species.  Each duplicate catch adds XP and levels up the ability.
 let companionXP = {};
 // Player upgrades purchased from the shop: boots (speed), lantern (reveal), cloak (sandstorm resistance)
@@ -715,9 +758,9 @@ let legendaryTimer = 0;
 /* Tracks which scenes have been unlocked via quest completion.  The forward portal
    for a scene will only appear once its next scene has been unlocked.  Meadow
    is implicitly unlocked as the starting biome. */
-const unlocked={ meadow:true, forest:false, desert:false, wetlands:false };
+const unlocked={ meadow:true, forest:false, desert:false, wetlands:false, volcano:false, glacier:false, mystic:false };
 
-const saveKey='wildpals_v10_5';
+const saveKey='wildpals_v11';
 
 /* ===== Quests (loop) ===== */
 const questDefs={
@@ -725,6 +768,10 @@ const questDefs={
   forest: { name:'Forest Friends', desc:'Bring a Deer to the Lumber Warden.', need:['Deer'], rewards:{coins:6, open_next:true} },
   desert: { name:'Oasis Aid', desc:'Bring a Camel and a Vulture to the Ranger.', need:['Camel','Vulture'], rewards:{coins:7, open_next:true} },
   wetlands:{ name:'Marsh Mentor', desc:'Bring an Axolotl and a Kingfisher.', need:['Axolotl','Kingfisher'], rewards:{coins:8, open_next:true} }
+  ,
+  volcano:{ name:'Volcano Trial', desc:'Bring a Sidewinder Snake, a Bearded Dragon and a Horned Lizard to the Magma Sage.', need:['Sidewinder Snake','Bearded Dragon','Horned Lizard'], rewards:{coins:10, open_next:true} },
+  glacier:{ name:'Frozen Friends', desc:'Bring a Moose and a Swan to the Ice Hermit.', need:['Moose','Swan'], rewards:{coins:12, open_next:true} },
+  mystic:{ name:'Mystic Challenge', desc:'Bring a Phoenix and a Dragon to the Ancient Spirit.', need:['Phoenix','Dragon'], rewards:{coins:20, open_next:true} }
 };
 let quest={...questDefs.meadow, delivered:[], complete:false};
 
@@ -733,7 +780,7 @@ let quest={...questDefs.meadow, delivered:[], complete:false};
 const achievementsList=[
   {key:'collector10', desc:'Catch 10 species', coins:5, condition:()=>discovered.size>=10},
   {key:'collector25', desc:'Catch 25 species', coins:10, condition:()=>discovered.size>=25},
-  {key:'questMaster', desc:'Complete all main quests', coins:15, condition:()=>unlocked.forest && unlocked.desert && unlocked.wetlands && quest.complete}
+  {key:'questMaster', desc:'Complete all main quests', coins:15, condition:()=>unlocked.forest && unlocked.desert && unlocked.wetlands && unlocked.volcano && unlocked.glacier && unlocked.mystic && quest.complete}
 ];
 
 function checkAchievements(){
@@ -885,7 +932,7 @@ function genScene(next){
     quest={...questDefs.desert, delivered:[], complete:false};
     player.x=portals.back.x+1; player.y=portals.back.y;
   }
-  else { // wetlands
+  else if(scene==='wetlands'){
     for(let i=0;i<map.length;i++) map[i]=TYPES.GRASS;
     for(let k=0;k<240;k++) blob(TYPES.WATER,1,3,(t)=>t!==TYPES.MOUNTAIN);
     for(let k=0;k<40;k++) blob(TYPES.FOREST,1,3,(t)=>t===TYPES.GRASS);
@@ -906,6 +953,79 @@ function genScene(next){
     const market={x:13,y:8,type:'market'};
     map[idx(market.x,market.y)] = TYPES.NPC; npcs.push(market);
     quest={...questDefs.wetlands, delivered:[], complete:false};
+    player.x=portals.back.x+1; player.y=portals.back.y;
+  }
+  else if(scene==='volcano'){
+    // Volcano biome: rugged terrain with lava pools.  Base terrain is sand for walkability.
+    for(let i=0;i<map.length;i++) map[i]=TYPES.SAND;
+    // Carve mountains and lava pools
+    for(let k=0;k<100;k++) blob(TYPES.MOUNTAIN,1,3,(t)=>t===TYPES.SAND);
+    for(let r=0;r<80;r++) blob(TYPES.LAVA,2,4,(t)=>t===TYPES.SAND || t===TYPES.MOUNTAIN);
+    portals.back={x:6,y:6};
+    map[idx(portals.back.x,portals.back.y)] = TYPES.PORTAL;
+    if(forwardUnlocked){
+      portals.forward={x:mapW-8,y:6};
+      map[idx(portals.forward.x,portals.forward.y)] = TYPES.PORTAL;
+    } else {
+      portals.forward = null;
+    }
+    // NPCs: magma sage and trader
+    const main={x:8,y:6,type:'main'};
+    const trade={x:10,y:8,type:'trade'};
+    map[idx(main.x,main.y)] = TYPES.NPC; map[idx(trade.x,trade.y)] = TYPES.NPC;
+    // Market NPC
+    const market={x:12,y:8,type:'market'};
+    map[idx(market.x,market.y)] = TYPES.NPC;
+    npcs.push(main,trade,market);
+    quest={...questDefs.volcano, delivered:[], complete:false};
+    player.x=portals.back.x+1; player.y=portals.back.y;
+  }
+  else if(scene==='glacier'){
+    // Glacier biome: snowy landscape with patches of ice
+    for(let i=0;i<map.length;i++) map[i]=TYPES.SNOW;
+    for(let k=0;k<120;k++) blob(TYPES.ICE,1,3,(t)=>t===TYPES.SNOW);
+    portals.back={x:6,y:6};
+    map[idx(portals.back.x,portals.back.y)] = TYPES.PORTAL;
+    if(forwardUnlocked){
+      portals.forward={x:mapW-8,y:6};
+      map[idx(portals.forward.x,portals.forward.y)] = TYPES.PORTAL;
+    } else {
+      portals.forward = null;
+    }
+    // NPCs: ice hermit and trader
+    const main={x:8,y:6,type:'main'};
+    const trade={x:10,y:8,type:'trade'};
+    map[idx(main.x,main.y)] = TYPES.NPC; map[idx(trade.x,trade.y)] = TYPES.NPC;
+    // Market NPC
+    const market={x:12,y:8,type:'market'};
+    map[idx(market.x,market.y)] = TYPES.NPC;
+    npcs.push(main,trade,market);
+    quest={...questDefs.glacier, delivered:[], complete:false};
+    player.x=portals.back.x+1; player.y=portals.back.y;
+  }
+  else if(scene==='mystic'){
+    // Mystic biome: lush and magical.  Start with grass and add forests and water.
+    for(let i=0;i<map.length;i++) map[i]=TYPES.GRASS;
+    for(let k=0;k<180;k++) blob(TYPES.FOREST,1,3,(t)=>t===TYPES.GRASS);
+    for(let k=0;k<90;k++) blob(TYPES.WATER,1,2,(t)=>t!==TYPES.MOUNTAIN);
+    portals.back={x:6,y:6};
+    map[idx(portals.back.x,portals.back.y)] = TYPES.PORTAL;
+    // Mystic forward portal loops back to meadow if unlocked
+    if(forwardUnlocked){
+      portals.forward={x:mapW-8,y:8};
+      map[idx(portals.forward.x,portals.forward.y)] = TYPES.PORTAL;
+    } else {
+      portals.forward = null;
+    }
+    // NPCs: ancient spirit and trader
+    const main={x:8,y:6,type:'main'};
+    const trade={x:10,y:8,type:'trade'};
+    map[idx(main.x,main.y)] = TYPES.NPC; map[idx(trade.x,trade.y)] = TYPES.NPC;
+    // Market NPC
+    const market={x:12,y:8,type:'market'};
+    map[idx(market.x,market.y)] = TYPES.NPC;
+    npcs.push(main,trade,market);
+    quest={...questDefs.mystic, delivered:[], complete:false};
     player.x=portals.back.x+1; player.y=portals.back.y;
   }
   // Fog reset & spawns
@@ -988,6 +1108,21 @@ function spawnWildFor(sceneName){
     'Otter','Beaver','Frog','Salmon','Trout','Duck','Turtle','Heron','Axolotl','Pacman Frog','Poison Dart Frog','Glass Frog','Kingfisher','Capybara','Koi Fish',
     'Newt','Crayfish','Snapping Turtle','Alligator','Crocodile','Hippo','Manatee','Swan','Flamingo','Crane','Boa Constrictor','Tapir'
   ];
+  if(sceneName==='volcano') pool=[
+    // Fire and desert creatures thrive here.  Phoenix and Dragon may spawn rarely through legendary events.
+    'Sidewinder Snake','Bearded Dragon','Horned Lizard','Monitor Lizard','Scorpion','Desert Tortoise','Camel','Vulture',
+    'Fennec Fox','Camel Spider','Sand Cat','Armadillo','Meerkat','Roadrunner','Dingo'
+  ];
+  if(sceneName==='glacier') pool=[
+    // Cold biome: reuse hardy forest and wetland species suitable for icy climates
+    'Moose','Bear','Wolf','Elk','Lynx','Cougar','Porcupine','Coyote','Swan','Flamingo','Crane',
+    'Snapping Turtle','Alligator','Crocodile','Hippo','Manatee','Tapir','Boa Constrictor'
+  ];
+  if(sceneName==='mystic') pool=[
+    // Mystic biome: magical and exotic creatures
+    'Phoenix','Dragon','Poison Dart Frog','Glass Frog','Tree Frog','Crested Gecko','Flying Squirrel','Sugar Glider',
+    'Macaw','Panda','Red Panda','Sloth','Lemur','Gibbon','Axolotl','Pacman Frog','Koi Fish','Kingfisher','Capybara'
+  ];
   let tries=0;
   while(wildSpawns.length<40 && tries<15000){
     tries++;
@@ -1014,16 +1149,16 @@ function spawnWildFor(sceneName){
 function spawnHabitatOk(nms,t){
   function ok(name){
     const a=info(name); if(!a) return false;
-    if(a.kind==='water') return t===TYPES.WATER;
-    if(a.kind==='land') return t!==TYPES.WATER && t!==TYPES.MOUNTAIN;
-    if(a.kind==='air')  return t!==TYPES.MOUNTAIN;
+    if(a.kind==='water') return t===TYPES.WATER || t===TYPES.ICE;
+    if(a.kind==='land') return t!==TYPES.WATER && t!==TYPES.MOUNTAIN && t!==TYPES.LAVA && t!==TYPES.ICE;
+    if(a.kind==='air')  return t!==TYPES.MOUNTAIN && t!==TYPES.LAVA;
     return true;
   }
   return nms.some(n=>ok(n));
 }
 
 /* ===== Reachability guarantee for quest species ===== */
-function basePassable(t){ return t!==TYPES.WATER && t!==TYPES.MOUNTAIN; }
+function basePassable(t){ return t!==TYPES.WATER && t!==TYPES.MOUNTAIN && t!==TYPES.LAVA && t!==TYPES.ICE; }
 function floodReachable(sx,sy){
   const q=[[sx,sy]], seen=new Uint8Array(mapW*mapH); seen[idx(sx,sy)]=1;
   const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
@@ -1067,8 +1202,8 @@ function ensureQuestAnimalsReachable(sceneName){
 function spawnLegendaryEvent(){
   // Determine which legendary species can spawn in this biome
   let pool=[];
-  if(scene==='desert') pool=['Phoenix'];
-  else if(scene==='wetlands') pool=['Dragon'];
+  if(scene==='desert' || scene==='volcano') pool=['Phoenix'];
+  else if(scene==='wetlands' || scene==='glacier') pool=['Dragon'];
   else pool=['Phoenix','Dragon'];
   if(pool.length===0) return;
   const name = pool[rand(0,pool.length-1)];
@@ -1085,6 +1220,109 @@ function spawnLegendaryEvent(){
     placed=true;
   }
   toast('A legendary '+name+' has appeared!');
+}
+
+/* ===== Mini‑game: Catching rare animals ===== */
+// When encountering an uncommon or rarer species (rarity ≥ 3), the player must rapidly tap/click
+// to fill a progress bar before the timer runs out.  Success captures the animal; failure lets
+// it escape.  Rare catches increase rareCollectedCount which may unlock new biomes.
+const catchGame = document.getElementById('catchGame');
+const catchProgress = document.getElementById('catchProgress');
+const catchBar = document.getElementById('catchBar');
+const catchCloseBtn = document.getElementById('catchClose');
+
+function startCatchGame(spawn){
+  // Do not start a new mini‑game if one is already active
+  if(catchActive) return;
+  catchActive = true;
+  catchAnimal = spawn;
+  catchClicks = 0;
+  // Determine required taps based on rarity (rarer animals require more taps)
+  const rarity = info(spawn.name)?.rarity || 2;
+  catchTarget = Math.max(3, 4 * rarity);
+  // Reset progress bar
+  if(catchBar) catchBar.style.width = '0%';
+  // Update message
+  const msgEl = document.getElementById('catchMessage');
+  if(msgEl) msgEl.textContent = `Tap/click repeatedly to catch the ${spawn.name}!`;
+  // Show overlay
+  if(catchGame) catchGame.style.display = 'block';
+  // Set timeout: base 2s + 0.5s per rarity tier
+  const timeout = 2000 + (rarity * 500);
+  catchTimerId = setTimeout(()=>finishCatch(false), timeout);
+}
+
+function catchClick(){
+  if(!catchActive) return;
+  catchClicks++;
+  const progress = Math.min(1, catchClicks / catchTarget);
+  if(catchBar) catchBar.style.width = Math.floor(progress * 100) + '%';
+  if(progress >= 1){
+    finishCatch(true);
+  }
+}
+
+function finishCatch(success){
+  if(!catchActive) return;
+  clearTimeout(catchTimerId);
+  // Hide overlay
+  if(catchGame) catchGame.style.display = 'none';
+  catchActive = false;
+  if(success){
+    // Capture the animal and award rewards
+    if(catchAnimal) collectAnimal(catchAnimal);
+  } else {
+    // Escape: nothing happens, the animal remains on the map
+    if(catchAnimal) toast('The '+catchAnimal.name+' escaped!', true);
+  }
+  catchAnimal = null;
+}
+
+// Attach click events for the mini‑game after DOM has loaded
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(catchProgress) catchProgress.addEventListener('click', catchClick);
+  if(catchCloseBtn) catchCloseBtn.addEventListener('click', ()=>finishCatch(false));
+});
+
+// Collect an animal into the player’s inventory, awarding XP and checking unlocks
+function collectAnimal(s){
+  const nm = s.name + (s.rare ? ' ★' : '');
+  const base = s.name;
+  // Add to companions and discovered species
+  companions.push(nm);
+  discovered.add(base);
+  // Award XP and show level‑up toast
+  const prevLvl = companionLevel(base);
+  companionXP[base] = (companionXP[base]||0) + 1;
+  const newLvl = companionLevel(base);
+  if(newLvl > prevLvl){ toast(base+' leveled up to Lv'+newLvl+'!'); }
+  // Remove the spawn from the world
+  const idxRemove = wildSpawns.findIndex(a => a.x===s.x && a.y===s.y && a.name===s.name);
+  if(idxRemove >= 0) wildSpawns.splice(idxRemove,1);
+  toast('Collected: '+nm);
+  syncInventoryUI();
+  // Rare animals (rarity ≥ 3) increment counter for unlocks
+  const rarity = info(base)?.rarity || 1;
+  if(rarity >= 3) rareCollectedCount++;
+  // Check achievements and unlocks
+  checkAchievements();
+  checkUnlocks();
+}
+
+// Unlock new biomes based on rare animal count
+function checkUnlocks(){
+  if(!unlocked.volcano && rareCollectedCount >= 5){
+    unlocked.volcano = true;
+    toast('New biome unlocked: Volcano!');
+  }
+  if(!unlocked.glacier && rareCollectedCount >= 10){
+    unlocked.glacier = true;
+    toast('New biome unlocked: Glacier!');
+  }
+  if(!unlocked.mystic && rareCollectedCount >= 15){
+    unlocked.mystic = true;
+    toast('New biome unlocked: Mystic!');
+  }
 }
 
 /* ===== Unlocking ===== */
@@ -1115,6 +1353,21 @@ function unlockNextScene(){
     map[idx(px,py)] = TYPES.PORTAL;
   } else if(scene==='wetlands'){
     const px=mapW-7, py=mapH-7;
+    portals.forward={x:px,y:py};
+    map[idx(px,py)] = TYPES.PORTAL;
+  } else if(scene==='volcano'){
+    // Volcano quest completion unlocks Glacier; portal on the east
+    const px=mapW-8, py=6;
+    portals.forward={x:px,y:py};
+    map[idx(px,py)] = TYPES.PORTAL;
+  } else if(scene==='glacier'){
+    // Glacier quest completion unlocks Mystic
+    const px=mapW-8, py=6;
+    portals.forward={x:px,y:py};
+    map[idx(px,py)] = TYPES.PORTAL;
+  } else if(scene==='mystic'){
+    // Mystic loops back to Meadow; place portal to cycle
+    const px=mapW-8, py=8;
     portals.forward={x:px,y:py};
     map[idx(px,py)] = TYPES.PORTAL;
   }
@@ -1630,6 +1883,27 @@ let last=0;
 function update(dt){
   // Convert dt from milliseconds to seconds for time-based updates
   const dtSec = dt / 1000;
+  // If a mini-game is in progress, freeze movement and collisions.  Still
+  // advance time, weather and legendary timers so the world stays alive.
+  if(catchActive){
+    // Advance game time: 30 in‑game minutes per real second
+    timeMin = (timeMin + 30 * dtSec) % (24*60);
+    // Weather timer counts down in seconds
+    weatherTimer -= dtSec;
+    if(weatherTimer <= 0){
+      if(scene==='meadow'||scene==='forest'){ weather = Math.random()<0.25 ? WEATHER.RAIN : WEATHER.CLEAR; }
+      else if(scene==='desert'){ weather = Math.random()<0.25 ? WEATHER.SAND : WEATHER.CLEAR; }
+      else { weather = Math.random()<0.15 ? WEATHER.RAIN : WEATHER.CLEAR; }
+      weatherTimer = 15 + Math.random()*10;
+    }
+    // Legendary timer
+    legendaryTimer -= dtSec;
+    if(legendaryTimer <= 0){
+      spawnLegendaryEvent();
+      legendaryTimer = 90 + Math.random()*90;
+    }
+    return;
+  }
   // Determine intended movement direction from keys
   let dx=0,dy=0;
   if(keys['ArrowUp']||keys['w']||keys['W']) dy-=1;
@@ -1648,22 +1922,19 @@ function update(dt){
   if(passable(t)){ player.x=clamp(nx,0,mapW-0.01); player.y=clamp(ny,0,mapH-0.01); }
 
   if(scene!=='house'){
+    // Check for collisions with animals.  Common/uncommon animals (rarity ≤ 2) are collected
+    // instantly, while rarer species trigger a mini‑game.  Only one interaction occurs per update.
     for(let i=wildSpawns.length-1;i>=0;i--){
       const s=wildSpawns[i];
-      if(Math.hypot(player.x-s.x, player.y-s.y)<0.5){
-        const nm=s.name+(s.rare?' ★':''); const base=s.name;
-        companions.push(nm);
-        discovered.add(base);
-        // Update XP and handle leveling
-        const prevLvl = companionLevel(base);
-        companionXP[base] = (companionXP[base]||0) + 1;
-        const newLvl = companionLevel(base);
-        if(newLvl>prevLvl){ toast(base+' leveled up to Lv'+newLvl+'!'); }
-        wildSpawns.splice(i,1);
-        toast('Collected: '+nm);
-        syncInventoryUI();
-        // Check for achievements after collecting
-        checkAchievements();
+      if(Math.hypot(player.x-s.x, player.y-s.y) < 0.5){
+        const rarity = info(s.name)?.rarity || 1;
+        if(rarity <= 2){
+          collectAnimal(s);
+        } else {
+          startCatchGame(s);
+        }
+        // Stop checking other spawns this frame
+        break;
       }
     }
     // Decrease the animal ping timer proportionally to real time (approx. 60 frames per second)
@@ -1700,6 +1971,10 @@ function update(dt){
 }
 function passable(t){
   if(scene==='house') return t!==TYPES.WALL;
+  // Lava behaves like mountains: only flight can traverse
+  if(t===TYPES.LAVA) return tag()==='FLIGHT';
+  // Ice behaves like water: swimming or mounts can traverse
+  if(t===TYPES.ICE) return ['SWIM','SWIM+','SWIFT_SWIM','MOUNT'].includes(tag());
   // Mountains are impassable unless the active companion can climb or fly
   if(t===TYPES.MOUNTAIN) return tag()==='CLIMB' || tag()==='FLIGHT';
   if(t===TYPES.WATER) return ['SWIM','SWIM+','SWIFT_SWIM','MOUNT'].includes(tag());
@@ -1739,7 +2014,8 @@ function doSave(){
     playerUpgrades,
     achievementsAwarded,
     legendaryTimer,
-    unlocked
+    unlocked,
+    rareCollectedCount
   };
   localStorage.setItem(saveKey, JSON.stringify(enc));
   toast('Saved.');
@@ -1765,6 +2041,7 @@ function doLoad(){
     achievementsAwarded = enc.achievementsAwarded || {};
     legendaryTimer = enc.legendaryTimer || 0;
     if(enc.unlocked){ Object.assign(unlocked, enc.unlocked); }
+    rareCollectedCount = enc.rareCollectedCount || 0;
     // refresh procedural assets for current scene to avoid blank map artifacts
     genScene(scene);
     syncInventoryUI(); toast('Loaded.');
@@ -1787,7 +2064,9 @@ function doReset(){
   achievementsAwarded = {};
   legendaryTimer = 0;
   // Reset unlocked scenes
-  Object.assign(unlocked, { meadow:true, forest:false, desert:false, wetlands:false });
+  Object.assign(unlocked, { meadow:true, forest:false, desert:false, wetlands:false, volcano:false, glacier:false, mystic:false });
+  // Reset rare animal progress
+  rareCollectedCount = 0;
   genScene('meadow');
   syncInventoryUI();
   toast('New world.');
