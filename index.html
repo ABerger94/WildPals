@@ -624,7 +624,29 @@ function ensureQuestAnimalsReachable(sceneName){
 function unlockNextScene(){
   const i=SCENES.indexOf(scene);
   const nextScene=SCENES[(i+1)%SCENES.length];
+  // Mark the next biome as unlocked so that future generations will include its portal
   unlocked[nextScene] = true;
+  // If we are currently in the biome that just completed its quest, spawn the forward
+  // portal immediately so the player doesn’t need to re-enter the scene.  Each scene
+  // has a fixed portal location that we replicate here.
+  if(scene==='meadow'){
+    // place forward portal to forest next to the house
+    const px=housePos.x+4, py=housePos.y;
+    portals.forward={x:px,y:py};
+    map[idx(px,py)] = TYPES.PORTAL;
+  } else if(scene==='forest'){
+    const px=mapW-8, py=8;
+    portals.forward={x:px,y:py};
+    map[idx(px,py)] = TYPES.PORTAL;
+  } else if(scene==='desert'){
+    const px=mapW-8, py=6;
+    portals.forward={x:px,y:py};
+    map[idx(px,py)] = TYPES.PORTAL;
+  } else if(scene==='wetlands'){
+    const px=mapW-7, py=mapH-7;
+    portals.forward={x:px,y:py};
+    map[idx(px,py)] = TYPES.PORTAL;
+  }
 }
 
 /* ===== Controls ===== */
