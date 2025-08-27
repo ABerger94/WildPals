@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Wild Pals — v8.6 (loop biomes, GB controls, improved mobile layout)</title>
+<title>Wild Pals — v8.6 (loop biomes, GB controls, fixed map, 50 animals)</title>
 <style>
   :root{
     --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
@@ -39,7 +39,7 @@
   #padDock{display:flex;justify-content:center;margin-top:10px; padding-bottom:max(8px, env(safe-area-inset-bottom, 0px));}
   #mobileControls{
     display:grid;
-    grid-template-columns: 120px 1fr 160px;
+    grid-template-columns: 140px 1fr 200px;
     grid-template-rows: auto auto;
     gap:12px;
     background:linear-gradient(180deg, var(--padPanel), rgba(10,18,38,0.85));
@@ -47,30 +47,27 @@
     box-shadow:0 10px 22px rgba(0,0,0,.4); padding:14px; width:min(100%, 720px);
     backdrop-filter: blur(4px);
   }
-  /* Enlarged D-pad for easier touch interaction */
-  .dpad{grid-column:1;grid-row:1 / span 2; width:160px; height:160px; position:relative; margin:auto;
+  .dpad{grid-column:1;grid-row:1 / span 2; width:140px; height:140px; position:relative; margin:auto;
         background:#101826; border-radius:16px; border:1px solid #192a4e; box-shadow:inset 0 6px 14px rgba(0,0,0,.5)}
-  .dpad .cross{position:absolute; inset:0; margin:auto; width:120px; height:120px; background:#1a2336; border-radius:14px}
+  .dpad .cross{position:absolute; inset:0; margin:auto; width:100px; height:100px; background:#1a2336; border-radius:14px}
   .dpad .cross::before,.dpad .cross::after{content:""; position:absolute; background:#1a2336; border-radius:12px}
-  .dpad .cross::before{left:0; right:0; top:50%; height:40px; transform:translateY(-50%)}
-  .dpad .cross::after{top:0; bottom:0; left:50%; width:40px; transform:translateX(-50%)}
-  /* Directional buttons enlarged for easier tapping (approx. double original size) */
-  .dpad button{position:absolute; width:64px; height:64px; background:#0f1726; border:1px solid #2a3b64;
-               border-radius:14px; color:#9fb3d1; font-weight:900; font-size:20px}
+  .dpad .cross::before{left:0; right:0; top:50%; height:36px; transform:translateY(-50%)}
+  .dpad .cross::after{top:0; bottom:0; left:50%; width:36px; transform:translateX(-50%)}
+  .dpad button{position:absolute; width:42px; height:42px; background:#0f1726; border:1px solid #2a3b64;
+               border-radius:10px; color:#9fb3d1; font-weight:900; font-size:18px}
   .dpad button:active{transform:translateY(1px)}
   #btnUp{left:50%; top:6px; transform:translateX(-50%)}
   #btnDown{left:50%; bottom:6px; transform:translateX(-50%)}
   #btnLeft{left:6px; top:50%; transform:translateY(-50%)}
   #btnRight{right:6px; top:50%; transform:translateY(-50%)}
 
-  .actCluster{grid-column:3;grid-row:1; width:160px; height:140px; position:relative; margin:auto}
-  .actCluster .btn{position:absolute; width:64px; height:64px; border-radius:999px; border:1px solid #1b2a52;
-                   color:#e9f1ff; font-weight:800; font-size:18px; box-shadow:inset 0 8px 18px rgba(0,0,0,.45)}
-  #btnA{background:var(--btnA); right:8px; top:10px}
+  .actCluster{grid-column:3;grid-row:1; width:200px; height:170px; position:relative; margin:auto}
+  .actCluster .btn{position:absolute; width:72px; height:72px; border-radius:999px; border:1px solid #1b2a52;
+                   color:#e9f1ff; font-weight:800; font-size:20px; box-shadow:inset 0 8px 18px rgba(0,0,0,.45)}
+  #btnA{background:var(--btnA); right:14px; top:10px}
   #btnB{background:var(--btnB); left:18px; bottom:8px}
-  /* Position start row under the action buttons (column 3) for more room */
   .startRow{grid-column:3; grid-row:2; display:flex; justify-content:center; gap:14px; align-items:center}
-  .startRow .tiny{min-width:auto; width:80px; height:36px; border-radius:999px; background:var(--btnStart); border:1px solid #4b1d1d; color:white; font-weight:800}
+  .startRow .tiny{min-width:auto; width:120px; height:36px; border-radius:999px; background:var(--btnStart); border:1px solid #4b1d1d; color:white; font-weight:800}
 
   /* General button defaults for desktop UI buttons */
   button,select{background:#122043;color:var(--ink);border:1px solid #28407e;border-radius:8px;padding:8px 10px;font-weight:600;cursor:pointer}
@@ -112,23 +109,6 @@
     #hudBar{display:flex}
     canvas#minimap{width:88px;height:88px}
   }
-
-  /* Start menu overlay */
-  #startMenu{
-    position:fixed;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    background:var(--panel);
-    border:1px solid #1f2d54;
-    border-radius:12px;
-    padding:16px;
-    z-index:400;
-    display:none;
-    width:240px;
-    text-align:center;
-  }
-  #startMenu button{margin-top:8px;width:100%;}
 </style>
 </head>
 <body>
@@ -204,15 +184,6 @@
 
 <div id="scrim"></div>
 
-<!-- Start Menu -->
-<div id="startMenu" class="start-menu">
-  <h2 style="margin-top:0;margin-bottom:8px;">Menu</h2>
-  <button id="startSave" class="pill">Save</button>
-  <button id="startLoad" class="pill">Load</button>
-  <button id="startReset" class="pill">New World</button>
-  <button id="startClose" class="pill">Close</button>
-</div>
-
 <!-- Sidebars -->
 <aside class="sidebar left" id="sbInventory" aria-label="Inventory">
   <header class="sbHead"><h2>Inventory</h2><button class="sbClose" data-close="sbInventory">Close</button></header>
@@ -224,7 +195,12 @@
     </div>
     <div id="inventoryGrid_sb"></div>
     <hr>
+    <div class="row">
+      <button id="btnSave_sb" class="pill">Save</button>
+      <button id="btnLoad_sb" class="pill">Load</button>
+      <button id="btnReset_sb" class="pill">New World</button>
     </div>
+  </div>
 </aside>
 
 <aside class="sidebar right" id="sbJournal" aria-label="Journal">
@@ -258,7 +234,7 @@
 function setText(id, value){ const el=document.getElementById(id); if(el) el.textContent=value; }
 function setBoth(id1, id2, value){ setText(id1,value); setText(id2,value); }
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
-const baseName=(n)=> (n||'').replace(/\s*★/g,'').trim();
+const baseName=(n)=> (n||'').replace(/\\s*★/g,'').trim();
 const rand=(a,b)=> Math.floor(Math.random()*(b-a+1))+a;
 
 const TILE=24;
@@ -277,8 +253,9 @@ const typeColor={
 const SCENES=['meadow','forest','desert','wetlands'];
 const WEATHER={CLEAR:'Clear', RAIN:'Rain', SAND:'Sandstorm'};
 
-/* ===== Animals ===== */
+/* ===== Animals (50 species) ===== */
 const animals=[
+  // Water
   {name:'Otter',kind:'water',tag:'SWIM',ability:'Swim (cross rivers).'},
   {name:'Beaver',kind:'water',tag:'BRIDGE',ability:'Build Bridge (place ahead).'},
   {name:'Frog',kind:'water',tag:'SWIM+',ability:'Wetland speed.'},
@@ -287,13 +264,21 @@ const animals=[
   {name:'Duck',kind:'water',tag:'SWIM',ability:'Pond friend.'},
   {name:'Turtle',kind:'water',tag:'SWIM',ability:'Amphibious.'},
   {name:'Heron',kind:'air',tag:'SURVEIL',ability:'Reeds lookout.'},
-
+  {name:'Crab',kind:'water',tag:'SWIM',ability:'Shallows walker.'},
+  {name:'Seal',kind:'water',tag:'SWIM+',ability:'Ocean glide.'},
+  {name:'Puffer',kind:'water',tag:'SWIM',ability:'Spiny wobble.'},
+  {name:'Koi',kind:'water',tag:'SWIM',ability:'Graceful swim.'},
+  // Air
   {name:'Hawk',kind:'air',tag:'SURVEIL',ability:'Bigger reveal.'},
   {name:'Eagle',kind:'air',tag:'SURVEIL+',ability:'Wide reveal.'},
   {name:'Parrot',kind:'air',tag:'SCOUT',ability:'Minimap pings.'},
   {name:'Owl',kind:'air',tag:'SURVEIL',ability:'Night watch.'},
   {name:'Falcon',kind:'air',tag:'SURVEIL+',ability:'Fast scout.'},
-
+  {name:'Sparrow',kind:'air',tag:'SCOUT',ability:'Quick pings.'},
+  {name:'Pelican',kind:'air',tag:'SURVEIL',ability:'Coast watch.'},
+  {name:'Vulture',kind:'air',tag:'SURVEIL+',ability:'Thermals.'},
+  {name:'Stork',kind:'air',tag:'SURVEIL',ability:'High glide.'},
+  // Land
   {name:'Goat',kind:'land',tag:'CLIMB',ability:'Climb cliffs.'},
   {name:'Cheetah',kind:'land',tag:'SPEED',ability:'Sprint.'},
   {name:'Dog',kind:'land',tag:'SCENT',ability:'Scent pings.'},
@@ -302,14 +287,30 @@ const animals=[
   {name:'Rabbit',kind:'land',tag:'SPEED',ability:'Hop sprint.'},
   {name:'Bear',kind:'land',tag:'FORT',ability:'Thick hide.'},
   {name:'Raccoon',kind:'land',tag:'SCENT',ability:'Forage scent.'},
-
   {name:'Camel',kind:'land',tag:'MOUNT',ability:'Desert mount.'},
-  {name:'Vulture',kind:'air',tag:'SURVEIL+',ability:'Thermals.'},
   {name:'Lizard',kind:'land',tag:'SPEED',ability:'Sun sprint.'},
   {name:'Iguana',kind:'land',tag:'CLIMB',ability:'Warm perch.'},
-  {name:'Chameleon',kind:'land',tag:'CLIMB',ability:'Blend & climb.'}
+  {name:'Chameleon',kind:'land',tag:'CLIMB',ability:'Blend & climb.'},
+  {name:'Deer',kind:'land',tag:'SPEED',ability:'Forest dash.'},
+  {name:'Boar',kind:'land',tag:'FORT',ability:'Stout push.'},
+  {name:'Fox',kind:'land',tag:'SCENT',ability:'Trail nose.'},
+  {name:'Wolf',kind:'land',tag:'SPEED',ability:'Pack sprint.'},
+  {name:'Elephant',kind:'land',tag:'MOUNT',ability:'Trample.'},
+  {name:'Rhino',kind:'land',tag:'FORT',ability:'Heavy armor.'},
+  {name:'Zebra',kind:'land',tag:'MOUNT',ability:'Striped steed.'},
+  {name:'Bison',kind:'land',tag:'FORT',ability:'Bull rush.'},
+  {name:'Kangaroo',kind:'land',tag:'SPEED',ability:'Power hop.'},
+  {name:'Panda',kind:'land',tag:'FORT',ability:'Calm guard.'},
+  {name:'Tiger',kind:'land',tag:'SPEED',ability:'Predator dash.'},
+  {name:'Lion',kind:'land',tag:'SPEED',ability:'King’s sprint.'},
+  {name:'Giraffe',kind:'land',tag:'CLIMB',ability:'Tall vantage.'},
+  {name:'Moose',kind:'land',tag:'FORT',ability:'Marsh stride.'},
+  {name:'Armadillo',kind:'land',tag:'FORT',ability:'Roll guard.'},
+  {name:'Hedgehog',kind:'land',tag:'FORT',ability:'Spiny curl.'},
+  {name:'Antelope',kind:'land',tag:'SPEED',ability:'Long run.'},
+  {name:'Badger',kind:'land',tag:'SCENT',ability:'Burrow scent.'},
+  {name:'Capybara',kind:'land',tag:'SWIM',ability:'Chill swim.'}
 ];
-
 function info(n){ const bn=baseName(n); return animals.find(a=>a.name===bn); }
 function tag(){ return info(activePetName)?.tag||null; }
 function kind(){ return info(activePetName)?.kind||null; }
@@ -332,10 +333,6 @@ let enclosures={ water:[], land:[], air:[] }, decor={water:0, land:0, air:0};
 let slotPos={water:[], land:[], air:[]};
 let discovered=new Set();
 let rngRare=0.03;
-/* Tracks which scenes have been unlocked via quest completion.  The forward portal
-   for a scene will only appear once its next scene has been unlocked.  Meadow
-   is implicitly unlocked as the starting biome. */
-const unlocked={ meadow:true, forest:false, desert:false, wetlands:false };
 
 const saveKey='wildpals_v8_6';
 
@@ -392,25 +389,14 @@ function genScene(next){
   mapW=120; mapH=100; map=new Uint8Array(mapW*mapH); fog=new Uint8Array(mapW*mapH);
   for(let i=0;i<map.length;i++) map[i]=TYPES.GRASS;
   npcs=[]; portals={back:null, forward:null};
-  // Determine if the forward portal should be present based on unlocks.  The next scene
-  // in the biome cycle is unlocked once its preceding quest is completed.  Without
-  // unlocking, the forward portal remains absent and the player cannot progress.
-  const sceneIndex = SCENES.indexOf(scene);
-  const nextSceneName = SCENES[(sceneIndex+1) % SCENES.length];
-  const forwardUnlocked = !!unlocked[nextSceneName];
   // biome shaping
   if(scene==='meadow'){
     // meadows: forest patches + winding streams
     for(let k=0;k<120;k++) blob(TYPES.FOREST,2,5,(t)=>t===TYPES.GRASS);
     for(let r=0;r<3;r++){ let x=rand(0,mapW-1), y=0; for(let s=0;s<mapH*2;s++){ if(!inBounds(x,y)) break; map[idx(x,y)]=TYPES.WATER; y+=1; x+=rand(-1,1); if(Math.random()<.25) map[idx(clamp(x+1,0,mapW-1),y)]=TYPES.WATER; } }
     housePos={x:10,y:10}; map[idx(housePos.x,housePos.y)]=TYPES.HOUSE; carveSafeYard(housePos.x, housePos.y, 8);
-    // portals: meadow has only a forward portal to forest when unlocked
-    if(forwardUnlocked){
-      portals.forward={x:housePos.x+4, y:housePos.y};
-      map[idx(portals.forward.x, portals.forward.y)] = TYPES.PORTAL;
-    } else {
-      portals.forward = null;
-    }
+    // portals
+    portals.forward={x:housePos.x+4, y:housePos.y}; map[idx(portals.forward.x,portals.forward.y)]=TYPES.PORTAL;
     portals.back=null;
     // NPCs
     const main={x:housePos.x+2,y:housePos.y,type:'main'}; map[idx(main.x,main.y)]=TYPES.NPC; npcs.push(main);
@@ -423,13 +409,7 @@ function genScene(next){
     for(let k=0;k<160;k++) blob(TYPES.GRASS,1,3,(t)=>t===TYPES.FOREST);
     for(let r=0;r<4;r++){ blob(TYPES.WATER,2,4,(t)=>t!==TYPES.MOUNTAIN); }
     portals.back={x:6,y:6}; map[idx(portals.back.x,portals.back.y)]=TYPES.PORTAL;
-    // forward portal only if desert is unlocked
-    if(forwardUnlocked){
-      portals.forward={x:mapW-8,y:8};
-      map[idx(portals.forward.x,portals.forward.y)] = TYPES.PORTAL;
-    } else {
-      portals.forward=null;
-    }
+    portals.forward={x:mapW-8,y:8}; map[idx(portals.forward.x,portals.forward.y)]=TYPES.PORTAL;
     const main={x:8,y:6,type:'main'}; const trade={x:10,y:8,type:'trade'};
     map[idx(main.x,main.y)]=TYPES.NPC; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(main,trade);
     quest={...questDefs.forest, delivered:[], complete:false};
@@ -441,15 +421,8 @@ function genScene(next){
     for(let o=0;o<6;o++){ let cx=rand(12,mapW-12), cy=rand(10,mapH-10);
       for(let y=-3;y<=3;y++) for(let x=-3;x<=3;x++){ const px=cx+x, py=cy+y; if(!inBounds(px,py)) continue; map[idx(px,py)]= (x*x+y*y<8)?TYPES.WATER:TYPES.SAND; }
     }
-    portals.back={x:6,y:5};
-    map[idx(portals.back.x,portals.back.y)] = TYPES.PORTAL;
-    // forward portal only if wetlands is unlocked
-    if(forwardUnlocked){
-      portals.forward={x:mapW-8,y:6};
-      map[idx(portals.forward.x,portals.forward.y)] = TYPES.PORTAL;
-    } else {
-      portals.forward = null;
-    }
+    portals.back={x:6,y:5}; portals.forward={x:mapW-8,y:6};
+    map[idx(portals.back.x,portals.back.y)]=TYPES.PORTAL; map[idx(portals.forward.x,portals.forward.y)]=TYPES.PORTAL;
     const main={x:8,y:6,type:'main'}; const trade={x:10,y:8,type:'trade'};
     map[idx(main.x,main.y)]=TYPES.NPC; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(main,trade);
     quest={...questDefs.desert, delivered:[], complete:false};
@@ -461,15 +434,8 @@ function genScene(next){
     for(let k=0;k<40;k++) blob(TYPES.FOREST,1,3,(t)=>t===TYPES.GRASS);
     // boardwalk: convert some water to PATH lines
     for(let y=10;y<mapH-10;y+=3) for(let x=10;x<mapW-10;x++) if(map[idx(x,y)]===TYPES.WATER) map[idx(x,y)]=TYPES.PATH;
-    portals.back={x:6,y:6};
-    map[idx(portals.back.x,portals.back.y)] = TYPES.PORTAL;
-    // wetlands forward portal leads back to meadow; appears only if meadow is unlocked (always true after first cycle)
-    if(forwardUnlocked){
-      portals.forward = {x:mapW-7, y:mapH-7};
-      map[idx(portals.forward.x, portals.forward.y)] = TYPES.PORTAL;
-    } else {
-      portals.forward = null;
-    }
+    portals.back={x:6,y:6}; portals.forward={x:mapW-7,y:mapH-7};
+    map[idx(portals.back.x,portals.back.y)]=TYPES.PORTAL; map[idx(portals.forward.x,portals.forward.y)]=TYPES.PORTAL;
     const main={x:8,y:6,type:'main'}; const trade={x:11,y:8,type:'trade'};
     map[idx(main.x,main.y)]=TYPES.NPC; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(main,trade);
     quest={...questDefs.wetlands, delivered:[], complete:false};
@@ -491,15 +457,8 @@ function genHouse(){
   for(let x=0;x<mapW;x++){ map[idx(x,0)]=TYPES.WALL; map[idx(x,mapH-1)]=TYPES.WALL; }
   for(let y=0;y<mapH;y++){ map[idx(0,y)]=TYPES.WALL; map[idx(mapW-1,y)]=TYPES.WALL; }
   const hallY=Math.floor(mapH/2);
-  // Create a hallway through the center of the house.  Previously we built solid
-  // wall rows at hallY-2 and hallY+2 which blocked access to the top/bottom rooms.
-  // To allow movement to the themed rooms, we only lay a path at hallY and avoid
-  // building continuous wall barriers above and below.
-  for(let x=1;x<mapW-1;x++){
-    map[idx(x,hallY)] = TYPES.PATH;
-  }
-  // Front door
-  map[idx(1,hallY)] = TYPES.DOOR;
+  for(let x=1;x<mapW-1;x++){ map[idx(x, hallY-2)]=TYPES.WALL; map[idx(x, hallY+2)]=TYPES.WALL; map[idx(x,hallY)]=TYPES.PATH; }
+  map[idx(1,hallY)]=TYPES.DOOR;
   // themed rooms (simple)
   function room(ox,oy,w,h,theme,kind){
     for(let x=ox;x<ox+w;x++){ map[idx(x,oy)]=TYPES.WALL; map[idx(x,oy+h-1)]=TYPES.WALL; }
@@ -537,12 +496,12 @@ function slotIndexAt(kind, tx, ty){
 /* ===== Spawns ===== */
 function spawnWildFor(sceneName){
   wildSpawns=[]; let pool=[];
-  if(sceneName==='meadow') pool=['Otter','Beaver','Frog','Trout','Goat','Cheetah','Dog','Tortoise','Horse','Hawk','Eagle','Rabbit','Raccoon','Parrot'];
-  if(sceneName==='forest') pool=['Beaver','Otter','Hawk','Owl','Eagle','Parrot','Goat','Dog','Tortoise','Rabbit','Bear','Raccoon','Trout'];
-  if(sceneName==='desert') pool=['Camel','Vulture','Lizard','Iguana','Chameleon','Dog','Cheetah','Hawk','Rabbit'];
-  if(sceneName==='wetlands') pool=['Frog','Duck','Heron','Salmon','Trout','Otter','Turtle','Beaver','Owl'];
+  if(sceneName==='meadow') pool=['Otter','Beaver','Frog','Trout','Goat','Cheetah','Dog','Tortoise','Horse','Hawk','Eagle','Rabbit','Raccoon','Parrot','Fox','Deer','Boar','Sparrow','Pelican'];
+  if(sceneName==='forest') pool=['Beaver','Otter','Hawk','Owl','Eagle','Parrot','Goat','Dog','Tortoise','Rabbit','Bear','Raccoon','Trout','Fox','Deer','Wolf','Badger'];
+  if(sceneName==='desert') pool=['Camel','Vulture','Lizard','Iguana','Chameleon','Dog','Cheetah','Hawk','Rabbit','Zebra','Lion'];
+  if(sceneName==='wetlands') pool=['Frog','Duck','Heron','Salmon','Trout','Otter','Turtle','Beaver','Owl','Moose','Koi','Crab','Seal','Puffer'];
   let tries=0;
-  while(wildSpawns.length<40 && tries<15000){
+  while(wildSpawns.length<50 && tries<20000){
     tries++;
     const x=rand(0,mapW-1), y=rand(0,mapH-1);
     if(sceneName==='meadow' && idx(x,y)===idx(housePos.x,housePos.y)) continue;
@@ -555,13 +514,16 @@ function spawnWildFor(sceneName){
     const rare = (!nearStart) && Math.random()<rngRare;
     wildSpawns.push({x,y,name:nm,rare});
   }
-  // bias a few friendly spawns near start (gentle start)
-  for(let i=0;i<6;i++){
-    const nx=clamp(Math.floor(player.x)+rand(-5,5),0,mapW-1);
-    const ny=clamp(Math.floor(player.y)+rand(-5,5),0,mapH-1);
-    const t=map[idx(nx,ny)];
-    const near=['Frog','Beaver','Rabbit','Otter'][rand(0,3)];
-    if(spawnHabitatOk([near],t)) wildSpawns.push({x:nx,y:ny,name:near,rare:false});
+  // bias a few friendly spawns near start (gentle start; guarantee Frog/Hawk nearby)
+  const starters=['Frog','Hawk','Beaver','Rabbit'];
+  for(let i=0;i<starters.length;i++){
+    let placed=false, guard=0;
+    while(!placed && guard++<500){
+      const nx=clamp(Math.floor(player.x)+rand(-6,6),0,mapW-1);
+      const ny=clamp(Math.floor(player.y)+rand(-6,6),0,mapH-1);
+      const t=map[idx(nx,ny)];
+      if(spawnHabitatOk([starters[i]],t)){ wildSpawns.push({x:nx,y:ny,name:starters[i],rare:false}); placed=true; }
+    }
   }
 }
 function spawnHabitatOk(nms,t){
@@ -616,17 +578,6 @@ function ensureQuestAnimalsReachable(sceneName){
   }
 }
 
-/* ===== Unlocking ===== */
-// Marks the next scene in the biome loop as unlocked.  Called when a quest
-// is completed.  Uses the current value of `scene` to determine which
-// biome’s completion unlocks the next.  For example, completing the meadow
-// quest unlocks forest.
-function unlockNextScene(){
-  const i=SCENES.indexOf(scene);
-  const nextScene=SCENES[(i+1)%SCENES.length];
-  unlocked[nextScene] = true;
-}
-
 /* ===== Controls ===== */
 window.addEventListener('keydown', e=>{
   keys[e.key]=true;
@@ -638,8 +589,6 @@ window.addEventListener('keydown', e=>{
   if(e.key==='e'||e.key==='E') actionButton();
   if(e.key==='Enter') actionButton();
   if(e.key==='Escape') closeAllSidebars();
-  // Open the start menu on desktop via the "P" key (stands for pause/start)
-  if(e.key==='p' || e.key==='P') toggleStartMenu();
 });
 
 function pressKey(k,d){ keys[k]=d; }
@@ -656,11 +605,7 @@ bindTouch(document.getElementById('btnLeft'),'ArrowLeft');
 bindTouch(document.getElementById('btnRight'),'ArrowRight');
 document.getElementById('btnA').addEventListener('click',()=>actionButton());
 document.getElementById('btnB').addEventListener('click',()=>cycleActive());
-// On mobile, the Start button opens the start menu instead of performing an in-game action
-document.getElementById('btnStart').addEventListener('click', (e)=>{
-  e.preventDefault();
-  toggleStartMenu();
-});
+document.getElementById('btnStart').addEventListener('click',()=>actionButton());
 
 /* ===== Actions ===== */
 function cycleActive(){
@@ -731,22 +676,15 @@ function interactNPC(n){
     }
     if(deliveredNow.length){ toast('Delivered: '+deliveredNow.join(', ')); syncInventoryUI(); }
     if(quest.delivered && quest.delivered.length===quest.need.length && !quest.complete){
-      quest.complete=true;
-      coins += quest.rewards.coins||0;
+      quest.complete=true; coins += quest.rewards.coins||0;
       toast('Quest complete! +' + (quest.rewards.coins||0) + ' coins.');
-      // Unlock the next biome if the quest signals it
-      if(quest.rewards.open_next){
-        unlockNextScene();
-      }
-      // After awarding coins and potentially unlocking, refresh UI and quest status
-      syncInventoryUI();
       syncQuestUI();
     } else {
       const remaining = quest.need.filter(nm=>!(quest.delivered||[]).includes(nm));
       toast(remaining.length?('Quest: Bring '+remaining.join(' & ')) : 'Quest already complete.' );
     }
   } else if(n.type==='trade'){
-    // simple trade: 2x Beaver -> Iguana (example varies per scene)
+    // simple trade: varies per scene
     const offers={ meadow:{give:'Beaver',take:'Iguana'},
                    forest:{give:'Otter', take:'Owl'},
                    desert:{give:'Lizard',take:'Camel'},
@@ -924,7 +862,7 @@ function drawNPC(ax,ay){
 function drawPlayer(px,py){
   g.fillStyle='#eaeaea'; g.fillRect(px+8,py+6,8,8);
   g.fillStyle='#3a75c4'; g.fillRect(px+6,py+14,12,8);
-  g.fillStyle='#2b2b2b'; g.fillRect(px+6,py+22,5,2); g.fillRect(px+13,py+22,5,2);
+  g.fillStyle:'#2b2b2b'; g.fillRect(px+6,py+22,5,2); g.fillRect(px+13,py+22,5,2);
   g.fillStyle='#000'; g.fillRect(px+11,py+9,2,2);
 }
 function drawMini(){
@@ -956,17 +894,26 @@ function drawAnimalSprite(ctx,name,x,y,s){
                (name==='Camel') ? '#b78b59' : (name==='Vulture') ? '#a09060' :
                (name==='Lizard'||name==='Iguana'||name==='Chameleon') ? '#66bb66' :
                (name==='Rabbit') ? '#c7c7c7' : (name==='Bear') ? '#5a4a3a' : (name==='Raccoon') ? '#7b7b7b' :
+               (name==='Deer') ? '#a97b5a' : (name==='Boar') ? '#6c4a3a' : (name==='Fox') ? '#d0702f' :
+               (name==='Wolf') ? '#9c9c9c' : (name==='Elephant') ? '#9aa0a8' : (name==='Rhino') ? '#79838d' :
+               (name==='Zebra') ? '#ececec' : (name==='Bison') ? '#704a2a' : (name==='Kangaroo') ? '#b47a47' :
+               (name==='Panda') ? '#e7e7e7' : (name==='Tiger') ? '#e89f33' : (name==='Lion') ? '#d1a34a' :
+               (name==='Giraffe') ? '#dfc27d' : (name==='Moose') ? '#8b6b47' : (name==='Armadillo') ? '#9a8f7c' :
+               (name==='Hedgehog') ? '#9c8267' : (name==='Antelope') ? '#caa36a' : (name==='Badger') ? '#9e9e9e' :
+               (name==='Capybara') ? '#a6774d' :
+               (name==='Sparrow') ? '#bba57a' : (name==='Pelican') ? '#dcdcdc' : (name==='Stork') ? '#e9e9e9' :
+               (name==='Crab') ? '#d04c4c' : (name==='Seal') ? '#707d88' : (name==='Puffer') ? '#f3d96b' : (name==='Koi') ? '#f7b9b0' :
                (k==='water') ? '#40c3ff' : (k==='air') ? '#e0e668' : '#ffd166';
   const accent = '#000';
   R(1,4,10,6,body);
-  if(['Hawk','Eagle','Parrot','Owl','Falcon','Vulture','Heron'].includes(name)) R(9,5,3,2,'#ffd966');
-  else if(['Otter','Beaver','Dog','Horse','Goat','Cheetah','Tortoise','Camel','Bear','Rabbit','Raccoon','Lizard','Chameleon','Iguana'].includes(name)) R(9,5,2,2,'#f0e0d0');
-  else if(['Salmon','Trout','Duck','Turtle'].includes(name)) R(0,5,3,2,'#8ddbe0');
+  if(['Hawk','Eagle','Parrot','Owl','Falcon','Vulture','Heron','Sparrow','Pelican','Stork'].includes(name)) R(9,5,3,2,'#ffd966');
+  else if(['Otter','Beaver','Dog','Horse','Goat','Cheetah','Tortoise','Camel','Bear','Rabbit','Raccoon','Lizard','Chameleon','Iguana','Deer','Boar','Fox','Wolf','Elephant','Rhino','Zebra','Bison','Kangaroo','Panda','Tiger','Lion','Giraffe','Moose','Armadillo','Hedgehog','Antelope','Badger','Capybara'].includes(name)) R(9,5,2,2,'#f0e0d0');
+  else if(['Salmon','Trout','Duck','Turtle','Crab','Seal','Puffer','Koi'].includes(name)) R(0,5,3,2,'#8ddbe0');
   if(k==='land'){ R(2,10,2,2,accent); R(8,10,2,2,accent); }
   if(k==='water'){ R(0,7,2,2,accent); R(10,7,2,2,accent); }
   if(k==='air'){ R(0,4,2,4,accent); R(10,4,2,4,accent); }
   R(4,6,1,1,'#000'); R(6,6,1,1,'#000');
-  if(name==='Cheetah'){ R(3,5,1,1,'#000'); R(5,7,1,1,'#000'); R(7,5,1,1,'#000'); }
+  if(name==='Cheetah'||name==='Tiger'){ R(3,5,1,1,'#000'); R(5,7,1,1,'#000'); R(7,5,1,1,'#000'); }
 }
 
 /* ===== Loop ===== */
@@ -1041,8 +988,7 @@ function doLoad(){
     player=enc.player; housePos=enc.housePos||housePos; portals=enc.portals||{back:null,forward:null}; npcs=enc.npcs||[];
     companions=enc.companions||[]; activePetName=enc.activePetName||null; enclosures=enc.enclosures||{water:[],land:[],air:[]}; decor=enc.decor||{water:0,land:0,air:0};
     discovered=new Set(enc.discovered||[]); timeMin=enc.timeMin||360; weather=enc.weather||WEATHER.CLEAR; coins=enc.coins||0; quest=enc.quest||quest;
-    // refresh procedural assets for current scene to avoid blank map artifacts
-    genScene(scene);
+    wildSpawns=[]; // spawns will regenerate as you move; prevents duplicate stacking on load
     syncInventoryUI(); toast('Loaded.');
   }catch(e){ console.error(e); toast('Load failed.', true); }
 }
@@ -1066,35 +1012,7 @@ toggleCare.onclick    =()=> sbCare.classList.contains('open')     ? closeSidebar
 document.querySelectorAll('.sbClose').forEach(btn=> btn.addEventListener('click', ()=>{ const id=btn.getAttribute('data-close'); const el=document.getElementById(id); if(el){ el.classList.remove('open'); maybeHideScrim(); } [toggleInventory,toggleJournal,toggleQuests,toggleCare].forEach(b=>b.setAttribute('aria-pressed','false')); }));
 scrim.addEventListener('click', closeAllSidebars);
 
-/* ===== Start Menu ===== */
-const startMenu=document.getElementById('startMenu');
-const startSave=document.getElementById('startSave');
-const startLoad=document.getElementById('startLoad');
-const startReset=document.getElementById('startReset');
-const startClose=document.getElementById('startClose');
-
-function showStartMenu(){
-  startMenu.style.display='block';
-  scrim.classList.add('open');
-}
-function hideStartMenu(){
-  startMenu.style.display='none';
-  scrim.classList.remove('open');
-}
-function toggleStartMenu(){
-  if(startMenu.style.display==='block') hideStartMenu();
-  else { closeAllSidebars(); showStartMenu(); }
-}
-
-// Hook up start menu buttons to save/load/reset
-startSave.onclick=()=>{ doSave(); hideStartMenu(); };
-startLoad.onclick=()=>{ doLoad(); hideStartMenu(); };
-startReset.onclick=()=>{ doReset(); hideStartMenu(); };
-startClose.onclick=()=>{ hideStartMenu(); };
-// Hide the start menu when scrim is tapped
-scrim.addEventListener('click', ()=>{ hideStartMenu(); });
-
-// Save/Load/Reset controls are now accessible via the Start menu; inventory buttons removed
+document.getElementById('btnSave_sb').onclick=doSave; document.getElementById('btnLoad_sb').onclick=doLoad; document.getElementById('btnReset_sb').onclick=doReset;
 document.getElementById('btnFeedAll_sb').onclick=()=>{ ['water','land','air'].forEach(k=>{ (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=Math.min(100,(e.happy||50)+10); }); }); toast('Fed all.'); };
 document.getElementById('btnCleanAll_sb').onclick=()=>{ ['water','land','air'].forEach(k=>{ (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=Math.min(100,(e.happy||50)+10); }); }); toast('Cleaned all.'); };
 document.getElementById('btnAddDecorLand_sb').onclick =()=>{ decor.land=(decor.land||0)+1; toast('Added land decor.'); };
@@ -1110,7 +1028,6 @@ function boot(){
 }
 if(document.readyState==='complete' || document.readyState==='interactive'){ boot(); }
 else { window.addEventListener('DOMContentLoaded', boot); }
-})();
-</script>
+})();</script>
 </body>
 </html>
