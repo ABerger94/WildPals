@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Wild Pals — v12.1 (minigames, biomes, happiness & flight, sound)</title>
+<title>Wild Pals — v13 (cheat codes & enhancements)</title>
 <style>
   :root{
     --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
@@ -372,7 +372,7 @@
 </head>
 <body>
 <header id="topbar">
-  <h1>Wild Pals <small>— v12.1 full build</small></h1>
+  <h1>Wild Pals <small>— v13 full build</small></h1>
 </header>
 
 <div class="wrap">
@@ -474,6 +474,7 @@
   <button id="startReset" class="pill">New World</button>
   <!-- Shop button to access upgrades -->
   <button id="startShop" class="pill">Shop</button>
+  <button id="startCheats" class="pill">Cheat Codes</button>
   <button id="startInstructions" class="pill">Instructions</button>
   <button id="startClose" class="pill">Close</button>
 </div>
@@ -525,6 +526,18 @@
       <div id="catchBar" style="height:100%;width:0%;background:var(--accent);border-radius:6px;"></div>
     </div>
     <button id="catchClose" class="pill" style="margin-top:8px;width:100%;">Abort</button>
+  </div>
+
+  <!-- Cheat Codes overlay.  When opened from the start menu, this overlay lets the
+       player enter special codes to unlock biomes, spawn creatures or adjust
+       stats.  A list of available codes is shown for convenience. -->
+  <div id="cheatMenu" style="display:none;">
+    <h2 style="margin-top:0;margin-bottom:8px;">Cheat Codes</h2>
+    <p>Enter a cheat code or select from the list below:</p>
+    <input id="cheatInput" type="text" placeholder="Enter code here" style="width:100%;margin-bottom:8px;padding:6px;border-radius:6px;border:1px solid #2b3b69;background:#0e1731;color:var(--ink);">
+    <button id="cheatSubmit" class="pill" style="width:100%;">Submit</button>
+    <div id="cheatList" style="max-height:180px;overflow-y:auto;margin-top:8px;padding:4px;border:1px solid #2b3b69;border-radius:6px;background:#0e1731;font-size:12px;line-height:1.4;"></div>
+    <button id="cheatClose" class="pill" style="margin-top:8px;width:100%;">Close</button>
   </div>
 
 <!-- Sidebars -->
@@ -758,6 +771,17 @@ let slotPos={water:[], land:[], air:[]};
 let discovered=new Set();
 let rngRare=0.03;
 
+// ===== Cheat state and temporary effects =====
+// Global multiplier applied to player speed via cheats (default 1)
+let cheatSpeedMult = 1;
+// Flag to hide the player sprite (for invisibility cheat)
+let playerInvisible = false;
+// Multiplier applied to market values via cheats (default 1)
+let marketMultiplier = 1;
+// Timer controlling confetti/party visuals (in seconds).  When >0, the draw
+// function will render colourful particles on the game canvas.
+let partyTimeTimer = 0;
+
 // Market pricing state.  Recomputed each time the market opens.
 let currentMarketPrices = {};
 
@@ -781,7 +805,7 @@ let legendaryTimer = 0;
    is implicitly unlocked as the starting biome. */
 const unlocked={ meadow:true, forest:false, desert:false, wetlands:false, volcano:false, glacier:false, mystic:false };
 
-const saveKey='wildpals_v12_1';
+const saveKey='wildpals_v13';
 
 /* ===== Quests (loop) ===== */
 const questDefs={
@@ -838,7 +862,8 @@ function speed(){
   if(playerUpgrades.boots) base *= 1.2;
   // Sandstorm slowdown unless player has cloak upgrade
   if(scene==='desert' && weather===WEATHER.SAND && baseName(activePetName)!=='Camel' && !playerUpgrades.cloak) base*=0.85;
-  return base;
+  // Apply any active cheat speed multiplier
+  return base * cheatSpeedMult;
 }
 function revealRadius(){
   const t=tag(); let r=4;
@@ -1664,7 +1689,9 @@ function computeMarketPrice(name){
   const a = info(name);
   const foreign = (a?.home && a.home !== scene);
   const mult = foreign ? 1.5 : 1.0;
-  const price = Math.max(1, Math.floor(base * fluct * mult));
+  let price = Math.max(1, Math.floor(base * fluct * mult));
+  // Apply any cheat-driven market multiplier
+  price = Math.floor(price * marketMultiplier);
   return price;
 }
 
@@ -1881,6 +1908,19 @@ function draw(){
       drawAnimalSprite(dctx, bn2, 0, 0, scale2);
     }
   }
+
+  // Confetti / party visuals.  When the partyTimeTimer is active, draw
+  // colourful squares randomly across the game canvas.  The effect is purely
+  // cosmetic and lasts until the timer expires.
+  if(partyTimeTimer > 0){
+    const colours = ['#ff3e3e','#ff9f1c','#f5e663','#2ec4b6','#23ce6b','#3a86ff','#ff006e'];
+    for(let i=0;i<60;i++){
+      const cx=Math.random()*game.width;
+      const cy=Math.random()*game.height;
+      g.fillStyle = colours[Math.floor(Math.random()*colours.length)];
+      g.fillRect(cx, cy, 3, 3);
+    }
+  }
 }
 function drawNPC(ax,ay,type){
   // Draw a non-player character.  The default NPC uses a beige head and dark shirt.
@@ -1906,6 +1946,8 @@ function drawNPC(ax,ay,type){
   g.fillStyle='#fff'; g.font='10px monospace'; g.fillText('!', ax+12, ay+4);
 }
 function drawPlayer(px,py){
+  // If the player is invisible (due to a cheat), do not draw the sprite
+  if(playerInvisible) return;
   g.fillStyle='#eaeaea'; g.fillRect(px+8,py+6,8,8);
   g.fillStyle='#3a75c4'; g.fillRect(px+6,py+14,12,8);
   g.fillStyle='#2b2b2b'; g.fillRect(px+6,py+22,5,2); g.fillRect(px+13,py+22,5,2);
@@ -1964,6 +2006,10 @@ let last=0;
 function update(dt){
   // Convert dt from milliseconds to seconds for time-based updates
   const dtSec = dt / 1000;
+  // Decrement party/confetti timer if active
+  if(partyTimeTimer > 0){
+    partyTimeTimer = Math.max(0, partyTimeTimer - dtSec);
+  }
   // If a mini-game is in progress, freeze movement and collisions.  Still
   // advance time, weather and legendary timers so the world stays alive.
   if(catchActive){
@@ -2205,6 +2251,123 @@ const startShop=document.getElementById('startShop');
 const shopMenu=document.getElementById('shopMenu');
 const shopClose=document.getElementById('shopClose');
 
+// Cheat menu elements
+const startCheats=document.getElementById('startCheats');
+const cheatMenu=document.getElementById('cheatMenu');
+const cheatInput=document.getElementById('cheatInput');
+const cheatSubmit=document.getElementById('cheatSubmit');
+const cheatClose=document.getElementById('cheatClose');
+const cheatList=document.getElementById('cheatList');
+
+// Define all cheat codes along with a description and an action.  When a
+// code is entered, its action will be executed.  All codes are case
+// insensitive and must be entered exactly as listed.  Unlock codes set
+// the corresponding biome to unlocked; spawn codes place an animal
+// near the player; coin/stat cheats modify coins and upgrades; and
+// fun codes adjust time, weather or visuals.
+const cheatDefs={
+  'MEADOWOPEN':{ desc:'Unlock Meadow portal', action:()=>{ unlocked.meadow=true; toast('Meadow unlocked!'); } },
+  'FORESTOPEN':{ desc:'Unlock Forest portal', action:()=>{ unlocked.forest=true; toast('Forest unlocked!'); } },
+  'DESERTOPEN':{ desc:'Unlock Desert portal', action:()=>{ unlocked.desert=true; toast('Desert unlocked!'); } },
+  'WETLANDSOPEN':{ desc:'Unlock Wetlands portal', action:()=>{ unlocked.wetlands=true; toast('Wetlands unlocked!'); } },
+  'VOLCANO':{ desc:'Unlock Volcano biome', action:()=>{ unlocked.volcano=true; toast('Volcano unlocked!'); } },
+  'GLACIER':{ desc:'Unlock Glacier biome', action:()=>{ unlocked.glacier=true; toast('Glacier unlocked!'); } },
+  'MYSTIC':{ desc:'Unlock Mystic biome', action:()=>{ unlocked.mystic=true; toast('Mystic unlocked!'); } },
+  'SKYREALM':{ desc:'Unlock Sky biome (secret)', action:()=>{ unlocked.skyrealm=true; toast('Sky Realm unlocked!'); } },
+  'UNDERSEA':{ desc:'Unlock Ocean biome (secret)', action:()=>{ unlocked.undersea=true; toast('Undersea unlocked!'); } },
+  // Spawn animals
+  'MYTHIC':{ desc:'Spawn a mythic animal (Phoenix/Dragon)', action:()=>{
+    const mythics=['Phoenix','Dragon']; const nm=mythics[rand(0,mythics.length-1)]; spawnAnimalNear(nm); toast('Spawned '+nm+'!'); } },
+  'LEGENDARY':{ desc:'Spawn a legendary animal', action:()=>{
+    const legends=['Phoenix','Dragon']; const nm=legends[rand(0,legends.length-1)]; spawnAnimalNear(nm); toast('Spawned '+nm+'!'); } },
+  'RARE':{ desc:'Spawn a rare animal', action:()=>{
+    // Choose a random animal from the animals list with rarity >=3; fallback to random if none
+    const rares=animals.filter(a=>(a.rarity||1)>=3).map(a=>a.name);
+    const pool=rares.length?rares:animals.map(a=>a.name);
+    const nm=pool[rand(0,pool.length-1)]; spawnAnimalNear(nm); toast('Spawned '+nm+'!'); } },
+  'AXOLOTL':{ desc:'Spawn an Axolotl', action:()=>{ spawnAnimalNear('Axolotl'); toast('Spawned Axolotl!'); } },
+  'PACMAN':{ desc:'Spawn a Pacman Frog', action:()=>{ spawnAnimalNear('Pacman Frog'); toast('Spawned Pacman Frog!'); } },
+  'TREEFROG':{ desc:'Spawn a Tree Frog', action:()=>{ spawnAnimalNear('Tree Frog'); toast('Spawned Tree Frog!'); } },
+  'LEOGECKO':{ desc:'Spawn a Leopard Gecko', action:()=>{ spawnAnimalNear('Leopard Gecko'); toast('Spawned Leopard Gecko!'); } },
+  'CRESTIE':{ desc:'Spawn a Crested Gecko', action:()=>{ spawnAnimalNear('Crested Gecko'); toast('Spawned Crested Gecko!'); } },
+  'BETTA':{ desc:'Spawn a Betta Fish', action:()=>{ spawnAnimalNear('Koi Fish'); toast('Spawned Koi Fish!'); } },
+  // Coins and stats
+  'RICHIE':{ desc:'+1000 coins', action:()=>{ coins+=1000; toast('+1000 coins'); syncInventoryUI(); } },
+  'MONEYRAIN':{ desc:'+5000 coins', action:()=>{ coins+=5000; toast('+5000 coins'); syncInventoryUI(); } },
+  'BUFFME':{ desc:'Speed boost (temporary)', action:()=>{ cheatSpeedMult=1.5; toast('Speed boost!'); } },
+  'TANK':{ desc:'Defense boost (cosmetic)', action:()=>{ toast('You feel tougher!', false); } },
+  'ULTRASPEED':{ desc:'Maximum speed', action:()=>{ cheatSpeedMult=2; toast('Ultra speed activated!'); } },
+  // Enclosures and care
+  'HAPPYHOME':{ desc:'Max happiness for all animals in house', action:()=>{
+    ['water','land','air'].forEach(k=>{
+      (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=100; });
+    }); toast('All enclosures happy!'); } },
+  'PLANTUP':{ desc:'Add plants to each enclosure', action:()=>{
+    decor.water=(decor.water||0)+3; decor.land=(decor.land||0)+3; decor.air=(decor.air||0)+3;
+    toast('Added decor to enclosures'); } },
+  'CLEANHOUSE':{ desc:'Clean all enclosures', action:()=>{
+    ['water','land','air'].forEach(k=>{ (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=Math.min(100,(e.happy||50)+10); }); }); toast('House cleaned!'); } },
+  'FULLFEED':{ desc:'Feed all animals', action:()=>{
+    ['water','land','air'].forEach(k=>{ (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=Math.min(100,(e.happy||50)+10); }); }); toast('All animals fed!'); } },
+  // Fun codes
+  'MARKETMADNESS':{ desc:'Triple market prices temporarily', action:()=>{ marketMultiplier=3; toast('Markets are booming!'); } },
+  'NIGHTOWL':{ desc:'Set time to midnight', action:()=>{ timeMin=0; toast('It is now midnight.'); } },
+  'SUNSHINE':{ desc:'Set time to midday and clear weather', action:()=>{ timeMin=12*60; weather=WEATHER.CLEAR; toast('It is now midday.'); } },
+  'RAINRAIN':{ desc:'Toggle rain', action:()=>{ weather=(weather===WEATHER.RAIN?WEATHER.CLEAR:WEATHER.RAIN); toast(weather===WEATHER.RAIN?'Rain started':'Rain stopped'); } },
+  'SANDSTORM':{ desc:'Toggle sandstorm', action:()=>{ weather=(weather===WEATHER.SAND?WEATHER.CLEAR:WEATHER.SAND); toast(weather===WEATHER.SAND?'Sandstorm!':'Sandstorm cleared'); } },
+  'FROGFEST':{ desc:'Spawn a swarm of frogs', action:()=>{
+    const frogs=['Frog','Tree Frog','Pacman Frog']; for(let i=0;i<10;i++){ const nm=frogs[rand(0,frogs.length-1)]; spawnAnimalNear(nm); } toast('Frog Fest!'); } },
+  'INVISIBLE':{ desc:'Toggle player invisibility', action:()=>{ playerInvisible = !playerInvisible; toast(playerInvisible?'You are invisible!':'You are visible again.'); } },
+  'PARTYTIME':{ desc:'Confetti party for 20 seconds', action:()=>{ partyTimeTimer=20; toast('Party time!'); } }
+};
+
+// Spawn an animal near the player.  Chooses a nearby tile that is passable.  If
+// no suitable tile is found after several attempts, the animal is spawned at
+// the player's position.
+function spawnAnimalNear(name){
+  let placed=false; let px=Math.floor(player.x); let py=Math.floor(player.y);
+  for(let attempt=0; attempt<20; attempt++){
+    const dx=rand(-4,4), dy=rand(-4,4);
+    const x=clamp(px+dx,0,mapW-1), y=clamp(py+dy,0,mapH-1);
+    if(inBounds(x,y) && passable(map[idx(x,y)]) ){
+      wildSpawns.push({x,y,name:name,rare:false}); placed=true; break;
+    }
+  }
+  if(!placed){ wildSpawns.push({x:px,y:py,name:name,rare:false}); }
+}
+
+// Populate the cheat list with descriptions.  Called when opening the cheat menu.
+function populateCheatList(){
+  cheatList.innerHTML='';
+  Object.keys(cheatDefs).forEach(code=>{
+    const item=document.createElement('div');
+    item.style.marginBottom='4px';
+    item.innerHTML='<b>'+code+'</b> — '+cheatDefs[code].desc;
+    cheatList.appendChild(item);
+  });
+}
+// Show the cheat overlay
+function showCheats(){
+  hideStartMenu(); hideInstructions(); hideShop();
+  populateCheatList();
+  cheatMenu.style.display='block';
+  scrim.classList.add('open');
+}
+// Hide the cheat overlay
+function hideCheats(){
+  cheatMenu.style.display='none';
+  scrim.classList.remove('open');
+}
+// Execute a cheat code by uppercase string
+function executeCheat(code){
+  const def=cheatDefs[code];
+  if(def){
+    try{ def.action(); }catch(err){ console.error(err); toast('Cheat failed.', true); }
+  } else {
+    toast('Invalid code: '+code, true);
+  }
+}
+
 // Definition of shop items with costs and display names
 const shopItems={
   boots:{ cost:8, name:'Speed Boots' },
@@ -2296,7 +2459,7 @@ document.querySelectorAll('.purchaseBtn').forEach(btn=>{
   });
 });
 // Hide overlays when scrim is tapped
-scrim.addEventListener('click', ()=>{ hideStartMenu(); hideInstructions(); hideShop(); });
+scrim.addEventListener('click', ()=>{ hideStartMenu(); hideInstructions(); hideShop(); hideCheats(); });
 
 // Save/Load/Reset controls are now accessible via the Start menu; inventory buttons removed
 document.getElementById('btnFeedAll_sb').onclick=()=>{ ['water','land','air'].forEach(k=>{ (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=Math.min(100,(e.happy||50)+10); }); }); toast('Fed all.'); };
@@ -2304,6 +2467,18 @@ document.getElementById('btnCleanAll_sb').onclick=()=>{ ['water','land','air'].f
 document.getElementById('btnAddDecorLand_sb').onclick =()=>{ decor.land=(decor.land||0)+1; toast('Added land decor.'); };
 document.getElementById('btnAddDecorWater_sb').onclick=()=>{ decor.water=(decor.water||0)+1; toast('Added water decor.'); };
 document.getElementById('btnAddDecorAir_sb').onclick  =()=>{ decor.air=(decor.air||0)+1; toast('Added air decor.'); };
+
+/* ===== Cheat Codes ===== */
+// When the cheat button is pressed in the start menu, show the cheat overlay
+startCheats.onclick=()=>{ showCheats(); };
+// Handle cheat submission
+cheatSubmit.onclick=()=>{
+  const code = (cheatInput.value||'').trim().toUpperCase();
+  if(code) executeCheat(code);
+  cheatInput.value='';
+};
+// Close the cheat overlay
+cheatClose.onclick=()=>{ hideCheats(); };
 
 /* ===== Boot ===== */
 function boot(){
@@ -2314,6 +2489,12 @@ function boot(){
 
   // Initialize legendary event timer at start
   legendaryTimer = 90 + Math.random()*90;
+
+  // Reset cheat-related state on boot
+  cheatSpeedMult = 1;
+  playerInvisible = false;
+  marketMultiplier = 1;
+  partyTimeTimer = 0;
 }
 if(document.readyState==='complete' || document.readyState==='interactive'){ boot(); }
 else { window.addEventListener('DOMContentLoaded', boot); }
