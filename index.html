@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Wild Pals — v8.9 (exotic expansion)</title>
+<title>Wild Pals — v9.0 (leveling, upgrades & legendary events)</title>
 <style>
   :root{
     --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
@@ -322,11 +322,38 @@
   font-size:12px;
   line-height:1.4;
 }
+
+/* Shop menu overlay styling */
+#shopMenu{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:var(--panel);
+  border:1px solid #1f2d54;
+  border-radius:12px;
+  padding:16px;
+  z-index:400;
+  width:min(90%, 320px);
+  max-height:80vh;
+  overflow:auto;
+  text-align:left;
+  color:var(--ink);
+}
+#shopMenu .shopItem{
+  margin-bottom:12px;
+  font-size:12px;
+  line-height:1.3;
+}
+#shopMenu .shopItem button{
+  margin-top:4px;
+  width:100%;
+}
 </style>
 </head>
 <body>
 <header id="topbar">
-<h1>Wild Pals <small>— v8.9 full build</small></h1>
+<h1>Wild Pals <small>— v9.0 full build</small></h1>
 </header>
 
 <div class="wrap">
@@ -418,6 +445,8 @@
   <button id="startSave" class="pill">Save</button>
   <button id="startLoad" class="pill">Load</button>
   <button id="startReset" class="pill">New World</button>
+  <!-- Shop button to access upgrades -->
+  <button id="startShop" class="pill">Shop</button>
   <button id="startInstructions" class="pill">Instructions</button>
   <button id="startClose" class="pill">Close</button>
 </div>
@@ -431,8 +460,30 @@
   <p><strong>Complete quests:</strong> Speak to the guide in each biome to see what animals they need. Deliver the required species to complete the quest and unlock the next biome.</p>
   <p><strong>Manage your sanctuary:</strong> Your house contains land, water, and air enclosures. Place animals in their correct habitat to keep them happy. Decor boosts maximum happiness. Return home to feed or clean enclosures via the Enclosures sidebar.</p>
   <p><strong>Travel through biomes:</strong> Portals appear after finishing each quest. Journey through Meadow → Forest → Desert → Wetlands and repeat to find every species.</p>
-  <p><strong>Win the game:</strong> Discover all 50 animals, complete all quests, and maintain a thriving sanctuary!</p>
+  <p><strong>Level up companions:</strong> Catching multiple copies of the same species grants XP. Every 5 XP increases the companion's level, boosting its ability (e.g., speed or reveal radius).</p>
+  <p><strong>Shop upgrades:</strong> Access the Shop from the start menu to purchase <em>Speed Boots</em>, a <em>Lantern</em> or a <em>Sand Cloak</em> with your coins. Upgrades improve your speed, reveal radius and sandstorm resistance.</p>
+  <p><strong>Achievements &amp; legendary events:</strong> Earn bonus coins for collecting many species or completing all quests. Occasionally, a legendary creature appears &mdash; follow the toast prompts and catch it before it disappears!</p>
+  <p><strong>Win the game:</strong> Discover all 50 animals, complete all quests, level up your companions, and build a thriving sanctuary filled with happy animals!</p>
   <button id="instructionsClose" class="pill" style="margin-top:8px;width:100%;">Close</button>
+</div>
+
+<!-- Shop Menu Overlay -->
+<div id="shopMenu" style="display:none;">
+  <h2 style="margin-top:0;margin-bottom:8px;">Shop</h2>
+  <p>Spend your coins on upgrades that improve your abilities.</p>
+  <div class="shopItem">
+    <b>Speed Boots</b> — Increase movement speed by 20%.<br>
+    <button class="purchaseBtn" data-upgrade="boots">Buy</button>
+  </div>
+  <div class="shopItem">
+    <b>Lantern</b> — +1 reveal radius in fog.<br>
+    <button class="purchaseBtn" data-upgrade="lantern">Buy</button>
+  </div>
+  <div class="shopItem">
+    <b>Sand Cloak</b> — Negate sandstorm speed penalty.<br>
+    <button class="purchaseBtn" data-upgrade="cloak">Buy</button>
+  </div>
+  <button id="shopClose" class="pill" style="margin-top:8px;width:100%;">Close</button>
 </div>
 
 <!-- Sidebars -->
@@ -560,6 +611,10 @@ const animals=[
   {name:'Flying Squirrel',kind:'air',tag:'SURVEIL',ability:'Glide between trees.'},
   {name:'Sugar Glider',kind:'air',tag:'SURVEIL',ability:'Glide & forage boost.'},
   {name:'Tokay Gecko',kind:'land',tag:'CLIMB',ability:'Loud call; intimidation.'}
+  ,
+  // Legendary animals (event spawns)
+  {name:'Phoenix',kind:'air',tag:'FLIGHT',ability:'Fly across mountains.'},
+  {name:'Dragon',kind:'land',tag:'FLIGHT',ability:'Fly across mountains.'}
 ];
 
 function info(n){ const bn=baseName(n); return animals.find(a=>a.name===bn); }
@@ -588,12 +643,20 @@ let enclosures={ water:[], land:[], air:[] }, decor={water:0, land:0, air:0};
 let slotPos={water:[], land:[], air:[]};
 let discovered=new Set();
 let rngRare=0.03;
+// Track XP for each companion species.  Each duplicate catch adds XP and levels up the ability.
+let companionXP = {};
+// Player upgrades purchased from the shop: boots (speed), lantern (reveal), cloak (sandstorm resistance)
+let playerUpgrades = { boots:false, lantern:false, cloak:false };
+// Achievements awarded to avoid double rewards
+let achievementsAwarded = {};
+// Timer for legendary spawn events (in seconds)
+let legendaryTimer = 0;
 /* Tracks which scenes have been unlocked via quest completion.  The forward portal
    for a scene will only appear once its next scene has been unlocked.  Meadow
    is implicitly unlocked as the starting biome. */
 const unlocked={ meadow:true, forest:false, desert:false, wetlands:false };
 
-const saveKey='wildpals_v8_9';
+const saveKey='wildpals_v9';
 
 /* ===== Quests (loop) ===== */
 const questDefs={
@@ -604,22 +667,60 @@ const questDefs={
 };
 let quest={...questDefs.meadow, delivered:[], complete:false};
 
+/* ===== Achievements ===== */
+// A small achievement system awarding coins for reaching milestones.  Achievements are only rewarded once.
+const achievementsList=[
+  {key:'collector10', desc:'Catch 10 species', coins:5, condition:()=>discovered.size>=10},
+  {key:'collector25', desc:'Catch 25 species', coins:10, condition:()=>discovered.size>=25},
+  {key:'questMaster', desc:'Complete all main quests', coins:15, condition:()=>unlocked.forest && unlocked.desert && unlocked.wetlands && quest.complete}
+];
+
+function checkAchievements(){
+  for(const ach of achievementsList){
+    if(!achievementsAwarded[ach.key] && ach.condition()){
+      achievementsAwarded[ach.key]=true;
+      coins += ach.coins;
+      toast('Achievement unlocked: '+ach.desc+' +' + ach.coins + ' coins.');
+      syncInventoryUI();
+    }
+  }
+}
+
 function idx(x,y){ return y*mapW + x; }
 function inBounds(x,y){ return x>=0 && y>=0 && x<mapW && y<mapH; }
 function isNight(){ return timeMin<360 || timeMin>1140; }
+// Return the level of a companion species based on its XP.  Each 5 XP levels up the companion.
+function companionLevel(name){
+  const xp = companionXP[name] || 0;
+  return 1 + Math.floor(xp / 5);
+}
 function speed(){
   // Returns tiles per second rather than per frame.  Base speeds remain the same
   // as earlier versions but are no longer divided by 60.  Actual movement
   // distance in update() is scaled by dtSec (elapsed real time in seconds).
-  let base=3.8; const t=tag();
+  let base=3.8; const t=tag(); const bn=baseName(activePetName);
   if(t==='SPEED') base=6; if(t==='MOUNT') base=7.4;
-  if(scene==='desert' && weather===WEATHER.SAND && baseName(activePetName)!=='Camel') base*=0.85;
+  // Level bonuses: speed and mount companions get +0.5 speed per level above 1
+  if(t==='SPEED' || t==='MOUNT'){
+    const lvl = companionLevel(bn);
+    if(lvl>1) base += 0.5*(lvl-1);
+  }
+  // Player boots upgrade increases base speed by 20%
+  if(playerUpgrades.boots) base *= 1.2;
+  // Sandstorm slowdown unless player has cloak upgrade
+  if(scene==='desert' && weather===WEATHER.SAND && baseName(activePetName)!=='Camel' && !playerUpgrades.cloak) base*=0.85;
   return base;
 }
 function revealRadius(){
   const t=tag(); let r=4;
   if(t==='SURVEIL') r=6; if(t==='SURVEIL+') r=8;
   if(scene==='desert' && !isNight()) r+=1;
+  // Player lantern upgrade adds +1 reveal radius
+  if(playerUpgrades.lantern) r += 1;
+  // Level bonuses: surveil companions gain +1 radius per level above 1
+  const bn=baseName(activePetName);
+  const lvl = companionLevel(bn);
+  if((t==='SURVEIL' || t==='SURVEIL+') && lvl>1){ r += (lvl-1); }
   return Math.max(3,r);
 }
 function timeString(){ const h=Math.floor(timeMin/60)%24, m=Math.floor(timeMin%60); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
@@ -875,6 +976,30 @@ function ensureQuestAnimalsReachable(sceneName){
   }
 }
 
+/* ===== Legendary spawn event ===== */
+function spawnLegendaryEvent(){
+  // Determine which legendary species can spawn in this biome
+  let pool=[];
+  if(scene==='desert') pool=['Phoenix'];
+  else if(scene==='wetlands') pool=['Dragon'];
+  else pool=['Phoenix','Dragon'];
+  if(pool.length===0) return;
+  const name = pool[rand(0,pool.length-1)];
+  // Find a random reachable tile to spawn the legendary creature
+  let placed=false; let tries=0;
+  while(!placed && tries++<5000){
+    const x=rand(0,mapW-1), y=rand(0,mapH-1);
+    const t=map[idx(x,y)];
+    if(!spawnHabitatOk([name], t)) continue;
+    // Avoid spawning on the house or NPCs
+    if(scene==='meadow' && idx(x,y)===idx(housePos.x,housePos.y)) continue;
+    if(wildSpawns.some(s=>s.x===x && s.y===y)) continue;
+    wildSpawns.push({x,y,name:name,rare:true});
+    placed=true;
+  }
+  toast('A legendary '+name+' has appeared!');
+}
+
 /* ===== Unlocking ===== */
 // Marks the next scene in the biome loop as unlocked.  Called when a quest
 // is completed.  Uses the current value of `scene` to determine which
@@ -1074,6 +1199,8 @@ function syncInventoryUI(){
   setBoth('petCount','petCount2', String(companions.length));
   setBoth('coinsLabel','coinsLabel2', String(coins)); setText('coinsLabelInv', String(coins));
   updateJournal(); syncQuestUI();
+  // Update shop button states when inventory or coins change
+  if(typeof updateShopButtons === 'function'){ updateShopButtons(); }
 }
 document.getElementById('setActive_sb').addEventListener('click', ()=>{ activePetName=(document.getElementById('petSelect_sb').value)||null; syncInventoryUI(); });
 function updateJournal(){
@@ -1314,8 +1441,18 @@ function update(dt){
       const s=wildSpawns[i];
       if(Math.hypot(player.x-s.x, player.y-s.y)<0.5){
         const nm=s.name+(s.rare?' ★':''); const base=s.name;
-        companions.push(nm); discovered.add(base); wildSpawns.splice(i,1);
-        toast('Collected: '+nm); syncInventoryUI();
+        companions.push(nm);
+        discovered.add(base);
+        // Update XP and handle leveling
+        const prevLvl = companionLevel(base);
+        companionXP[base] = (companionXP[base]||0) + 1;
+        const newLvl = companionLevel(base);
+        if(newLvl>prevLvl){ toast(base+' leveled up to Lv'+newLvl+'!'); }
+        wildSpawns.splice(i,1);
+        toast('Collected: '+nm);
+        syncInventoryUI();
+        // Check for achievements after collecting
+        checkAchievements();
       }
     }
     // Decrease the animal ping timer proportionally to real time (approx. 60 frames per second)
@@ -1341,10 +1478,19 @@ function update(dt){
     // Reset weather timer: previous 900–1500 frames becomes 15–25 seconds
     weatherTimer = 15 + Math.random()*10;
   }
+
+  // Legendary event timer: spawn a rare legendary animal when timer expires
+  legendaryTimer -= dtSec;
+  if(legendaryTimer<=0){
+    spawnLegendaryEvent();
+    // Next legendary event occurs after 90–180 seconds
+    legendaryTimer = 90 + Math.random()*90;
+  }
 }
 function passable(t){
   if(scene==='house') return t!==TYPES.WALL;
-  if(t===TYPES.MOUNTAIN) return tag()==='CLIMB';
+  // Mountains are impassable unless the active companion can climb or fly
+  if(t===TYPES.MOUNTAIN) return tag()==='CLIMB' || tag()==='FLIGHT';
   if(t===TYPES.WATER) return ['SWIM','SWIM+','SWIFT_SWIM','MOUNT'].includes(tag());
   return true;
 }
@@ -1360,8 +1506,30 @@ function drawToast(){
 
 /* ===== Save/Load/Reset ===== */
 function doSave(){
-  const enc={scene, map:Array.from(map), mapW, mapH, fog:Array.from(fog), player, housePos, portals, npcs,
-    companions, activePetName, enclosures, decor, discovered:[...discovered], timeMin, weather, coins, quest};
+  const enc={
+    scene,
+    map:Array.from(map), mapW, mapH,
+    fog:Array.from(fog),
+    player,
+    housePos,
+    portals,
+    npcs,
+    companions,
+    activePetName,
+    enclosures,
+    decor,
+    discovered:[...discovered],
+    timeMin,
+    weather,
+    coins,
+    quest,
+    // Persist XP, upgrades, achievements, legendary timer and unlocked scenes
+    companionXP,
+    playerUpgrades,
+    achievementsAwarded,
+    legendaryTimer,
+    unlocked
+  };
   localStorage.setItem(saveKey, JSON.stringify(enc));
   toast('Saved.');
 }
@@ -1371,16 +1539,47 @@ function doLoad(){
     const enc=JSON.parse(raw);
     scene=enc.scene||'meadow'; mapW=enc.mapW; mapH=enc.mapH; map=new Uint8Array(enc.map); fog=new Uint8Array(enc.fog);
     player=enc.player; housePos=enc.housePos||housePos; portals=enc.portals||{back:null,forward:null}; npcs=enc.npcs||[];
-    companions=enc.companions||[]; activePetName=enc.activePetName||null; enclosures=enc.enclosures||{water:[],land:[],air:[]}; decor=enc.decor||{water:0,land:0,air:0};
-    discovered=new Set(enc.discovered||[]); timeMin=enc.timeMin||360; weather=enc.weather||WEATHER.CLEAR; coins=enc.coins||0; quest=enc.quest||quest;
+    companions=enc.companions||[];
+    activePetName=enc.activePetName||null;
+    enclosures=enc.enclosures||{water:[],land:[],air:[]};
+    decor=enc.decor||{water:0,land:0,air:0};
+    discovered=new Set(enc.discovered||[]);
+    timeMin=enc.timeMin||360;
+    weather=enc.weather||WEATHER.CLEAR;
+    coins=enc.coins||0;
+    quest=enc.quest||quest;
+    // Restore XP, upgrades, achievements, legendary timer and unlocked scenes
+    companionXP = enc.companionXP || {};
+    playerUpgrades = enc.playerUpgrades || { boots:false, lantern:false, cloak:false };
+    achievementsAwarded = enc.achievementsAwarded || {};
+    legendaryTimer = enc.legendaryTimer || 0;
+    if(enc.unlocked){ Object.assign(unlocked, enc.unlocked); }
     // refresh procedural assets for current scene to avoid blank map artifacts
     genScene(scene);
     syncInventoryUI(); toast('Loaded.');
   }catch(e){ console.error(e); toast('Load failed.', true); }
 }
 function doReset(){
-  localStorage.removeItem(saveKey); companions=[]; activePetName=null; enclosures={water:[],land:[],air:[]}; decor={water:0,land:0,air:0}; discovered=new Set();
-  coins=0; timeMin=360; weather=WEATHER.CLEAR; weatherTimer=0; genScene('meadow'); syncInventoryUI(); toast('New world.');
+  localStorage.removeItem(saveKey);
+  companions=[];
+  activePetName=null;
+  enclosures={water:[],land:[],air:[]};
+  decor={water:0,land:0,air:0};
+  discovered=new Set();
+  coins=0;
+  timeMin=360;
+  weather=WEATHER.CLEAR;
+  weatherTimer=0;
+  // Reset XP, upgrades, achievements and legendary timer
+  companionXP = {};
+  playerUpgrades = { boots:false, lantern:false, cloak:false };
+  achievementsAwarded = {};
+  legendaryTimer = 0;
+  // Reset unlocked scenes
+  Object.assign(unlocked, { meadow:true, forest:false, desert:false, wetlands:false });
+  genScene('meadow');
+  syncInventoryUI();
+  toast('New world.');
 }
 
 /* ===== Sidebars ===== */
@@ -1407,6 +1606,57 @@ const startClose=document.getElementById('startClose');
 const startInstructions=document.getElementById('startInstructions');
 const instructionsMenu=document.getElementById('instructionsMenu');
 const instructionsClose=document.getElementById('instructionsClose');
+const startShop=document.getElementById('startShop');
+const shopMenu=document.getElementById('shopMenu');
+const shopClose=document.getElementById('shopClose');
+
+// Definition of shop items with costs and display names
+const shopItems={
+  boots:{ cost:8, name:'Speed Boots' },
+  lantern:{ cost:8, name:'Lantern' },
+  cloak:{ cost:8, name:'Sand Cloak' }
+};
+
+// Show the shop overlay: hide start menu, update buttons, show scrim
+function showShop(){
+  hideStartMenu();
+  shopMenu.style.display='block';
+  updateShopButtons();
+  scrim.classList.add('open');
+}
+// Hide the shop overlay
+function hideShop(){
+  shopMenu.style.display='none';
+  scrim.classList.remove('open');
+}
+// Purchase an upgrade
+function purchaseUpgrade(upg){
+  const item=shopItems[upg];
+  if(!item) return;
+  if(playerUpgrades[upg]){ toast('Already purchased '+item.name+'.', true); return; }
+  if(coins < item.cost){ toast('Not enough coins.', true); return; }
+  coins -= item.cost;
+  playerUpgrades[upg] = true;
+  toast('Purchased '+item.name+'!');
+  syncInventoryUI();
+  updateShopButtons();
+}
+// Update shop button states based on ownership and coins
+function updateShopButtons(){
+  const btns = document.querySelectorAll('.purchaseBtn');
+  btns.forEach(btn=>{
+    const upg = btn.getAttribute('data-upgrade');
+    const item = shopItems[upg];
+    if(!item) return;
+    if(playerUpgrades[upg]){
+      btn.textContent='Owned';
+      btn.disabled=true;
+    } else {
+      btn.textContent='Buy ('+item.cost+'c)';
+      btn.disabled = (coins < item.cost);
+    }
+  });
+}
 
 function showStartMenu(){
   startMenu.style.display='block';
@@ -1438,8 +1688,20 @@ function hideInstructions(){
 }
 startInstructions.onclick=()=>{ showInstructions(); };
 instructionsClose.onclick=()=>{ hideInstructions(); };
-// Hide the start menu when scrim is tapped
-scrim.addEventListener('click', ()=>{ hideStartMenu(); hideInstructions(); });
+
+// Hook up the Shop button
+startShop.onclick=()=>{ showShop(); };
+// Close Shop when the close button is pressed
+shopClose.onclick=()=>{ hideShop(); };
+// Purchase buttons inside the shop: delegate purchase behaviour
+document.querySelectorAll('.purchaseBtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const upg = btn.getAttribute('data-upgrade');
+    purchaseUpgrade(upg);
+  });
+});
+// Hide overlays when scrim is tapped
+scrim.addEventListener('click', ()=>{ hideStartMenu(); hideInstructions(); hideShop(); });
 
 // Save/Load/Reset controls are now accessible via the Start menu; inventory buttons removed
 document.getElementById('btnFeedAll_sb').onclick=()=>{ ['water','land','air'].forEach(k=>{ (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=Math.min(100,(e.happy||50)+10); }); }); toast('Fed all.'); };
@@ -1454,6 +1716,9 @@ function boot(){
   syncInventoryUI();
   requestAnimationFrame(loop);
   ctaEnter.onclick=()=>actionButton(); ctaExit.onclick =()=>actionButton();
+
+  // Initialize legendary event timer at start
+  legendaryTimer = 90 + Math.random()*90;
 }
 if(document.readyState==='complete' || document.readyState==='interactive'){ boot(); }
 else { window.addEventListener('DOMContentLoaded', boot); }
