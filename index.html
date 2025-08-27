@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Wild Pals — v11 (minigames, biomes & happiness)</title>
+<title>Wild Pals — v11.1 (minigames, biomes & happiness fixes)</title>
 <style>
   :root{
     --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
@@ -372,7 +372,7 @@
 </head>
 <body>
 <header id="topbar">
-  <h1>Wild Pals <small>— v11 full build</small></h1>
+  <h1>Wild Pals <small>— v11.1 full build</small></h1>
 </header>
 
 <div class="wrap">
@@ -760,7 +760,7 @@ let legendaryTimer = 0;
    is implicitly unlocked as the starting biome. */
 const unlocked={ meadow:true, forest:false, desert:false, wetlands:false, volcano:false, glacier:false, mystic:false };
 
-const saveKey='wildpals_v11';
+const saveKey='wildpals_v11_1';
 
 /* ===== Quests (loop) ===== */
 const questDefs={
@@ -1429,9 +1429,21 @@ document.getElementById('btnStart').addEventListener('click', (e)=>{
 
 /* ===== Actions ===== */
 function cycleActive(){
+  // Cycle through the companions list in a robust way.  We attempt to find the
+  // current active companion by exact match first.  If not found (e.g. the
+  // activePetName string differs by rarity suffix), we fall back to matching
+  // by base species name.  This prevents cycling from getting stuck when
+  // activePetName does not exactly equal one of the array entries.
   if(companions.length===0) return;
-  const i=companions.indexOf(activePetName);
-  activePetName = i<0 ? companions[0] : companions[(i+1)%companions.length];
+  let i = companions.indexOf(activePetName);
+  if(i < 0){
+    // Attempt to locate by species name if the exact string isn't found
+    const bn = baseName(activePetName);
+    i = companions.findIndex(nm => baseName(nm) === bn);
+  }
+  if(i < 0){ i = 0; }
+  i = (i + 1) % companions.length;
+  activePetName = companions[i];
   syncInventoryUI();
 }
 function actionButton(){
@@ -1722,7 +1734,14 @@ function draw(){
         else if(t===TYPES.BRIDGE){ g.fillStyle='#b98547'; g.fillRect(x*TILE, y*TILE+10, TILE, 4); }
         else if(t===TYPES.PATH){ g.fillStyle='#5e7b4f'; g.fillRect(x*TILE, y*TILE, TILE, TILE); }
         else if(t===TYPES.PORTAL){ g.fillStyle='#ff8c00'; g.fillRect(x*TILE+4,y*TILE+4,16,16); g.fillStyle='#000'; g.fillRect(x*TILE+10,y*TILE+6,4,12); }
-        else if(t===TYPES.NPC){ drawNPC(x*TILE,y*TILE); }
+        else if(t===TYPES.NPC){
+          // Determine the type of NPC at this location so we can draw variants
+          let npcType = null;
+          for(const npc of npcs){
+            if(npc.x===tx && npc.y===ty){ npcType = npc.type||null; break; }
+          }
+          drawNPC(x*TILE,y*TILE,npcType);
+        }
       } else {
         if(t===TYPES.WALL){ g.fillStyle='#525d7a'; g.fillRect(x*TILE+2,y*TILE+2,TILE-4,TILE-4); }
         if(t===TYPES.DOOR){ g.fillStyle='#ffcc00'; g.fillRect(x*TILE+4,y*TILE+6,16,12); }
@@ -1818,10 +1837,27 @@ function draw(){
     }
   }
 }
-function drawNPC(ax,ay){
-  g.fillStyle='#f2d3a0'; g.fillRect(ax+8,ay+6,8,8);
-  g.fillStyle='#6a3a1a'; g.fillRect(ax+6,ay+14,12,8);
+function drawNPC(ax,ay,type){
+  // Draw a non-player character.  The default NPC uses a beige head and dark shirt.
+  // Market vendors are drawn with an orange shirt and a light purple tile behind them.
+  if(type==='market'){
+    // Light purple backdrop for vendor's tile
+    g.fillStyle = '#5a3b7a';
+    g.fillRect(ax, ay, TILE, TILE);
+    // Head
+    g.fillStyle = '#f2d3a0';
+    g.fillRect(ax+8, ay+6, 8, 8);
+    // Body (orange shirt)
+    g.fillStyle = '#ff8c00';
+    g.fillRect(ax+6, ay+14, 12, 8);
+  } else {
+    // Default NPC colors
+    g.fillStyle='#f2d3a0'; g.fillRect(ax+8,ay+6,8,8);
+    g.fillStyle='#6a3a1a'; g.fillRect(ax+6,ay+14,12,8);
+  }
+  // Eyes
   g.fillStyle='#000'; g.fillRect(ax+11,ay+9,2,2);
+  // Exclamation mark above head to indicate interactable NPC
   g.fillStyle='#fff'; g.font='10px monospace'; g.fillText('!', ax+12, ay+4);
 }
 function drawPlayer(px,py){
