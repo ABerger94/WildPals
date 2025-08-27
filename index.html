@@ -31,8 +31,17 @@
      stretch to the width of its container without leaving empty space. */
   canvas#game{width:100%;height:auto;image-rendering:pixelated;background:#20314f;display:block;}
   canvas#minimap{width:132px;height:132px;border:1px solid #2b3b69;background:#071023;border-radius:4px;}
-  /* Minimap container aligns the map above the game and keeps it right-aligned */
-  #minimapContainer{display:flex;justify-content:flex-end;margin-bottom:8px;}
+  /* Minimap container: default display is block on narrow screens.  We'll override on desktop. */
+  #minimapContainer{
+    display:block;
+    margin-bottom:0;
+  }
+
+  /* Game row groups the canvas and minimap.  On mobile it defaults to block (vertical stacking).  On desktop it becomes
+     a horizontal flex container via a media query below. */
+  #gameRow{
+    display:block;
+  }
   #hud{position:absolute;left:8px;top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:min(70%, 520px);z-index:95}
 
   /* BELOW THE DISPLAY: CTA + status */
@@ -109,26 +118,52 @@
   /* Hide mobile controls on large screens and configure the desktop HUD layout */
   @media(min-width:831px){
     #mobileControls{display:none}
-    /* On desktop, show the overlay HUD using a 3-column grid.  The HUD has two rows:
-       scene/time/weather on top, and pets/discovered, sprite, and ability/companion/coins
-       on the bottom. */
-    #hud{
-      display:grid;
-      grid-template-columns: repeat(3, auto);
-      gap:8px;
+    /* Arrange the game shell horizontally: HUD on the left, game area on the right. */
+    #gameShell{
+      display:flex;
       align-items:flex-start;
-      grid-auto-rows:auto;
-      max-width:min(70%,520px);
+      gap:16px;
     }
-    /* Standard chip styling for desktop; shrink padding and font size for a more
-       compact HUD that fits next to the minimap */
+    /* Show the HUD as a vertical sidebar on the left.  Remove absolute positioning and stack chips vertically. */
+    #hud{
+      position:static;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      width:220px;
+      margin:0;
+    }
+    /* The game area occupies the remaining space and stacks its children vertically. */
+    #gameArea{
+      display:flex;
+      flex-direction:column;
+      flex-grow:1;
+    }
+
+    /* On desktop, arrange the canvas and minimap side by side in a row to reduce vertical height. */
+    #gameRow{
+      display:flex;
+      align-items:flex-start;
+      gap:16px;
+    }
+    /* Allow the game canvas to expand and fill the available horizontal space. */
+    #canvasBox{
+      flex-grow:1;
+    }
+    /* Ensure the minimap container sits next to the canvas rather than above it. */
+    #minimapContainer{
+      display:flex;
+      justify-content:flex-start;
+      margin-bottom:0;
+    }
+    /* Chips retain their compact styling on desktop */
     #hud .chip{
       display:flex;
-      align-items:center;
-      justify-content:center;
+      align-items:flex-start;
+      justify-content:flex-start;
       padding:2px 4px;
       font-size:11px;
-      white-space:nowrap;
+      white-space:normal;
       overflow:hidden;
       text-overflow:ellipsis;
     }
@@ -143,20 +178,31 @@
       line-height:1.1;
       padding:2px 4px;
     }
-    /* Center the sprite canvas in its chip */
     #hud .sprite-chip{
       display:flex;
       align-items:center;
       justify-content:center;
       padding:2px;
     }
-
-    /* Hide the mobile minimap inside the HUD and reveal the desktop minimap */
+    /* Keep desktop minimap visible; hide the mobile minimap chip */
     #hudBar .minimap-chip{ display:none; }
-    #minimapContainer{ display:block; }
+    #minimapContainer{ display:flex; justify-content:flex-end; margin-bottom:8px; }
   }
   /* Mobile HUD tweaks */
   @media(max-width:830px){
+    /* Hide the large minimap container on mobile to avoid duplicating the minimap (the small
+       minimap appears in the HUD bar instead). */
+    #minimapContainer{
+      display:none;
+    }
+    /* Revert the game shell to block layout on narrow screens so content stacks vertically. */
+    #gameShell{
+      display:block;
+    }
+    /* The game area should also stack its children vertically on mobile. */
+    #gameArea{
+      display:block;
+    }
     /* On mobile, hide the overlay HUD and use the bar instead.  The bar uses
        a 3-column grid.  Ability, companion and coins are grouped into a
        single multi-line chip to ensure text fits and remains readable. */
@@ -278,54 +324,61 @@
   </div>
 
   <div id="gameShell">
-    <!-- Minimap container placed above the game canvas so it never occludes gameplay -->
-    <div id="minimapContainer">
-      <canvas id="minimap" width="132" height="132" aria-label="Minimap"></canvas>
+    <!-- Desktop HUD: positioned to the left of the game area.  On mobile this element is hidden via CSS. -->
+    <div id="hud">
+      <!-- Scene, Time, Weather on desktop (stacked vertically) -->
+      <div class="chip">Scene: <span id="sceneLabel">Meadow</span></div>
+      <div class="chip">Time: <span id="timeLabel">06:00</span></div>
+      <div class="chip">Weather: <span id="weatherLabel">Clear</span></div>
+      <!-- Pets/Discovered combined -->
+      <div class="chip petsdisc-group">Pets: <span id="petCount">0</span><br>Discovered: <span id="discCount">0</span>/<span id="discTotal">0</span></div>
+      <!-- Sprite display for active companion -->
+      <div class="chip sprite-chip"><canvas id="activeSprite" width="48" height="48" aria-label="Active pet"></canvas></div>
+      <!-- Ability, Companion and Coins -->
+      <div class="chip ability-group">Ability: <span id="activeAbility">—</span><br>Companion: <span id="activePetName">None</span><br>Coins: <span id="coinsLabel">0</span></div>
     </div>
-    <div id="canvasBox">
-      <canvas id="game" width="960" height="528" aria-label="Game display"></canvas>
-      <!-- HUD overlay for desktop screens: matches mobile layout with two rows and three columns. -->
-      <div id="hud">
-        <!-- Row 1: Scene, Time, Weather -->
-        <div class="chip">Scene: <span id="sceneLabel">Meadow</span></div>
-        <div class="chip">Time: <span id="timeLabel">06:00</span></div>
-        <div class="chip">Weather: <span id="weatherLabel">Clear</span></div>
-        <!-- Row 2: Pets/Discovered combined, sprite, ability/companion/coins -->
-        <div class="chip petsdisc-group">Pets: <span id="petCount">0</span><br>Discovered: <span id="discCount">0</span>/<span id="discTotal">0</span></div>
-        <div class="chip sprite-chip"><canvas id="activeSprite" width="48" height="48" aria-label="Active pet"></canvas></div>
-        <div class="chip ability-group">Ability: <span id="activeAbility">—</span><br>Companion: <span id="activePetName">None</span><br>Coins: <span id="coinsLabel">0</span></div>
+    <!-- Game area contains the canvas, minimap, status bar and mobile controls.  On desktop, the canvas and minimap
+         appear side by side in a row to minimize vertical space.  On mobile, the minimap is hidden via CSS. -->
+    <div id="gameArea">
+      <div id="gameRow">
+        <div id="canvasBox">
+          <canvas id="game" width="960" height="528" aria-label="Game display"></canvas>
+        </div>
+        <!-- Minimap container sits next to the canvas on desktop.  It will be hidden on mobile via CSS. -->
+        <div id="minimapContainer">
+          <canvas id="minimap" width="132" height="132" aria-label="Minimap"></canvas>
+        </div>
       </div>
-    </div>
+      <!-- Status & actions BELOW the display -->
+      <div id="belowBar">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="ctaEnter" class="cta" style="display:none">Enter (E)</button>
+          <button id="ctaExit" class="cta" style="display:none">Exit (E)</button>
+        </div>
+        <div id="debug">booting…</div>
+      </div>
 
-    <!-- Status & actions BELOW the display -->
-    <div id="belowBar">
-      <div style="display:flex;gap:8px;align-items:center">
-        <button id="ctaEnter" class="cta" style="display:none">Enter (E)</button>
-        <button id="ctaExit" class="cta" style="display:none">Exit (E)</button>
-      </div>
-      <div id="debug">booting…</div>
-    </div>
-
-    <!-- GameBoy-style controls (mobile only) -->
-    <div id="padDock">
-      <div id="mobileControls" aria-label="On-screen controls">
-        <div class="dpad">
-          <div class="cross"></div>
-          <button id="btnUp">▲</button>
-          <button id="btnDown">▼</button>
-          <button id="btnLeft">◀</button>
-          <button id="btnRight">▶</button>
-        </div>
-        <div class="actCluster">
-          <button class="btn" id="btnA" aria-label="A">A</button>
-          <button class="btn" id="btnB" aria-label="B">B</button>
-        </div>
-        <div class="startRow">
-          <button class="tiny" id="btnStart" aria-label="Start">START</button>
+      <!-- GameBoy-style controls (mobile only) -->
+      <div id="padDock">
+        <div id="mobileControls" aria-label="On-screen controls">
+          <div class="dpad">
+            <div class="cross"></div>
+            <button id="btnUp">▲</button>
+            <button id="btnDown">▼</button>
+            <button id="btnLeft">◀</button>
+            <button id="btnRight">▶</button>
+          </div>
+          <div class="actCluster">
+            <button class="btn" id="btnA" aria-label="A">A</button>
+            <button class="btn" id="btnB" aria-label="B">B</button>
+          </div>
+          <div class="startRow">
+            <button class="tiny" id="btnStart" aria-label="Start">START</button>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
+    </div><!-- end gameArea -->
+  </div><!-- end gameShell -->
 </div>
 
 <div id="scrim"></div>
