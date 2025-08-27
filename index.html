@@ -1040,12 +1040,26 @@ window.addEventListener('keydown', e=>{
 });
 window.addEventListener('keyup', e=>{ keys[e.key]=false; });
 window.addEventListener('keydown', e=>{
-  if(e.key==='q'||e.key==='Q') cycleActive();
-  if(e.key==='e'||e.key==='E') actionButton();
-  if(e.key==='Enter') actionButton();
-  if(e.key==='Escape') closeAllSidebars();
+  // Cycle companions on Q, q or Shift
+  if(e.key==='q' || e.key==='Q' || e.key==='Shift'){
+    cycleActive();
+    return;
+  }
+  // Action button on E, e or Enter
+  if(e.key==='e' || e.key==='E' || e.key==='Enter'){
+    actionButton();
+    return;
+  }
+  // Close sidebars/menus on Escape
+  if(e.key==='Escape'){
+    closeAllSidebars();
+    return;
+  }
   // Open the start menu on desktop via the "P" key (stands for pause/start)
-  if(e.key==='p' || e.key==='P') toggleStartMenu();
+  if(e.key==='p' || e.key==='P'){
+    toggleStartMenu();
+    return;
+  }
 });
 
 function pressKey(k,d){ keys[k]=d; }
