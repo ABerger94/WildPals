@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Wild Pals — v11.1 (minigames, biomes & happiness fixes)</title>
+<title>Wild Pals — v12 (minigames, biomes, happiness & flight)</title>
 <style>
   :root{
     --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
@@ -372,7 +372,7 @@
 </head>
 <body>
 <header id="topbar">
-  <h1>Wild Pals <small>— v11.1 full build</small></h1>
+  <h1>Wild Pals <small>— v12 full build</small></h1>
 </header>
 
 <div class="wrap">
@@ -481,6 +481,7 @@
   <p><strong>Manage your sanctuary:</strong> Your house contains land, water and air enclosures. You can showcase any animal without removing it from your inventory. Keep them happy by feeding, cleaning and adding plants or decor to increase their happiness cap.</p>
   <p><strong>Travel through biomes:</strong> Portals appear after finishing each quest. Journey through Meadow → Forest → Desert → Wetlands → Volcano → Glacier → Mystic and repeat to find every species.</p>
   <p><strong>Level up companions:</strong> Catching multiple copies of the same species grants XP. Every 5 XP increases the companion's level, boosting its ability (e.g., movement speed or reveal radius).</p>
+  <p><strong>Flying companions:</strong> Some animals can fly over water. Rare and legendary flyers can also soar over mountains, while smaller birds (e.g., Bluebird) can only cross rivers and lakes.</p>
   <p><strong>Shop upgrades:</strong> Access the Shop from the start menu to purchase <em>Speed Boots</em>, a <em>Lantern</em> or a <em>Sand Cloak</em> with your coins. Upgrades improve your speed, reveal radius and sandstorm resistance.</p>
   <p><strong>Achievements, happiness &amp; legendary events:</strong> Earn bonus coins for collecting many species or completing all quests. Keep animals happy in enclosures to earn gifts. Occasionally, a legendary creature appears &mdash; follow the toast prompts and catch it before it disappears!</p>
   <p><strong>Win the game:</strong> Discover all 100 animals, unlock every biome, complete all quests, level up your companions and build a thriving sanctuary!</p>
@@ -609,7 +610,7 @@ const animals=[
   {name:'Turkey',kind:'land',tag:'FORT',ability:'Feather alarm.',rarity:1,home:'meadow'},
   {name:'Mole',kind:'land',tag:'CLIMB',ability:'Tunnel dig.',rarity:2,home:'meadow'},
   {name:'Field Mouse',kind:'land',tag:'SPEED',ability:'Quick dash.',rarity:1,home:'meadow'},
-  {name:'Bluebird',kind:'air',tag:'SURVEIL',ability:'Song reveals.',rarity:2,home:'meadow'},
+  {name:'Bluebird',kind:'air',tag:'FLIGHT',ability:'Song reveals; flies over water.',rarity:2,home:'meadow'},
   {name:'Skunk',kind:'land',tag:'FORT',ability:'Spray defense.',rarity:2,home:'meadow'},
   {name:'Badger',kind:'land',tag:'FORT',ability:'Dig & defend.',rarity:3,home:'meadow'},
   {name:'Opossum',kind:'land',tag:'FORT',ability:'Feign death.',rarity:2,home:'meadow'},
@@ -760,7 +761,7 @@ let legendaryTimer = 0;
    is implicitly unlocked as the starting biome. */
 const unlocked={ meadow:true, forest:false, desert:false, wetlands:false, volcano:false, glacier:false, mystic:false };
 
-const saveKey='wildpals_v11_1';
+const saveKey='wildpals_v12';
 
 /* ===== Quests (loop) ===== */
 const questDefs={
@@ -2007,13 +2008,29 @@ function update(dt){
 }
 function passable(t){
   if(scene==='house') return t!==TYPES.WALL;
-  // Lava behaves like mountains: only flight can traverse
-  if(t===TYPES.LAVA) return tag()==='FLIGHT';
-  // Ice behaves like water: swimming or mounts can traverse
-  if(t===TYPES.ICE) return ['SWIM','SWIM+','SWIFT_SWIM','MOUNT'].includes(tag());
-  // Mountains are impassable unless the active companion can climb or fly
-  if(t===TYPES.MOUNTAIN) return tag()==='CLIMB' || tag()==='FLIGHT';
-  if(t===TYPES.WATER) return ['SWIM','SWIM+','SWIFT_SWIM','MOUNT'].includes(tag());
+  // Determine companion info and rarity for flight handling
+  const comp = info(activePetName);
+  const compTag = comp?.tag || null;
+  const compRarity = comp?.rarity || 1;
+  // Lava behaves like mountains: only powerful flight companions can traverse
+  if(t===TYPES.LAVA){
+    // Allow if climb or high‑rarity flight
+    return tag()==='CLIMB' || (compTag==='FLIGHT' && compRarity>=4);
+  }
+  // Ice behaves like water: treat as water
+  if(t===TYPES.ICE){
+    return ['SWIM','SWIM+','SWIFT_SWIM','MOUNT'].includes(tag()) || compTag==='FLIGHT';
+  }
+  // Mountains: require climb or high‑rarity flight (rarity >=4)
+  if(t===TYPES.MOUNTAIN){
+    if(tag()==='CLIMB') return true;
+    return compTag==='FLIGHT' && compRarity>=4;
+  }
+  // Water: allow swim abilities or any flight companion (even low rarity)
+  if(t===TYPES.WATER){
+    if(['SWIM','SWIM+','SWIFT_SWIM','MOUNT'].includes(tag())) return true;
+    return compTag==='FLIGHT';
+  }
   return true;
 }
 function loop(ts){ const dt = ts - last; last = ts; update(dt); draw(); drawToast(); requestAnimationFrame(loop); }
