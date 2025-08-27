@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Wild Pals — v10 (showcase & fixes)</title>
+<title>Wild Pals — v10.5 (markets & 100 animals)</title>
 <style>
   :root{
     --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
@@ -353,7 +353,7 @@
 </head>
 <body>
 <header id="topbar">
-  <h1>Wild Pals <small>— v10 full build</small></h1>
+  <h1>Wild Pals <small>— v10.5 full build</small></h1>
 </header>
 
 <div class="wrap">
@@ -524,6 +524,12 @@
   </div>
 </aside>
 
+<!-- Market sidebar -->
+<aside class="sidebar right" id="sbMarket" aria-label="Market">
+  <header class="sbHead"><h2>Market</h2><button class="sbClose" data-close="sbMarket">Close</button></header>
+  <div class="panel" id="marketPanel_sb"></div>
+</aside>
+
 <script>
 (function(){
 'use strict';
@@ -552,69 +558,121 @@ const WEATHER={CLEAR:'Clear', RAIN:'Rain', SAND:'Sandstorm'};
 
 /* ===== Animals ===== */
 const animals=[
-  // Meadow animals
-  {name:'Dog',kind:'land',tag:'SCENT',ability:'Scent pings.'},
-  {name:'Horse',kind:'land',tag:'MOUNT',ability:'Ride fast.'},
-  {name:'Goat',kind:'land',tag:'CLIMB',ability:'Climb cliffs.'},
-  {name:'Rabbit',kind:'land',tag:'SPEED',ability:'Hop sprint.'},
-  {name:'Cheetah',kind:'land',tag:'SPEED',ability:'Ultra sprint.'},
-  {name:'Sheep',kind:'land',tag:'FORT',ability:'Produces wool.'},
-  {name:'Cow',kind:'land',tag:'FORT',ability:'Provides milk.'},
-  {name:'Chicken',kind:'land',tag:'FORT',ability:'Drops eggs.'},
-  {name:'Fox',kind:'land',tag:'SCENT',ability:'Stealthy; scares smaller animals.'},
-  {name:'Hedgehog',kind:'land',tag:'FORT',ability:'Defensive curl.'},
+  // Meadow animals (common & uncommon)
+  {name:'Dog',kind:'land',tag:'SCENT',ability:'Scent pings.',rarity:1,home:'meadow'},
+  {name:'Horse',kind:'land',tag:'MOUNT',ability:'Ride fast.',rarity:3,home:'meadow'},
+  {name:'Goat',kind:'land',tag:'CLIMB',ability:'Climb cliffs.',rarity:2,home:'meadow'},
+  {name:'Rabbit',kind:'land',tag:'SPEED',ability:'Hop sprint.',rarity:1,home:'meadow'},
+  {name:'Cheetah',kind:'land',tag:'SPEED',ability:'Ultra sprint.',rarity:3,home:'meadow'},
+  {name:'Sheep',kind:'land',tag:'FORT',ability:'Produces wool.',rarity:2,home:'meadow'},
+  {name:'Cow',kind:'land',tag:'FORT',ability:'Provides milk.',rarity:2,home:'meadow'},
+  {name:'Chicken',kind:'land',tag:'FORT',ability:'Drops eggs.',rarity:1,home:'meadow'},
+  {name:'Fox',kind:'land',tag:'SCENT',ability:'Stealthy; scares smaller animals.',rarity:3,home:'meadow'},
+  {name:'Hedgehog',kind:'land',tag:'FORT',ability:'Defensive curl.',rarity:2,home:'meadow'},
+  // Meadow additions
+  {name:'Pig',kind:'land',tag:'FORT',ability:'Farm friend.',rarity:1,home:'meadow'},
+  {name:'Turkey',kind:'land',tag:'FORT',ability:'Feather alarm.',rarity:1,home:'meadow'},
+  {name:'Mole',kind:'land',tag:'CLIMB',ability:'Tunnel dig.',rarity:2,home:'meadow'},
+  {name:'Field Mouse',kind:'land',tag:'SPEED',ability:'Quick dash.',rarity:1,home:'meadow'},
+  {name:'Bluebird',kind:'air',tag:'SURVEIL',ability:'Song reveals.',rarity:2,home:'meadow'},
+  {name:'Skunk',kind:'land',tag:'FORT',ability:'Spray defense.',rarity:2,home:'meadow'},
+  {name:'Badger',kind:'land',tag:'FORT',ability:'Dig & defend.',rarity:3,home:'meadow'},
+  {name:'Opossum',kind:'land',tag:'FORT',ability:'Feign death.',rarity:2,home:'meadow'},
 
   // Forest animals
-  {name:'Bear',kind:'land',tag:'FORT',ability:'Fortitude.'},
-  {name:'Raccoon',kind:'land',tag:'SCENT',ability:'Forage scent.'},
-  {name:'Owl',kind:'air',tag:'SURVEIL',ability:'Night watch.'},
-  {name:'Hawk',kind:'air',tag:'SURVEIL',ability:'Bigger reveal.'},
-  {name:'Deer',kind:'land',tag:'SPEED',ability:'Speed burst.'},
-  {name:'Wolf',kind:'land',tag:'SPEED',ability:'Pack howl.'},
-  {name:'Boar',kind:'land',tag:'FORT',ability:'Charge attack.'},
-  {name:'Squirrel',kind:'land',tag:'CLIMB',ability:'Quick climb & nut gathering.'},
-  {name:'Tree Frog',kind:'land',tag:'CLIMB',ability:'Sticky jump on trees.'},
-  {name:'Crested Gecko',kind:'land',tag:'CLIMB',ability:'Arboreal cling.'},
+  {name:'Bear',kind:'land',tag:'FORT',ability:'Fortitude.',rarity:4,home:'forest'},
+  {name:'Raccoon',kind:'land',tag:'SCENT',ability:'Forage scent.',rarity:2,home:'forest'},
+  {name:'Owl',kind:'air',tag:'SURVEIL',ability:'Night watch.',rarity:2,home:'forest'},
+  {name:'Hawk',kind:'air',tag:'SURVEIL',ability:'Bigger reveal.',rarity:3,home:'forest'},
+  {name:'Deer',kind:'land',tag:'SPEED',ability:'Speed burst.',rarity:2,home:'forest'},
+  {name:'Wolf',kind:'land',tag:'SPEED',ability:'Pack howl.',rarity:3,home:'forest'},
+  {name:'Boar',kind:'land',tag:'FORT',ability:'Charge attack.',rarity:3,home:'forest'},
+  {name:'Squirrel',kind:'land',tag:'CLIMB',ability:'Quick climb & nut gathering.',rarity:1,home:'forest'},
+  {name:'Tree Frog',kind:'land',tag:'CLIMB',ability:'Sticky jump on trees.',rarity:2,home:'forest'},
+  {name:'Crested Gecko',kind:'land',tag:'CLIMB',ability:'Arboreal cling.',rarity:3,home:'forest'},
+  // Forest additions
+  {name:'Elk',kind:'land',tag:'FORT',ability:'Antler charge.',rarity:3,home:'forest'},
+  {name:'Moose',kind:'land',tag:'FORT',ability:'Massive build.',rarity:4,home:'forest'},
+  {name:'Woodpecker',kind:'air',tag:'SURVEIL',ability:'Tree tap reveal.',rarity:2,home:'forest'},
+  {name:'Chipmunk',kind:'land',tag:'SPEED',ability:'Nut stash.',rarity:2,home:'forest'},
+  {name:'Lynx',kind:'land',tag:'SPEED',ability:'Silent stalk.',rarity:3,home:'forest'},
+  {name:'Cougar',kind:'land',tag:'SPEED',ability:'Pounce.',rarity:4,home:'forest'},
+  {name:'Porcupine',kind:'land',tag:'FORT',ability:'Quills defense.',rarity:2,home:'forest'},
+  {name:'Bobcat',kind:'land',tag:'SPEED',ability:'Leap attack.',rarity:3,home:'forest'},
+  {name:'Coyote',kind:'land',tag:'SPEED',ability:'Howl & chase.',rarity:2,home:'forest'},
+  {name:'Weasel',kind:'land',tag:'SCENT',ability:'Sneaky hunter.',rarity:2,home:'forest'},
 
   // Desert animals
-  {name:'Camel',kind:'land',tag:'MOUNT',ability:'Desert mount.'},
-  {name:'Vulture',kind:'air',tag:'SURVEIL+',ability:'Thermals.'},
-  {name:'Lizard',kind:'land',tag:'SPEED',ability:'Sun sprint.'},
-  {name:'Chameleon',kind:'land',tag:'CLIMB',ability:'Blend & climb.'},
-  {name:'Iguana',kind:'land',tag:'CLIMB',ability:'Warm perch.'},
-  {name:'Fennec Fox',kind:'land',tag:'SPEED',ability:'Night sprint.'},
-  {name:'Scorpion',kind:'land',tag:'FORT',ability:'Poison sting.'},
-  {name:'Desert Tortoise',kind:'land',tag:'FORT',ability:'Extreme fortitude.'},
-  {name:'Sidewinder Snake',kind:'land',tag:'SPEED',ability:'Sand slither.'},
-  {name:'Bearded Dragon',kind:'land',tag:'FORT',ability:'Sun bask buff.'},
-  {name:'Monitor Lizard',kind:'land',tag:'FORT',ability:'Giant lizard.'},
-  {name:'Leopard Gecko',kind:'land',tag:'CLIMB',ability:'Night desert climber.'},
+  {name:'Camel',kind:'land',tag:'MOUNT',ability:'Desert mount.',rarity:3,home:'desert'},
+  {name:'Vulture',kind:'air',tag:'SURVEIL+',ability:'Thermals.',rarity:3,home:'desert'},
+  {name:'Lizard',kind:'land',tag:'SPEED',ability:'Sun sprint.',rarity:2,home:'desert'},
+  {name:'Chameleon',kind:'land',tag:'CLIMB',ability:'Blend & climb.',rarity:3,home:'desert'},
+  {name:'Iguana',kind:'land',tag:'CLIMB',ability:'Warm perch.',rarity:3,home:'desert'},
+  {name:'Fennec Fox',kind:'land',tag:'SPEED',ability:'Night sprint.',rarity:3,home:'desert'},
+  {name:'Scorpion',kind:'land',tag:'FORT',ability:'Poison sting.',rarity:3,home:'desert'},
+  {name:'Desert Tortoise',kind:'land',tag:'FORT',ability:'Extreme fortitude.',rarity:4,home:'desert'},
+  {name:'Sidewinder Snake',kind:'land',tag:'SPEED',ability:'Sand slither.',rarity:3,home:'desert'},
+  {name:'Bearded Dragon',kind:'land',tag:'FORT',ability:'Sun bask buff.',rarity:3,home:'desert'},
+  {name:'Monitor Lizard',kind:'land',tag:'FORT',ability:'Giant lizard.',rarity:4,home:'desert'},
+  {name:'Leopard Gecko',kind:'land',tag:'CLIMB',ability:'Night desert climber.',rarity:3,home:'desert'},
+  // Desert additions
+  {name:'Roadrunner',kind:'land',tag:'SPEED',ability:'Sprint across dunes.',rarity:3,home:'desert'},
+  {name:'Meerkat',kind:'land',tag:'FORT',ability:'Alert watch.',rarity:2,home:'desert'},
+  {name:'Jerboa',kind:'land',tag:'SPEED',ability:'Jump dash.',rarity:2,home:'desert'},
+  {name:'Camel Spider',kind:'land',tag:'FORT',ability:'Scare bite.',rarity:3,home:'desert'},
+  {name:'Sand Cat',kind:'land',tag:'SPEED',ability:'Silent pad.',rarity:3,home:'desert'},
+  {name:'Dingo',kind:'land',tag:'SPEED',ability:'Pack chase.',rarity:2,home:'desert'},
+  {name:'Emu',kind:'land',tag:'SPEED',ability:'Sprint & peck.',rarity:2,home:'desert'},
+  {name:'Kangaroo Rat',kind:'land',tag:'SPEED',ability:'Leap across sand.',rarity:2,home:'desert'},
+  {name:'Horned Lizard',kind:'land',tag:'FORT',ability:'Squirt blood.',rarity:3,home:'desert'},
+  {name:'Armadillo',kind:'land',tag:'FORT',ability:'Roll defense.',rarity:3,home:'desert'},
 
   // Wetlands animals
-  {name:'Otter',kind:'water',tag:'SWIM',ability:'Swim (cross rivers).'},
-  {name:'Beaver',kind:'water',tag:'BRIDGE',ability:'Build Bridge (place ahead).'},
-  {name:'Frog',kind:'water',tag:'SWIM+',ability:'Wetland speed.'},
-  {name:'Salmon',kind:'water',tag:'SWIFT_SWIM',ability:'Fast in rivers.'},
-  {name:'Trout',kind:'water',tag:'SWIFT_SWIM',ability:'Fast in rivers.'},
-  {name:'Duck',kind:'water',tag:'SWIM',ability:'Pond friend.'},
-  {name:'Turtle',kind:'water',tag:'SWIM',ability:'Amphibious.'},
-  {name:'Heron',kind:'air',tag:'SURVEIL',ability:'Reeds lookout.'},
-  {name:'Axolotl',kind:'water',tag:'SWIM',ability:'Regenerates health over time.'},
-  {name:'Pacman Frog',kind:'water',tag:'SWIM',ability:'Ambush predator (bite stun).'},
-  {name:'Poison Dart Frog',kind:'water',tag:'SWIM',ability:'Contact poison.'},
-  {name:'Glass Frog',kind:'water',tag:'SWIM',ability:'Camouflage (translucent).'},
-  {name:'Kingfisher',kind:'air',tag:'SURVEIL',ability:'Dive catch fish.'},
-  {name:'Capybara',kind:'water',tag:'MOUNT',ability:'Wetland mount; group buff.'},
-  {name:'Koi Fish',kind:'water',tag:'SWIM',ability:'Wetland beauty.'},
+  {name:'Otter',kind:'water',tag:'SWIM',ability:'Swim (cross rivers).',rarity:2,home:'wetlands'},
+  {name:'Beaver',kind:'water',tag:'BRIDGE',ability:'Build Bridge (place ahead).',rarity:2,home:'wetlands'},
+  {name:'Frog',kind:'water',tag:'SWIM+',ability:'Wetland speed.',rarity:1,home:'wetlands'},
+  {name:'Salmon',kind:'water',tag:'SWIFT_SWIM',ability:'Fast in rivers.',rarity:1,home:'wetlands'},
+  {name:'Trout',kind:'water',tag:'SWIFT_SWIM',ability:'Fast in rivers.',rarity:1,home:'wetlands'},
+  {name:'Duck',kind:'water',tag:'SWIM',ability:'Pond friend.',rarity:1,home:'wetlands'},
+  {name:'Turtle',kind:'water',tag:'SWIM',ability:'Amphibious.',rarity:2,home:'wetlands'},
+  {name:'Heron',kind:'air',tag:'SURVEIL',ability:'Reeds lookout.',rarity:2,home:'wetlands'},
+  {name:'Axolotl',kind:'water',tag:'SWIM',ability:'Regenerates health over time.',rarity:3,home:'wetlands'},
+  {name:'Pacman Frog',kind:'water',tag:'SWIM',ability:'Ambush predator (bite stun).',rarity:3,home:'wetlands'},
+  {name:'Poison Dart Frog',kind:'water',tag:'SWIM',ability:'Contact poison.',rarity:3,home:'wetlands'},
+  {name:'Glass Frog',kind:'water',tag:'SWIM',ability:'Camouflage (translucent).',rarity:3,home:'wetlands'},
+  {name:'Kingfisher',kind:'air',tag:'SURVEIL',ability:'Dive catch fish.',rarity:2,home:'wetlands'},
+  {name:'Capybara',kind:'water',tag:'MOUNT',ability:'Wetland mount; group buff.',rarity:3,home:'wetlands'},
+  {name:'Koi Fish',kind:'water',tag:'SWIM',ability:'Wetland beauty.',rarity:2,home:'wetlands'},
+  // Wetlands additions
+  {name:'Newt',kind:'water',tag:'SWIM',ability:'Tiny swimmer.',rarity:2,home:'wetlands'},
+  {name:'Crayfish',kind:'water',tag:'SWIM',ability:'Quick pinch.',rarity:1,home:'wetlands'},
+  {name:'Snapping Turtle',kind:'water',tag:'SWIM',ability:'Bite clamp.',rarity:3,home:'wetlands'},
+  {name:'Alligator',kind:'water',tag:'SWIM',ability:'Ambush strike.',rarity:4,home:'wetlands'},
+  {name:'Crocodile',kind:'water',tag:'SWIM',ability:'Death roll.',rarity:5,home:'wetlands'},
+  {name:'Hippo',kind:'water',tag:'MOUNT',ability:'Run & swim mount.',rarity:4,home:'wetlands'},
+  {name:'Manatee',kind:'water',tag:'SWIM',ability:'Gentle swim.',rarity:3,home:'wetlands'},
+  {name:'Swan',kind:'air',tag:'SURVEIL',ability:'Graceful float.',rarity:2,home:'wetlands'},
+  {name:'Flamingo',kind:'air',tag:'SURVEIL',ability:'Stand & filter.',rarity:3,home:'wetlands'},
+  {name:'Crane',kind:'air',tag:'SURVEIL',ability:'Tall view.',rarity:2,home:'wetlands'},
+  {name:'Boa Constrictor',kind:'land',tag:'FORT',ability:'Constriction.',rarity:4,home:'wetlands'},
+  {name:'Tapir',kind:'land',tag:'FORT',ability:'Water wade.',rarity:3,home:'wetlands'},
 
-  // Exotic forest and tree-dwelling animals
-  {name:'Flying Squirrel',kind:'air',tag:'SURVEIL',ability:'Glide between trees.'},
-  {name:'Sugar Glider',kind:'air',tag:'SURVEIL',ability:'Glide & forage boost.'},
-  {name:'Tokay Gecko',kind:'land',tag:'CLIMB',ability:'Loud call; intimidation.'}
-  ,
+  // Exotic forest and tree-dwelling animals (non-standard biomes)
+  {name:'Flying Squirrel',kind:'air',tag:'SURVEIL',ability:'Glide between trees.',rarity:3,home:'forest'},
+  {name:'Sugar Glider',kind:'air',tag:'SURVEIL',ability:'Glide & forage boost.',rarity:3,home:'forest'},
+  {name:'Tokay Gecko',kind:'land',tag:'CLIMB',ability:'Loud call; intimidation.',rarity:3,home:'forest'},
+  {name:'Sloth',kind:'land',tag:'CLIMB',ability:'Hang & slow time.',rarity:3,home:'forest'},
+  {name:'Toucan',kind:'air',tag:'SURVEIL',ability:'Colorful call.',rarity:3,home:'forest'},
+  {name:'Macaw',kind:'air',tag:'SURVEIL',ability:'Mimic call.',rarity:3,home:'forest'},
+  {name:'Panda',kind:'land',tag:'FORT',ability:'Bamboo munch.',rarity:4,home:'forest'},
+  {name:'Red Panda',kind:'land',tag:'CLIMB',ability:'Cute distraction.',rarity:3,home:'forest'},
+  {name:'Capuchin Monkey',kind:'land',tag:'CLIMB',ability:'Tool use.',rarity:4,home:'forest'},
+  {name:'Lemur',kind:'land',tag:'CLIMB',ability:'Long leap.',rarity:3,home:'forest'},
+  {name:'Gibbon',kind:'land',tag:'CLIMB',ability:'Swing across.',rarity:4,home:'forest'},
+
   // Legendary animals (event spawns)
-  {name:'Phoenix',kind:'air',tag:'FLIGHT',ability:'Fly across mountains.'},
-  {name:'Dragon',kind:'land',tag:'FLIGHT',ability:'Fly across mountains.'}
+  {name:'Phoenix',kind:'air',tag:'FLIGHT',ability:'Fly across mountains.',rarity:5,home:'legendary'},
+  {name:'Dragon',kind:'land',tag:'FLIGHT',ability:'Fly across mountains.',rarity:5,home:'legendary'}
 ];
 
 function info(n){ const bn=baseName(n); return animals.find(a=>a.name===bn); }
@@ -643,6 +701,9 @@ let enclosures={ water:[], land:[], air:[] }, decor={water:0, land:0, air:0};
 let slotPos={water:[], land:[], air:[]};
 let discovered=new Set();
 let rngRare=0.03;
+
+// Market pricing state.  Recomputed each time the market opens.
+let currentMarketPrices = {};
 // Track XP for each companion species.  Each duplicate catch adds XP and levels up the ability.
 let companionXP = {};
 // Player upgrades purchased from the shop: boots (speed), lantern (reveal), cloak (sandstorm resistance)
@@ -656,7 +717,7 @@ let legendaryTimer = 0;
    is implicitly unlocked as the starting biome. */
 const unlocked={ meadow:true, forest:false, desert:false, wetlands:false };
 
-const saveKey='wildpals_v10';
+const saveKey='wildpals_v10_5';
 
 /* ===== Quests (loop) ===== */
 const questDefs={
@@ -775,6 +836,9 @@ function genScene(next){
     // NPCs
     const main={x:housePos.x+2,y:housePos.y,type:'main'}; map[idx(main.x,main.y)]=TYPES.NPC; npcs.push(main);
     const trade={x:housePos.x+1,y:housePos.y+3,type:'trade'}; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(trade);
+    // Market NPC: sells animals from any biome; place slightly south-east of house
+    const market={x:housePos.x+3,y:housePos.y+2,type:'market'};
+    map[idx(market.x,market.y)] = TYPES.NPC; npcs.push(market);
     quest={...questDefs.meadow, delivered:[], complete:false};
     player.x=housePos.x+1; player.y=housePos.y;
   }
@@ -792,6 +856,9 @@ function genScene(next){
     }
     const main={x:8,y:6,type:'main'}; const trade={x:10,y:8,type:'trade'};
     map[idx(main.x,main.y)]=TYPES.NPC; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(main,trade);
+    // Market NPC for forest: place near other NPCs
+    const market={x:12,y:8,type:'market'};
+    map[idx(market.x,market.y)] = TYPES.NPC; npcs.push(market);
     quest={...questDefs.forest, delivered:[], complete:false};
     player.x=portals.back.x+1; player.y=portals.back.y;
   }
@@ -812,6 +879,9 @@ function genScene(next){
     }
     const main={x:8,y:6,type:'main'}; const trade={x:10,y:8,type:'trade'};
     map[idx(main.x,main.y)]=TYPES.NPC; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(main,trade);
+    // Market NPC for desert
+    const market={x:12,y:9,type:'market'};
+    map[idx(market.x,market.y)] = TYPES.NPC; npcs.push(market);
     quest={...questDefs.desert, delivered:[], complete:false};
     player.x=portals.back.x+1; player.y=portals.back.y;
   }
@@ -832,6 +902,9 @@ function genScene(next){
     }
     const main={x:8,y:6,type:'main'}; const trade={x:11,y:8,type:'trade'};
     map[idx(main.x,main.y)]=TYPES.NPC; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(main,trade);
+    // Market NPC for wetlands
+    const market={x:13,y:8,type:'market'};
+    map[idx(market.x,market.y)] = TYPES.NPC; npcs.push(market);
     quest={...questDefs.wetlands, delivered:[], complete:false};
     player.x=portals.back.x+1; player.y=portals.back.y;
   }
@@ -897,10 +970,24 @@ function slotIndexAt(kind, tx, ty){
 /* ===== Spawns ===== */
 function spawnWildFor(sceneName){
   wildSpawns=[]; let pool=[];
-  if(sceneName==='meadow') pool=['Dog','Horse','Goat','Rabbit','Cheetah','Sheep','Cow','Chicken','Fox','Hedgehog'];
-  if(sceneName==='forest') pool=['Bear','Raccoon','Owl','Hawk','Deer','Wolf','Boar','Squirrel','Tree Frog','Crested Gecko','Flying Squirrel','Sugar Glider','Tokay Gecko'];
-  if(sceneName==='desert') pool=['Camel','Vulture','Lizard','Chameleon','Iguana','Fennec Fox','Scorpion','Desert Tortoise','Sidewinder Snake','Bearded Dragon','Monitor Lizard','Leopard Gecko'];
-  if(sceneName==='wetlands') pool=['Otter','Beaver','Frog','Salmon','Trout','Duck','Turtle','Heron','Axolotl','Pacman Frog','Poison Dart Frog','Glass Frog','Kingfisher','Capybara','Koi Fish'];
+  if(sceneName==='meadow') pool=[
+    'Dog','Horse','Goat','Rabbit','Cheetah','Sheep','Cow','Chicken','Fox','Hedgehog',
+    'Pig','Turkey','Mole','Field Mouse','Bluebird','Skunk','Badger','Opossum'
+  ];
+  if(sceneName==='forest') pool=[
+    'Bear','Raccoon','Owl','Hawk','Deer','Wolf','Boar','Squirrel','Tree Frog','Crested Gecko',
+    'Elk','Moose','Woodpecker','Chipmunk','Lynx','Cougar','Porcupine','Bobcat','Coyote','Weasel',
+    'Flying Squirrel','Sugar Glider','Tokay Gecko',
+    'Sloth','Toucan','Macaw','Panda','Red Panda','Capuchin Monkey','Lemur','Gibbon'
+  ];
+  if(sceneName==='desert') pool=[
+    'Camel','Vulture','Lizard','Chameleon','Iguana','Fennec Fox','Scorpion','Desert Tortoise','Sidewinder Snake','Bearded Dragon','Monitor Lizard','Leopard Gecko',
+    'Roadrunner','Meerkat','Jerboa','Camel Spider','Sand Cat','Dingo','Emu','Kangaroo Rat','Horned Lizard','Armadillo'
+  ];
+  if(sceneName==='wetlands') pool=[
+    'Otter','Beaver','Frog','Salmon','Trout','Duck','Turtle','Heron','Axolotl','Pacman Frog','Poison Dart Frog','Glass Frog','Kingfisher','Capybara','Koi Fish',
+    'Newt','Crayfish','Snapping Turtle','Alligator','Crocodile','Hippo','Manatee','Swan','Flamingo','Crane','Boa Constrictor','Tapir'
+  ];
   let tries=0;
   while(wildSpawns.length<40 && tries<15000){
     tries++;
@@ -1188,6 +1275,9 @@ function interactNPC(n){
     } else {
       toast('Trade needs 2× '+offers.give+'.');
     }
+  } else if(n.type==='market'){
+    // Open the market sidebar to sell animals for coins
+    openMarket();
   }
 }
 
@@ -1242,6 +1332,106 @@ function syncQuestUI(){
     (quest.complete? `<span style="color:#35c48d">Completed ✓</span>` :
      `Needed:<br>${quest.need.map(n=> (quest.delivered||[]).includes(n)?'✓ '+n:'— '+n).join('<br>')}`);
   const qb=document.getElementById('questBox_sb'); if(qb) qb.innerHTML=html;
+}
+
+/* ===== Market system ===== */
+// Base value per rarity tier (tier 1 = common, 5 = legendary)
+const rarityBaseValue = {1:5, 2:12, 3:30, 4:60, 5:120};
+
+// Compute base price for an animal name
+function getBasePrice(name){
+  const a = info(name);
+  const r = a?.rarity || 2;
+  return rarityBaseValue[r] || 10;
+}
+
+// Compute the current market price for a given animal name
+function computeMarketPrice(name){
+  const base = getBasePrice(name);
+  // Random fluctuation ±20%
+  const fluct = 0.8 + Math.random()*0.4;
+  // Foreign animals (not from this biome) get 50% bonus
+  const a = info(name);
+  const foreign = (a?.home && a.home !== scene);
+  const mult = foreign ? 1.5 : 1.0;
+  const price = Math.max(1, Math.floor(base * fluct * mult));
+  return price;
+}
+
+// Render the market panel with current inventory and prices
+function renderMarket(){
+  const panel = document.getElementById('marketPanel_sb');
+  if(!panel) return;
+  panel.innerHTML = '';
+  // Compute counts per species
+  const counts = {};
+  for(const n of companions){ const bn=baseName(n); counts[bn] = (counts[bn]||0) + 1; }
+  const names = Object.keys(counts);
+  if(names.length === 0){
+    const div = document.createElement('div');
+    div.textContent = 'No animals to sell.';
+    panel.appendChild(div);
+    return;
+  }
+  currentMarketPrices = {};
+  // Sort names alphabetically for consistent listing
+  names.sort();
+  for(const nm of names){
+    const price = computeMarketPrice(nm);
+    currentMarketPrices[nm] = price;
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.marginBottom = '6px';
+    const left = document.createElement('div');
+    left.innerHTML = `<b>${nm}</b><br><span class="note">Owned: ${counts[nm]}</span>`;
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.alignItems = 'center';
+    const priceSpan = document.createElement('span');
+    priceSpan.textContent = price + ' coins';
+    priceSpan.style.marginRight = '8px';
+    const btn = document.createElement('button');
+    btn.className = 'pill';
+    btn.textContent = 'Sell';
+    btn.setAttribute('data-sell', nm);
+    right.appendChild(priceSpan);
+    right.appendChild(btn);
+    row.appendChild(left);
+    row.appendChild(right);
+    panel.appendChild(row);
+  }
+  // Attach sell handlers
+  panel.querySelectorAll('button[data-sell]').forEach(btn => {
+    btn.onclick = (e) => {
+      const bn = btn.getAttribute('data-sell');
+      sellAnimal(bn);
+    };
+  });
+}
+
+// Open the market sidebar and render current inventory prices
+function openMarket(){
+  renderMarket();
+  // Use generic sidebar open helper; no toggle button associated
+  openSidebar(sbMarket);
+}
+
+// Sell one instance of the given baseName
+function sellAnimal(speciesName){
+  // Find first occurrence in companions (including rarities)
+  const index = companions.findIndex(nm => baseName(nm) === speciesName);
+  if(index < 0) return;
+  // Remove companion and award coins
+  companions.splice(index, 1);
+  const price = currentMarketPrices[speciesName] || computeMarketPrice(speciesName);
+  coins += price;
+  toast('Sold ' + speciesName + ' for ' + price + ' coins.');
+  // Refresh inventory and market list
+  syncInventoryUI();
+  renderMarket();
 }
 
 /* ===== Render ===== */
@@ -1604,13 +1794,21 @@ function doReset(){
 }
 
 /* ===== Sidebars ===== */
-const sbInventory=document.getElementById('sbInventory'), sbJournal=document.getElementById('sbJournal'), sbQuests=document.getElementById('sbQuests'), sbCare=document.getElementById('sbCare');
+const sbInventory=document.getElementById('sbInventory'), sbJournal=document.getElementById('sbJournal'), sbQuests=document.getElementById('sbQuests'), sbCare=document.getElementById('sbCare'), sbMarket=document.getElementById('sbMarket');
 const toggleInventory=document.getElementById('toggleInventory'), toggleJournal=document.getElementById('toggleJournal'), toggleQuests=document.getElementById('toggleQuests'), toggleCare=document.getElementById('toggleCare');
 const scrim=document.getElementById('scrim');
 function openSidebar(sb,btn){ closeAllSidebars(); sb.classList.add('open'); scrim.classList.add('open'); if(btn) btn.setAttribute('aria-pressed','true'); }
 function closeSidebar(sb,btn){ sb.classList.remove('open'); if(btn) btn.setAttribute('aria-pressed','false'); maybeHideScrim(); }
-function closeAllSidebars(){ [sbInventory,sbJournal,sbQuests,sbCare].forEach(el=>el.classList.remove('open')); [toggleInventory,toggleJournal,toggleQuests,toggleCare].forEach(b=>b.setAttribute('aria-pressed','false')); scrim.classList.remove('open'); }
-function maybeHideScrim(){ if(!sbInventory.classList.contains('open') && !sbJournal.classList.contains('open') && !sbQuests.classList.contains('open') && !sbCare.classList.contains('open')) scrim.classList.remove('open'); }
+function closeAllSidebars(){
+  [sbInventory,sbJournal,sbQuests,sbCare,sbMarket].forEach(el=>el.classList.remove('open'));
+  [toggleInventory,toggleJournal,toggleQuests,toggleCare].forEach(b=>b.setAttribute('aria-pressed','false'));
+  scrim.classList.remove('open');
+}
+function maybeHideScrim(){
+  if(!sbInventory.classList.contains('open') && !sbJournal.classList.contains('open') && !sbQuests.classList.contains('open') && !sbCare.classList.contains('open') && !sbMarket.classList.contains('open')){
+    scrim.classList.remove('open');
+  }
+}
 toggleInventory.onclick=()=> sbInventory.classList.contains('open') ? closeSidebar(sbInventory,toggleInventory) : openSidebar(sbInventory,toggleInventory);
 toggleJournal.onclick =()=> sbJournal.classList.contains('open')  ? closeSidebar(sbJournal,toggleJournal)   : openSidebar(sbJournal,toggleJournal);
 toggleQuests.onclick  =()=> sbQuests.classList.contains('open')   ? closeSidebar(sbQuests,toggleQuests)    : openSidebar(sbQuests,toggleQuests);
