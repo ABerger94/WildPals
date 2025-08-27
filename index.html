@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Wild Pals — v9.0 (leveling, upgrades & legendary events)</title>
+<title>Wild Pals — v10 (showcase & fixes)</title>
 <style>
   :root{
     --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
@@ -353,7 +353,7 @@
 </head>
 <body>
 <header id="topbar">
-<h1>Wild Pals <small>— v9.0 full build</small></h1>
+  <h1>Wild Pals <small>— v10 full build</small></h1>
 </header>
 
 <div class="wrap">
@@ -656,7 +656,7 @@ let legendaryTimer = 0;
    is implicitly unlocked as the starting biome. */
 const unlocked={ meadow:true, forest:false, desert:false, wetlands:false };
 
-const saveKey='wildpals_v9';
+const saveKey='wildpals_v10';
 
 /* ===== Quests (loop) ===== */
 const questDefs={
@@ -1040,8 +1040,8 @@ window.addEventListener('keydown', e=>{
 });
 window.addEventListener('keyup', e=>{ keys[e.key]=false; });
 window.addEventListener('keydown', e=>{
-  // Cycle companions on Q, q or Shift
-  if(e.key==='q' || e.key==='Q' || e.key==='Shift'){
+  // Cycle companions on Q, q, B or b
+  if(e.key==='q' || e.key==='Q' || e.key==='b' || e.key==='B'){
     cycleActive();
     return;
   }
@@ -1076,6 +1076,11 @@ bindTouch(document.getElementById('btnLeft'),'ArrowLeft');
 bindTouch(document.getElementById('btnRight'),'ArrowRight');
 document.getElementById('btnA').addEventListener('click',()=>actionButton());
 document.getElementById('btnB').addEventListener('click',()=>cycleActive());
+// Ensure mobile taps on the B button cycle the active companion immediately
+document.getElementById('btnB').addEventListener('touchstart',(e)=>{
+  e.preventDefault();
+  cycleActive();
+}, {passive:false});
 // On mobile, the Start button opens the start menu instead of performing an in-game action
 document.getElementById('btnStart').addEventListener('click', (e)=>{
   e.preventDefault();
@@ -1119,7 +1124,9 @@ function actionButton(){
       else{
         if(!activePetName){ toast('No active companion selected.', true); return; }
         if(kind()!==k){ toast('Wrong habitat.', true); return; }
-        const ci=companions.indexOf(activePetName); if(ci<0){ toast('You do not have '+activePetName, true); return; }
+        // Remove the active companion by matching base names in case names include stars or rarity markers
+        const ci = companions.findIndex(nm => baseName(nm) === baseName(activePetName));
+        if(ci < 0){ toast('You do not have '+activePetName, true); return; }
         companions.splice(ci,1);
         const cap = 70 + 10*(decor[k]||0);
         arr[slotIndex]={name:activePetName, px:rand(4,12), py:rand(4,12), happy:Math.min(60,cap)};
