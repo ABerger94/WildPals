@@ -294,6 +294,34 @@
     text-align:center;
   }
   #startMenu button{margin-top:8px;width:100%;}
+
+/* Instructions overlay: similar styling to the start menu but wider and scrollable */
+#instructionsMenu{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:var(--panel);
+  border:1px solid #1f2d54;
+  border-radius:12px;
+  padding:16px;
+  z-index:400;
+  display:none;
+  width:min(90%, 480px);
+  max-height:80vh;
+  overflow:auto;
+  color:var(--ink);
+  text-align:left;
+}
+#instructionsMenu button{
+  margin-top:8px;
+  width:100%;
+}
+#instructionsMenu p{
+  margin:0 0 8px 0;
+  font-size:12px;
+  line-height:1.4;
+}
 </style>
 </head>
 <body>
@@ -390,7 +418,21 @@
   <button id="startSave" class="pill">Save</button>
   <button id="startLoad" class="pill">Load</button>
   <button id="startReset" class="pill">New World</button>
+  <button id="startInstructions" class="pill">Instructions</button>
   <button id="startClose" class="pill">Close</button>
+</div>
+
+<!-- Instructions Overlay -->
+<div id="instructionsMenu" style="display:none;">
+  <h2 style="margin-top:0;margin-bottom:8px;">How to Play</h2>
+  <p>Welcome to <strong>Wild Pals</strong>! Explore diverse biomes, befriend exotic animals and build the ultimate sanctuary.</p>
+  <p><strong>Movement:</strong> Use the arrow keys or WASD to move. On mobile, use the on‑screen D‑pad. Press E/Enter (or tap A) to interact with houses, portals, and NPCs.</p>
+  <p><strong>Catch animals:</strong> Simply walk into an animal to collect it. Each species has a unique ability &mdash; swim, climb, scout, and more. Press Q (or tap B) to cycle through your companions and activate their ability.</p>
+  <p><strong>Complete quests:</strong> Speak to the guide in each biome to see what animals they need. Deliver the required species to complete the quest and unlock the next biome.</p>
+  <p><strong>Manage your sanctuary:</strong> Your house contains land, water, and air enclosures. Place animals in their correct habitat to keep them happy. Decor boosts maximum happiness. Return home to feed or clean enclosures via the Enclosures sidebar.</p>
+  <p><strong>Travel through biomes:</strong> Portals appear after finishing each quest. Journey through Meadow → Forest → Desert → Wetlands and repeat to find every species.</p>
+  <p><strong>Win the game:</strong> Discover all 50 animals, complete all quests, and maintain a thriving sanctuary!</p>
+  <button id="instructionsClose" class="pill" style="margin-top:8px;width:100%;">Close</button>
 </div>
 
 <!-- Sidebars -->
@@ -1362,6 +1404,9 @@ const startSave=document.getElementById('startSave');
 const startLoad=document.getElementById('startLoad');
 const startReset=document.getElementById('startReset');
 const startClose=document.getElementById('startClose');
+const startInstructions=document.getElementById('startInstructions');
+const instructionsMenu=document.getElementById('instructionsMenu');
+const instructionsClose=document.getElementById('instructionsClose');
 
 function showStartMenu(){
   startMenu.style.display='block';
@@ -1381,8 +1426,20 @@ startSave.onclick=()=>{ doSave(); hideStartMenu(); };
 startLoad.onclick=()=>{ doLoad(); hideStartMenu(); };
 startReset.onclick=()=>{ doReset(); hideStartMenu(); };
 startClose.onclick=()=>{ hideStartMenu(); };
+// Show instructions overlay when selected from the start menu
+function showInstructions(){
+  hideStartMenu();
+  instructionsMenu.style.display='block';
+  scrim.classList.add('open');
+}
+function hideInstructions(){
+  instructionsMenu.style.display='none';
+  scrim.classList.remove('open');
+}
+startInstructions.onclick=()=>{ showInstructions(); };
+instructionsClose.onclick=()=>{ hideInstructions(); };
 // Hide the start menu when scrim is tapped
-scrim.addEventListener('click', ()=>{ hideStartMenu(); });
+scrim.addEventListener('click', ()=>{ hideStartMenu(); hideInstructions(); });
 
 // Save/Load/Reset controls are now accessible via the Start menu; inventory buttons removed
 document.getElementById('btnFeedAll_sb').onclick=()=>{ ['water','land','air'].forEach(k=>{ (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=Math.min(100,(e.happy||50)+10); }); }); toast('Fed all.'); };
