@@ -106,35 +106,121 @@
          z-index:340;display:none}
   #scrim.open{display:block}
 
-  /* Hide mobile controls on large screens */
+  /* Hide mobile controls on large screens and configure the desktop HUD layout */
   @media(min-width:821px){
     #mobileControls{display:none}
-    #hud{display:flex}
+    /* On desktop, show the overlay HUD using a 3-column grid.  The HUD has two rows:
+       scene/time/weather on top, and pets/discovered, sprite, and ability/companion/coins
+       on the bottom. */
+    #hud{
+      display:grid;
+      grid-template-columns: repeat(3, auto);
+      gap:8px;
+      align-items:flex-start;
+      grid-auto-rows:auto;
+      max-width:min(70%,520px);
+    }
+    /* Standard chip styling for desktop; shrink padding and font size for a more
+       compact HUD that fits next to the minimap */
+    #hud .chip{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:2px 4px;
+      font-size:11px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    /* Multi-line groups for desktop HUD */
+    #hud .ability-group, #hud .petsdisc-group{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      justify-content:flex-start;
+      white-space:normal;
+      font-size:11px;
+      line-height:1.1;
+      padding:2px 4px;
+    }
+    /* Center the sprite canvas in its chip */
+    #hud .sprite-chip{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:2px;
+    }
+
+    /* Hide the mobile minimap inside the HUD and reveal the desktop minimap */
+    #hudBar .minimap-chip{ display:none; }
+    #minimapContainer{ display:block; }
   }
   /* Mobile HUD tweaks */
   @media(max-width:820px){
-    /* On mobile, hide the overlay HUD and use the bar instead. Present all
-       status chips in a fixed-height grid so they never overlap the game view. */
+    /* On mobile, hide the overlay HUD and use the bar instead.  The bar uses
+       a 3-column grid.  Ability, companion and coins are grouped into a
+       single multi-line chip to ensure text fits and remains readable. */
     #hud{display:none}
     #hudBar{
+      /* On mobile, arrange status chips in two rows.  Row 1 has three columns
+         for scene, time and weather.  Row 2 has four columns for pets/discovered,
+         sprite, ability and the minimap. */
       display:grid;
       grid-template-columns: repeat(4, minmax(0,1fr));
-      grid-auto-rows: 28px;
+      grid-template-rows: repeat(2, auto);
       gap:8px;
-      min-height:64px;
-      height:64px;
-      overflow:hidden;
     }
+
+    /* Place each chip explicitly into the grid to ensure correct ordering. */
+    #hudBar > .chip:nth-child(1){ grid-row:1; grid-column:1; }
+    #hudBar > .chip:nth-child(2){ grid-row:1; grid-column:2; }
+    #hudBar > .chip:nth-child(3){ grid-row:1; grid-column:3; }
+    #hudBar > .chip:nth-child(4){ grid-row:2; grid-column:1; }
+    #hudBar > .chip:nth-child(5){ grid-row:2; grid-column:2; }
+    #hudBar > .chip:nth-child(6){ grid-row:2; grid-column:3; }
+    #hudBar > .chip:nth-child(7){ grid-row:2; grid-column:4; }
+    /* Standard chips centered vertically and horizontally.  Reduce padding and font size
+       on mobile to prevent the HUD from growing too tall and wide. */
     #hudBar .chip{
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:0 6px;
-      font-size:12px;
-      line-height:28px;
+      padding:2px 4px;
+      font-size:10px;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
+    }
+    /* Multi-line group for ability, companion, and coins */
+    #hudBar .ability-group{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      justify-content:flex-start;
+      white-space:normal;
+      font-size:10px;
+      line-height:1.1;
+      padding:2px 4px;
+    }
+    /* Multi-line group for pets and discovered counts */
+    #hudBar .petsdisc-group{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      justify-content:flex-start;
+      white-space:normal;
+      font-size:10px;
+      line-height:1.1;
+      padding:2px 4px;
+    }
+    /* Hide the desktop minimap container on small screens */
+    #minimapContainer{ display:none; }
+    /* Show the mobile minimap chip */
+    #hudBar .minimap-chip{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:2px;
     }
     canvas#minimap{width:88px;height:88px}
   }
@@ -171,14 +257,18 @@
   </div>
 
   <div id="hudBar" role="group" aria-label="Status">
+    <!-- Row 1: individual chips for scene, time and weather -->
     <div class="chip">Scene: <span id="sceneLabel2">Meadow</span></div>
     <div class="chip">Time: <span id="timeLabel2">06:00</span></div>
     <div class="chip">Weather: <span id="weatherLabel2">Clear</span></div>
-    <div class="chip">Companion: <span id="activePetName2">None</span></div>
-    <div class="chip">Ability: <span id="activeAbility2">—</span></div>
-    <div class="chip">Pets: <span id="petCount2">0</span></div>
-    <div class="chip">Discovered: <span id="discCount2">0</span>/<span id="discTotal2">0</span></div>
-    <div class="chip">Coins: <span id="coinsLabel2">0</span></div>
+    <!-- Row 2: combine pets and discovered into one chip -->
+    <div class="chip petsdisc-group">Pets: <span id="petCount2">0</span><br>Discovered: <span id="discCount2">0</span>/<span id="discTotal2">0</span></div>
+    <!-- Row 2: central sprite of the active companion -->
+    <div class="chip sprite-chip"><canvas id="activeSprite2" width="48" height="48" aria-label="Active pet"></canvas></div>
+    <!-- Row 2: ability, companion and coins -->
+    <div class="chip ability-group">Ability: <span id="activeAbility2">—</span><br>Companion: <span id="activePetName2">None</span><br>Coins: <span id="coinsLabel2">0</span></div>
+    <!-- Minimaps for mobile: will appear in the same row as the three status chips in mobile layout.  Hidden on desktop. -->
+    <div class="chip minimap-chip"><canvas id="minimapMobile" width="88" height="88" aria-label="Minimap"></canvas></div>
   </div>
 
   <div id="gameShell">
@@ -188,15 +278,16 @@
     </div>
     <div id="canvasBox">
       <canvas id="game" width="960" height="528" aria-label="Game display"></canvas>
+      <!-- HUD overlay for desktop screens: matches mobile layout with two rows and three columns. -->
       <div id="hud">
+        <!-- Row 1: Scene, Time, Weather -->
         <div class="chip">Scene: <span id="sceneLabel">Meadow</span></div>
         <div class="chip">Time: <span id="timeLabel">06:00</span></div>
         <div class="chip">Weather: <span id="weatherLabel">Clear</span></div>
-        <div class="chip">Companion: <span id="activePetName">None</span></div>
-        <div class="chip">Ability: <span id="activeAbility">—</span></div>
-        <div class="chip">Pets: <span id="petCount">0</span></div>
-        <div class="chip">Discovered: <span id="discCount">0</span>/<span id="discTotal">0</span></div>
-        <div class="chip">Coins: <span id="coinsLabel">0</span></div>
+        <!-- Row 2: Pets/Discovered combined, sprite, ability/companion/coins -->
+        <div class="chip petsdisc-group">Pets: <span id="petCount">0</span><br>Discovered: <span id="discCount">0</span>/<span id="discTotal">0</span></div>
+        <div class="chip sprite-chip"><canvas id="activeSprite" width="48" height="48" aria-label="Active pet"></canvas></div>
+        <div class="chip ability-group">Ability: <span id="activeAbility">—</span><br>Companion: <span id="activePetName">None</span><br>Coins: <span id="coinsLabel">0</span></div>
       </div>
     </div>
 
@@ -376,6 +467,10 @@ function kind(){ return info(activePetName)?.kind||null; }
 /* ===== DOM refs ===== */
 const game=document.getElementById('game'), g=game.getContext('2d',{alpha:false});
 const mini=document.getElementById('minimap'), mctx=mini.getContext('2d',{alpha:false});
+// Mobile minimap: only present on small screens.  Use optional chaining in case
+// the element does not exist on desktop.  We'll draw to both minimap
+// canvases if they are present.
+const miniMobile=document.getElementById('minimapMobile'), mctxMobile = miniMobile ? miniMobile.getContext('2d',{alpha:false}) : null;
 const dbg=document.getElementById('debug');
 const ctaEnter=document.getElementById('ctaEnter'), ctaExit=document.getElementById('ctaExit');
 
@@ -995,6 +1090,37 @@ function draw(){
   setBoth('timeLabel','timeLabel2', timeString());
   setBoth('weatherLabel','weatherLabel2', weather);
   drawMini();
+
+  // Update the mobile HUD sprite.  On mobile, a dedicated canvas displays
+  // a large icon for the currently active companion.  We draw the sprite
+  // scaled up to fill the canvas.  When no companion is active, the
+  // canvas remains blank.  The base animal sprite is roughly 12px
+  // wide, so use the canvas width divided by 12 as the scale factor.
+  const spriteCanvas2 = document.getElementById('activeSprite2');
+  if(spriteCanvas2){
+    const sctx = spriteCanvas2.getContext('2d');
+    sctx.clearRect(0, 0, spriteCanvas2.width, spriteCanvas2.height);
+    if(activePetName){
+      const bn = baseName(activePetName);
+      // calculate scale: canvas width divided by 12; clamp to avoid
+      const scale = spriteCanvas2.width / 12;
+      drawAnimalSprite(sctx, bn, 0, 0, scale);
+    }
+  }
+
+  // Update the desktop HUD sprite.  This canvas mirrors the mobile sprite
+  // but is shown only on large screens.  If no companion is active, it
+  // remains blank.
+  const spriteCanvas = document.getElementById('activeSprite');
+  if(spriteCanvas){
+    const dctx = spriteCanvas.getContext('2d');
+    dctx.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height);
+    if(activePetName){
+      const bn2 = baseName(activePetName);
+      const scale2 = spriteCanvas.width / 12;
+      drawAnimalSprite(dctx, bn2, 0, 0, scale2);
+    }
+  }
 }
 function drawNPC(ax,ay){
   g.fillStyle='#f2d3a0'; g.fillRect(ax+8,ay+6,8,8);
@@ -1009,16 +1135,22 @@ function drawPlayer(px,py){
   g.fillStyle='#000'; g.fillRect(px+11,py+9,2,2);
 }
 function drawMini(){
-  mctx.clearRect(0,0,mini.width,mini.height);
-  const sx=mini.width/mapW, sy=mini.height/mapH;
-  for(let y=0;y<mapH;y++) for(let x=0;x<mapW;x++){
-    const t=map[idx(x,y)]; mctx.fillStyle=typeColor[t]||'#20314f'; mctx.fillRect(x*sx,y*sy,sx,sy);
-    if(scene!=='house' && !fog[idx(x,y)]){ mctx.fillStyle='rgba(0,0,0,.5)'; mctx.fillRect(x*sx,y*sy,sx,sy); }
+  // Draw the minimap on all available minimap contexts (desktop and mobile).
+  const canvases=[];
+  if(mctx) canvases.push({ctx:mctx, width: mini.width, height: mini.height});
+  if(mctxMobile) canvases.push({ctx:mctxMobile, width: miniMobile.width, height: miniMobile.height});
+  for(const {ctx,width,height} of canvases){
+    ctx.clearRect(0,0,width,height);
+    const sx=width/mapW, sy=height/mapH;
+    for(let y=0;y<mapH;y++) for(let x=0;x<mapW;x++){
+      const t=map[idx(x,y)]; ctx.fillStyle=typeColor[t]||'#20314f'; ctx.fillRect(x*sx,y*sy,sx,sy);
+      if(scene!=='house' && !fog[idx(x,y)]){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(x*sx,y*sy,sx,sy); }
+    }
+    if(scene!=='house' && pingAnimalsTimer>0){
+      ctx.fillStyle='#ffea00'; for(const s of wildSpawns){ if(fog[idx(s.x,s.y)]) ctx.fillRect(s.x*sx, s.y*sy, Math.max(1,sx), Math.max(1,sy)); }
+    }
+    ctx.fillStyle='#fff'; ctx.fillRect(player.x*sx-1, player.y*sy-1, 2,2);
   }
-  if(scene!=='house' && pingAnimalsTimer>0){
-    mctx.fillStyle='#ffea00'; for(const s of wildSpawns){ if(fog[idx(s.x,s.y)]) mctx.fillRect(s.x*sx, s.y*sy, Math.max(1,sx), Math.max(1,sy)); }
-  }
-  mctx.fillStyle='#fff'; mctx.fillRect(player.x*sx-1, player.y*sy-1, 2,2);
 }
 function drawAnimalAt(ax,ay,name,alpha=1){ g.save(); g.globalAlpha=alpha; drawAnimalSprite(g,baseName(name),ax,ay,1); g.restore(); }
 function drawAnimalIcon(ctx,name,x,y,scale){ ctx.save(); drawAnimalSprite(ctx,name,x,y,scale); ctx.restore(); }
