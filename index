@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Wild Pals — v9 (loop biomes, GB controls, improved mobile layout)</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
+    --padPanel:rgba(13,20,40,.6); --padEdge:#28407e; --padGlass:rgba(255,255,255,.06);
+    --btnA:#2d7fff; --btnB:#37b24d; --btnStart:#ff4d4d;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial}
+  header{padding:10px 14px;background:#0a1226;position:sticky;top:0;z-index:300;border-bottom:1px solid #1f2d54}
+  header h1{margin:0;font-size:18px;letter-spacing:.3px}
+  header small{color:var(--muted)}
+  .wrap{max-width:1200px;margin:0 auto;padding:10px}
+
+  #uiToggles{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .toggle{background:#122043;color:var(--ink);border:1px solid #28407e;border-radius:8px;padding:8px 10px;font-weight:600;cursor:pointer}
+  .toggle[aria-pressed="true"]{outline:2px solid var(--accent)}
+
+  #hudBar{display:none; gap:8px; flex-wrap:wrap; margin:8px 0 10px 0}
+  .chip{background:rgba(0,0,0,.6);border:1px solid #2b3b69;border-radius:6px;padding:4px 8px;font-size:12px;color:#cfe0ff}
+
+  #canvasBox{background:#000;border:2px solid #1f2d54;border-radius:8px;position:relative;overflow:hidden}
+  canvas#game{width:960px;max-width:100%;height:auto;image-rendering:pixelated;background:#20314f;display:block;}
+  canvas#minimap{position:absolute;right:8px;top:8px;width:132px;height:132px;border:1px solid #2b3b69;background:#071023;border-radius:4px;z-index:90}
+  #hud{position:absolute;left:8px;top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:min(70%, 520px);z-index:95}
+
+  /* BELOW THE DISPLAY: CTA + status */
+  #belowBar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 10px;background:#0a1226;border:1px solid #1f2d54;border-top:none;border-radius:0 0 8px 8px}
+  .cta{background:#0b132a;border:1px solid #28407e;border-radius:8px;padding:6px 10px;font-weight:700}
+  #debug{font:12px/1.4 monospace;color:#cfe0ff;opacity:0.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ===== GameBoy-style mobile controls ===== */
+  #padDock{display:flex;justify-content:center;margin-top:10px; padding-bottom:max(8px, env(safe-area-inset-bottom, 0px));}
+  #mobileControls{
+    display:grid;
+    grid-template-columns: 120px 1fr 160px;
+    grid-template-rows: auto auto;
+    gap:12px;
+    background:linear-gradient(180deg, var(--padPanel), rgba(10,18,38,0.85));
+    border:1px solid var(--padEdge); border-radius:16px;
+    box-shadow:0 10px 22px rgba(0,0,0,.4); padding:14px; width:min(100%, 720px);
+    backdrop-filter: blur(4px);
+  }
+  /* Enlarged D-pad for easier touch interaction */
+  .dpad{grid-column:1;grid-row:1 / span 2; width:160px; height:160px; position:relative; margin:auto;
+        background:#101826; border-radius:16px; border:1px solid #192a4e; box-shadow:inset 0 6px 14px rgba(0,0,0,.5)}
+  .dpad .cross{position:absolute; inset:0; margin:auto; width:120px; height:120px; background:#1a2336; border-radius:14px}
+  .dpad .cross::before,.dpad .cross::after{content:""; position:absolute; background:#1a2336; border-radius:12px}
+  .dpad .cross::before{left:0; right:0; top:50%; height:40px; transform:translateY(-50%)}
+  .dpad .cross::after{top:0; bottom:0; left:50%; width:40px; transform:translateX(-50%)}
+  /* Directional buttons enlarged for easier tapping (approx. double original size) */
+  .dpad button{position:absolute; width:64px; height:64px; background:#0f1726; border:1px solid #2a3b64;
+               border-radius:14px; color:#9fb3d1; font-weight:900; font-size:20px}
+  .dpad button:active{transform:translateY(1px)}
+  #btnUp{left:50%; top:6px; transform:translateX(-50%)}
+  #btnDown{left:50%; bottom:6px; transform:translateX(-50%)}
+  #btnLeft{left:6px; top:50%; transform:translateY(-50%)}
+  #btnRight{right:6px; top:50%; transform:translateY(-50%)}
+
+  .actCluster{grid-column:3;grid-row:1; width:160px; height:140px; position:relative; margin:auto}
+  .actCluster .btn{position:absolute; width:64px; height:64px; border-radius:999px; border:1px solid #1b2a52;
+                   color:#e9f1ff; font-weight:800; font-size:18px; box-shadow:inset 0 8px 18px rgba(0,0,0,.45)}
+  #btnA{background:var(--btnA); right:8px; top:10px}
+  #btnB{background:var(--btnB); left:18px; bottom:8px}
+  /* Position start row under the action buttons (column 3) for more room */
+  .startRow{grid-column:3; grid-row:2; display:flex; justify-content:center; gap:14px; align-items:center}
+  .startRow .tiny{min-width:auto; width:80px; height:36px; border-radius:999px; background:var(--btnStart); border:1px solid #4b1d1d; color:white; font-weight:800}
+
+  /* General button defaults for desktop UI buttons */
+  button,select{background:#122043;color:var(--ink);border:1px solid #28407e;border-radius:8px;padding:8px 10px;font-weight:600;cursor:pointer}
+  button:hover{filter:brightness(1.08)} button:active{transform:translateY(1px)}
+  .pill{font-size:12px;padding:3px 8px;border-radius:999px;border-color:#3558ad}
+
+  /* Sidebars */
+  .sidebar{position:fixed;top:calc(var(--headerH) + env(safe-area-inset-top, 0px)); bottom:0;width:360px;max-width:85vw;background:var(--panel);
+           border-left:1px solid #1f2d54;border-right:1px solid #1f2d54;z-index:350;transform:translateX(100%);transition:transform .25s ease;overflow:auto}
+  .sidebar.left{left:0;transform:translateX(-100%)} .sidebar.right{right:0}
+  .sidebar.open.right{transform:translateX(0)} .sidebar.open.left{transform:translateX(0)}
+  .sidebar header.sbHead{position:sticky;top:0;background:#0f1730;border-bottom:1px solid #1f2d54;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;z-index:1}
+  .sidebar header.sbHead h2{margin:0;font-size:16px}
+  .sbClose{background:#172647;border:1px solid #28407e;color:var(--ink);border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer}
+  .panel{padding:10px}
+  .note{font-size:12px;color:var(--muted)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+
+  #inventoryGrid_sb{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .card{background:#0e1731;border:1px solid #213062;border-radius:8px;padding:8px}
+  #journalGrid_sb{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .dex{background:#0e1731;border:1px solid #213062;border-radius:8px;padding:8px; text-align:center}
+  .dex .name{font-size:12px;margin-top:4px;color:#cfe0ff}
+  .dex.locked .name{color:#5a6985} .dex.locked canvas{filter:grayscale(100%) brightness(0.6)}
+  #questBox_sb{background:#0e1731;border:1px solid #213062;border-radius:8px;padding:8px; font-size:13px;margin:10px}
+
+  #scrim{position:fixed;inset:calc(var(--headerH) + env(safe-area-inset-top, 0px)) 0 0 0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);
+         z-index:340;display:none}
+  #scrim.open{display:block}
+
+  /* Hide mobile controls on large screens */
+  @media(min-width:821px){
+    #mobileControls{display:none}
+    #hud{display:flex}
+  }
+  /* Mobile HUD tweaks */
+  @media(max-width:820px){
+    #hud{display:none}
+    #hudBar{display:flex}
+    canvas#minimap{width:88px;height:88px}
+  }
+
+  /* Start menu overlay */
+  #startMenu{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:var(--panel);
+    border:1px solid #1f2d54;
+    border-radius:12px;
+    padding:16px;
+    z-index:400;
+    display:none;
+    width:240px;
+    text-align:center;
+  }
+  #startMenu button{margin-top:8px;width:100%;}
+</style>
+</head>
+<body>
+<header id="topbar">
+  <h1>Wild Pals <small>— v9 full build</small></h1>
+</header>
+
+<div class="wrap">
+  <div id="uiToggles">
+    <button class="toggle" id="toggleInventory" aria-pressed="false">Inventory</button>
+    <button class="toggle" id="toggleJournal" aria-pressed="false">Journal</button>
+    <button class="toggle" id="toggleQuests" aria-pressed="false">Quests</button>
+    <button class="toggle" id="toggleCare" aria-pressed="false">Enclosures</button>
+  </div>
+
+  <div id="hudBar" role="group" aria-label="Status">
+    <div class="chip">Scene: <span id="sceneLabel2">Meadow</span></div>
+    <div class="chip">Time: <span id="timeLabel2">06:00</span></div>
+    <div class="chip">Weather: <span id="weatherLabel2">Clear</span></div>
+    <div class="chip">Companion: <span id="activePetName2">None</span></div>
+    <div class="chip">Ability: <span id="activeAbility2">—</span></div>
+    <div class="chip">Pets: <span id="petCount2">0</span></div>
+    <div class="chip">Discovered: <span id="discCount2">0</span>/<span id="discTotal2">0</span></div>
+    <div class="chip">Coins: <span id="coinsLabel2">0</span></div>
+  </div>
+
+  <div id="gameShell">
+    <div id="canvasBox">
+      <canvas id="game" width="960" height="528" aria-label="Game display"></canvas>
+      <canvas id="minimap" width="132" height="132" aria-label="Minimap"></canvas>
+      <div id="hud">
+        <div class="chip">Scene: <span id="sceneLabel">Meadow</span></div>
+        <div class="chip">Time: <span id="timeLabel">06:00</span></div>
+        <div class="chip">Weather: <span id="weatherLabel">Clear</span></div>
+        <div class="chip">Companion: <span id="activePetName">None</span></div>
+        <div class="chip">Ability: <span id="activeAbility">—</span></div>
+        <div class="chip">Pets: <span id="petCount">0</span></div>
+        <div class="chip">Discovered: <span id="discCount">0</span>/<span id="discTotal">0</span></div>
+        <div class="chip">Coins: <span id="coinsLabel">0</span></div>
+      </div>
+    </div>
+
+    <!-- Status & actions BELOW the display -->
+    <div id="belowBar">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="ctaEnter" class="cta" style="display:none">Enter (E)</button>
+        <button id="ctaExit" class="cta" style="display:none">Exit (E)</button>
+      </div>
+      <div id="debug">booting…</div>
+    </div>
+
+    <!-- GameBoy-style controls (mobile only) -->
+    <div id="padDock">
+      <div id="mobileControls" aria-label="On-screen controls">
+        <div class="dpad">
+          <div class="cross"></div>
+          <button id="btnUp">▲</button>
+          <button id="btnDown">▼</button>
+          <button id="btnLeft">◀</button>
+          <button id="btnRight">▶</button>
+        </div>
+        <div class="actCluster">
+          <button class="btn" id="btnA" aria-label="A">A</button>
+          <button class="btn" id="btnB" aria-label="B">B</button>
+        </div>
+        <div class="startRow">
+          <button class="tiny" id="btnStart" aria-label="Start">START</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="scrim"></div>
+
+<!-- Start Menu -->
+<div id="startMenu" class="start-menu">
+  <h2 style="margin-top:0;margin-bottom:8px;">Menu</h2>
+  <button id="startSave" class="pill">Save</button>
+  <button id="startLoad" class="pill">Load</button>
+  <button id="startReset" class="pill">New World</button>
+  <button id="startClose" class="pill">Close</button>
+</div>
+
+<!-- Sidebars -->
+<aside class="sidebar left" id="sbInventory" aria-label="Inventory">
+  <header class="sbHead"><h2>Inventory</h2><button class="sbClose" data-close="sbInventory">Close</button></header>
+  <div class="panel">
+    <div class="row">
+      <select id="petSelect_sb"></select>
+      <button id="setActive_sb">Set Active</button>
+      <span class="chip">Coins: <span id="coinsLabelInv">0</span></span>
+    </div>
+    <div id="inventoryGrid_sb"></div>
+    <hr>
+    </div>
+</aside>
+
+<aside class="sidebar right" id="sbJournal" aria-label="Journal">
+  <header class="sbHead"><h2>Journal — Animal Book</h2><button class="sbClose" data-close="sbJournal">Close</button></header>
+  <div class="panel"><div id="journalGrid_sb"></div></div>
+</aside>
+
+<aside class="sidebar right" id="sbQuests" aria-label="Quests">
+  <header class="sbHead"><h2>Quest Log</h2><button class="sbClose" data-close="sbQuests">Close</button></header>
+  <div id="questBox_sb"></div>
+</aside>
+
+<aside class="sidebar left" id="sbCare" aria-label="Enclosures">
+  <header class="sbHead"><h2>Enclosures</h2><button class="sbClose" data-close="sbCare">Close</button></header>
+  <div class="panel">
+    <div class="note">Happiness decays; Feed/Clean to improve. Decor increases cap.</div>
+    <div class="row">
+      <button id="btnFeedAll_sb" class="pill">Feed All</button>
+      <button id="btnCleanAll_sb" class="pill">Clean All</button>
+      <button id="btnAddDecorLand_sb" class="pill">+ Land Decor</button>
+      <button id="btnAddDecorWater_sb" class="pill">+ Water Decor</button>
+      <button id="btnAddDecorAir_sb" class="pill">+ Air Decor</button>
+    </div>
+  </div>
+</aside>
+
+<script>
+(function(){
+'use strict';
+/* ===== Helpers ===== */
+function setText(id, value){ const el=document.getElementById(id); if(el) el.textContent=value; }
+function setBoth(id1, id2, value){ setText(id1,value); setText(id2,value); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+const baseName=(n)=> (n||'').replace(/\s*★/g,'').trim();
+const rand=(a,b)=> Math.floor(Math.random()*(b-a+1))+a;
+
+const TILE=24;
+
+/* ===== Tile types ===== */
+const TYPES={
+  GRASS:0, FOREST:1, WATER:2, MOUNTAIN:3, SAND:4, HOUSE:5, BRIDGE:6, PATH:7,
+  WALL:8, FLOOR:9, DOOR:10, SIGN:11, ENC_WATER:12, ENC_LAND:13, ENC_AIR:14,
+  PORTAL:15, NPC:16, THEME_MEADOW:18, THEME_WATER:19, THEME_DESERT:20, THEME_AIR:21
+};
+const typeColor={
+  0:'#2d6b3d',1:'#1f4d2b',2:'#1b4c84',3:'#565c6f',4:'#9b8a56',5:'#7d3cff',6:'#8b5a2b',7:'#4b5f3b',
+  8:'#394055',9:'#232b3f',10:'#ffcc00',11:'#cccccc',12:'#1f6c8f',13:'#3a5f3a',14:'#6b6b2b',15:'#df7d00',16:'#c7f464',
+  18:'#2f5636',19:'#1d466e',20:'#8f7a3f',21:'#8087b0'
+};
+const SCENES=['meadow','forest','desert','wetlands'];
+const WEATHER={CLEAR:'Clear', RAIN:'Rain', SAND:'Sandstorm'};
+
+/* ===== Animals ===== */
+const animals=[
+  {name:'Otter',kind:'water',tag:'SWIM',ability:'Swim (cross rivers).'},
+  {name:'Beaver',kind:'water',tag:'BRIDGE',ability:'Build Bridge (place ahead).'},
+  {name:'Frog',kind:'water',tag:'SWIM+',ability:'Wetland speed.'},
+  {name:'Salmon',kind:'water',tag:'SWIFT_SWIM',ability:'Fast in rivers.'},
+  {name:'Trout',kind:'water',tag:'SWIFT_SWIM',ability:'Fast in rivers.'},
+  {name:'Duck',kind:'water',tag:'SWIM',ability:'Pond friend.'},
+  {name:'Turtle',kind:'water',tag:'SWIM',ability:'Amphibious.'},
+  {name:'Heron',kind:'air',tag:'SURVEIL',ability:'Reeds lookout.'},
+
+  {name:'Hawk',kind:'air',tag:'SURVEIL',ability:'Bigger reveal.'},
+  {name:'Eagle',kind:'air',tag:'SURVEIL+',ability:'Wide reveal.'},
+  {name:'Parrot',kind:'air',tag:'SCOUT',ability:'Minimap pings.'},
+  {name:'Owl',kind:'air',tag:'SURVEIL',ability:'Night watch.'},
+  {name:'Falcon',kind:'air',tag:'SURVEIL+',ability:'Fast scout.'},
+
+  {name:'Goat',kind:'land',tag:'CLIMB',ability:'Climb cliffs.'},
+  {name:'Cheetah',kind:'land',tag:'SPEED',ability:'Sprint.'},
+  {name:'Dog',kind:'land',tag:'SCENT',ability:'Scent pings.'},
+  {name:'Tortoise',kind:'land',tag:'FORT',ability:'Fortitude.'},
+  {name:'Horse',kind:'land',tag:'MOUNT',ability:'Ride fast.'},
+  {name:'Rabbit',kind:'land',tag:'SPEED',ability:'Hop sprint.'},
+  {name:'Bear',kind:'land',tag:'FORT',ability:'Thick hide.'},
+  {name:'Raccoon',kind:'land',tag:'SCENT',ability:'Forage scent.'},
+
+  {name:'Camel',kind:'land',tag:'MOUNT',ability:'Desert mount.'},
+  {name:'Vulture',kind:'air',tag:'SURVEIL+',ability:'Thermals.'},
+  {name:'Lizard',kind:'land',tag:'SPEED',ability:'Sun sprint.'},
+  {name:'Iguana',kind:'land',tag:'CLIMB',ability:'Warm perch.'},
+  {name:'Chameleon',kind:'land',tag:'CLIMB',ability:'Blend & climb.'}
+];
+
+function info(n){ const bn=baseName(n); return animals.find(a=>a.name===bn); }
+function tag(){ return info(activePetName)?.tag||null; }
+function kind(){ return info(activePetName)?.kind||null; }
+
+/* ===== DOM refs ===== */
+const game=document.getElementById('game'), g=game.getContext('2d',{alpha:false});
+const mini=document.getElementById('minimap'), mctx=mini.getContext('2d',{alpha:false});
+const dbg=document.getElementById('debug');
+const ctaEnter=document.getElementById('ctaEnter'), ctaExit=document.getElementById('ctaExit');
+
+/* ===== World state ===== */
+let scene='meadow', mapW=120, mapH=100;
+let map=new Uint8Array(mapW*mapH), fog=new Uint8Array(mapW*mapH);
+let player={x:12,y:12}, keys={}, wildSpawns=[], companions=[], activePetName=null, pingAnimalsTimer=0, lastDir={x:1,y:0};
+let timeMin=360, weather=WEATHER.CLEAR, weatherTimer=0, coins=0;
+let housePos={x:10,y:10};
+let portals={back:null,forward:null};
+let npcs=[]; // array of {x,y,type:'main'|'trade'|'vendor', data?}
+let enclosures={ water:[], land:[], air:[] }, decor={water:0, land:0, air:0};
+let slotPos={water:[], land:[], air:[]};
+let discovered=new Set();
+let rngRare=0.03;
+/* Tracks which scenes have been unlocked via quest completion.  The forward portal
+   for a scene will only appear once its next scene has been unlocked.  Meadow
+   is implicitly unlocked as the starting biome. */
+const unlocked={ meadow:true, forest:false, desert:false, wetlands:false };
+
+const saveKey='wildpals_v8_6';
+
+/* ===== Quests (loop) ===== */
+const questDefs={
+  meadow: { name:'Meet the Scout', desc:'Bring a Frog and a Hawk to the Meadow Guide.', need:['Frog','Hawk'], rewards:{coins:5, open_next:true} },
+  forest: { name:'Forest Friends', desc:'Bring a Beaver to the Lumber Warden.', need:['Beaver'], rewards:{coins:6, open_next:true} },
+  desert: { name:'Oasis Aid', desc:'Bring a Camel and a Vulture to the Ranger.', need:['Camel','Vulture'], rewards:{coins:7, open_next:true} },
+  wetlands:{ name:'Marsh Mentor', desc:'Bring a Salmon and an Owl.', need:['Salmon','Owl'], rewards:{coins:8, open_next:true} }
+};
+let quest={...questDefs.meadow, delivered:[], complete:false};
+
+function idx(x,y){ return y*mapW + x; }
+function inBounds(x,y){ return x>=0 && y>=0 && x<mapW && y<mapH; }
+function isNight(){ return timeMin<360 || timeMin>1140; }
+function speed(){
+  let base=3.8; const t=tag();
+  if(t==='SPEED') base=6; if(t==='MOUNT') base=7.4;
+  if(scene==='desert' && weather===WEATHER.SAND && baseName(activePetName)!=='Camel') base*=0.85;
+  return base/60;
+}
+function revealRadius(){
+  const t=tag(); let r=4;
+  if(t==='SURVEIL') r=6; if(t==='SURVEIL+') r=8;
+  if(scene==='desert' && !isNight()) r+=1;
+  return Math.max(3,r);
+}
+function timeString(){ const h=Math.floor(timeMin/60)%24, m=Math.floor(timeMin%60); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
+
+/* ===== World gen helpers ===== */
+function blob(tile,rmin,rmax,cond){
+  let cx=rand(0,mapW-1), cy=rand(0,mapH-1), rr=rand(rmin,rmax);
+  for(let y=-rr;y<=rr;y++) for(let x=-rr;x<=rr;x++){
+    const px=cx+x, py=cy+y;
+    if(!inBounds(px,py)) continue;
+    if(x*x+y*y<=rr*rr && (!cond||cond(map[idx(px,py)]))) map[idx(px,py)]=tile;
+  }
+}
+function carveSafeYard(cx,cy,r){
+  for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
+    const px=cx+x, py=cy+y; if(!inBounds(px,py)) continue;
+    if(x*x+y*y<=r*r){
+      const id=idx(px,py); if(map[id]===TYPES.HOUSE||map[id]===TYPES.NPC||map[id]===TYPES.PORTAL) continue;
+      map[id] = (Math.abs(x)+Math.abs(y))%3===0 ? TYPES.PATH : TYPES.GRASS;
+    }
+  }
+}
+
+/* ===== Scene generators (loop: meadow -> forest -> desert -> wetlands -> meadow) ===== */
+function genScene(next){
+  scene=next||scene;
+  if(scene==='house'){ return genHouse(); }
+  // Common size
+  mapW=120; mapH=100; map=new Uint8Array(mapW*mapH); fog=new Uint8Array(mapW*mapH);
+  for(let i=0;i<map.length;i++) map[i]=TYPES.GRASS;
+  npcs=[]; portals={back:null, forward:null};
+  // Determine if the forward portal should be present based on unlocks.  The next scene
+  // in the biome cycle is unlocked once its preceding quest is completed.  Without
+  // unlocking, the forward portal remains absent and the player cannot progress.
+  const sceneIndex = SCENES.indexOf(scene);
+  const nextSceneName = SCENES[(sceneIndex+1) % SCENES.length];
+  const forwardUnlocked = !!unlocked[nextSceneName];
+  // biome shaping
+  if(scene==='meadow'){
+    // meadows: forest patches + winding streams
+    for(let k=0;k<120;k++) blob(TYPES.FOREST,2,5,(t)=>t===TYPES.GRASS);
+    for(let r=0;r<3;r++){ let x=rand(0,mapW-1), y=0; for(let s=0;s<mapH*2;s++){ if(!inBounds(x,y)) break; map[idx(x,y)]=TYPES.WATER; y+=1; x+=rand(-1,1); if(Math.random()<.25) map[idx(clamp(x+1,0,mapW-1),y)]=TYPES.WATER; } }
+    housePos={x:10,y:10}; map[idx(housePos.x,housePos.y)]=TYPES.HOUSE; carveSafeYard(housePos.x, housePos.y, 8);
+    // portals: meadow has only a forward portal to forest when unlocked
+    if(forwardUnlocked){
+      portals.forward={x:housePos.x+4, y:housePos.y};
+      map[idx(portals.forward.x, portals.forward.y)] = TYPES.PORTAL;
+    } else {
+      portals.forward = null;
+    }
+    portals.back=null;
+    // NPCs
+    const main={x:housePos.x+2,y:housePos.y,type:'main'}; map[idx(main.x,main.y)]=TYPES.NPC; npcs.push(main);
+    const trade={x:housePos.x+1,y:housePos.y+3,type:'trade'}; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(trade);
+    quest={...questDefs.meadow, delivered:[], complete:false};
+    player.x=housePos.x+1; player.y=housePos.y;
+  }
+  else if(scene==='forest'){
+    for(let i=0;i<map.length;i++) map[i]=TYPES.FOREST;
+    for(let k=0;k<160;k++) blob(TYPES.GRASS,1,3,(t)=>t===TYPES.FOREST);
+    for(let r=0;r<4;r++){ blob(TYPES.WATER,2,4,(t)=>t!==TYPES.MOUNTAIN); }
+    portals.back={x:6,y:6}; map[idx(portals.back.x,portals.back.y)]=TYPES.PORTAL;
+    // forward portal only if desert is unlocked
+    if(forwardUnlocked){
+      portals.forward={x:mapW-8,y:8};
+      map[idx(portals.forward.x,portals.forward.y)] = TYPES.PORTAL;
+    } else {
+      portals.forward=null;
+    }
+    const main={x:8,y:6,type:'main'}; const trade={x:10,y:8,type:'trade'};
+    map[idx(main.x,main.y)]=TYPES.NPC; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(main,trade);
+    quest={...questDefs.forest, delivered:[], complete:false};
+    player.x=portals.back.x+1; player.y=portals.back.y;
+  }
+  else if(scene==='desert'){
+    for(let i=0;i<map.length;i++) map[i]=TYPES.SAND;
+    for(let k=0;k<100;k++) blob(TYPES.MOUNTAIN,1,3,(t)=>t===TYPES.SAND);
+    for(let o=0;o<6;o++){ let cx=rand(12,mapW-12), cy=rand(10,mapH-10);
+      for(let y=-3;y<=3;y++) for(let x=-3;x<=3;x++){ const px=cx+x, py=cy+y; if(!inBounds(px,py)) continue; map[idx(px,py)]= (x*x+y*y<8)?TYPES.WATER:TYPES.SAND; }
+    }
+    portals.back={x:6,y:5};
+    map[idx(portals.back.x,portals.back.y)] = TYPES.PORTAL;
+    // forward portal only if wetlands is unlocked
+    if(forwardUnlocked){
+      portals.forward={x:mapW-8,y:6};
+      map[idx(portals.forward.x,portals.forward.y)] = TYPES.PORTAL;
+    } else {
+      portals.forward = null;
+    }
+    const main={x:8,y:6,type:'main'}; const trade={x:10,y:8,type:'trade'};
+    map[idx(main.x,main.y)]=TYPES.NPC; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(main,trade);
+    quest={...questDefs.desert, delivered:[], complete:false};
+    player.x=portals.back.x+1; player.y=portals.back.y;
+  }
+  else { // wetlands
+    for(let i=0;i<map.length;i++) map[i]=TYPES.GRASS;
+    for(let k=0;k<240;k++) blob(TYPES.WATER,1,3,(t)=>t!==TYPES.MOUNTAIN);
+    for(let k=0;k<40;k++) blob(TYPES.FOREST,1,3,(t)=>t===TYPES.GRASS);
+    // boardwalk: convert some water to PATH lines
+    for(let y=10;y<mapH-10;y+=3) for(let x=10;x<mapW-10;x++) if(map[idx(x,y)]===TYPES.WATER) map[idx(x,y)]=TYPES.PATH;
+    portals.back={x:6,y:6};
+    map[idx(portals.back.x,portals.back.y)] = TYPES.PORTAL;
+    // wetlands forward portal leads back to meadow; appears only if meadow is unlocked (always true after first cycle)
+    if(forwardUnlocked){
+      portals.forward = {x:mapW-7, y:mapH-7};
+      map[idx(portals.forward.x, portals.forward.y)] = TYPES.PORTAL;
+    } else {
+      portals.forward = null;
+    }
+    const main={x:8,y:6,type:'main'}; const trade={x:11,y:8,type:'trade'};
+    map[idx(main.x,main.y)]=TYPES.NPC; map[idx(trade.x,trade.y)]=TYPES.NPC; npcs.push(main,trade);
+    quest={...questDefs.wetlands, delivered:[], complete:false};
+    player.x=portals.back.x+1; player.y=portals.back.y;
+  }
+  // Fog reset & spawns
+  fog.fill(0);
+  spawnWildFor(scene);
+  ensureQuestAnimalsReachable(scene);
+  syncQuestUI();
+}
+
+/* ===== House (simplified, no podiums) ===== */
+function genHouse(){
+  scene='house';
+  mapW=96; mapH=38; map=new Uint8Array(mapW*mapH); fog=new Uint8Array(mapW*mapH);
+  for(let i=0;i<map.length;i++) map[i]=TYPES.FLOOR;
+  // walls
+  for(let x=0;x<mapW;x++){ map[idx(x,0)]=TYPES.WALL; map[idx(x,mapH-1)]=TYPES.WALL; }
+  for(let y=0;y<mapH;y++){ map[idx(0,y)]=TYPES.WALL; map[idx(mapW-1,y)]=TYPES.WALL; }
+  const hallY=Math.floor(mapH/2);
+  // Create a hallway through the center of the house.  Previously we built solid
+  // wall rows at hallY-2 and hallY+2 which blocked access to the top/bottom rooms.
+  // To allow movement to the themed rooms, we only lay a path at hallY and avoid
+  // building continuous wall barriers above and below.
+  for(let x=1;x<mapW-1;x++){
+    map[idx(x,hallY)] = TYPES.PATH;
+  }
+  // Front door
+  map[idx(1,hallY)] = TYPES.DOOR;
+  // themed rooms (simple)
+  function room(ox,oy,w,h,theme,kind){
+    for(let x=ox;x<ox+w;x++){ map[idx(x,oy)]=TYPES.WALL; map[idx(x,oy+h-1)]=TYPES.WALL; }
+    for(let y=oy;y<oy+h;y++){ map[idx(ox,y)]=TYPES.WALL; map[idx(ox+w-1,y)]=TYPES.WALL; }
+    for(let y=oy+1;y<oy+h-1;y++) for(let x=ox+1;x<ox+w-1;x++) map[idx(x,y)]=theme;
+    const cx=Math.floor(ox+w/2); map[idx(cx,oy+(oy<hallY? h-1:0))]=TYPES.FLOOR; // doorway
+    placeSlotGrid(kind, ox+4, oy+3, 3, 2);
+  }
+  // reset slots
+  slotPos={water:[],land:[],air:[]};
+  room(10, 4, 24, 10, TYPES.THEME_MEADOW, 'land');
+  room(40, 4, 24, 10, TYPES.THEME_WATER , 'water');
+  room(10, 24,24, 10, TYPES.THEME_DESERT, 'land');
+  room(40, 24,24, 10, TYPES.THEME_AIR   , 'air');
+  // fit enclosures array sizes
+  ['water','land','air'].forEach(k=>{
+    const want=slotPos[k].length; const cur=(enclosures[k]||[]);
+    const out=new Array(want).fill(null); for(let i=0;i<Math.min(want,cur.length);i++) out[i]=cur[i]; enclosures[k]=out;
+  });
+  player.x=3; player.y=hallY; fog.fill(1);
+  syncQuestUI();
+}
+function placeSlotGrid(kind,ox,oy,cols,rows){
+  const tile = kind==='water'?TYPES.ENC_WATER : kind==='air'?TYPES.ENC_AIR : TYPES.ENC_LAND;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    const x=ox+c*3, y=oy+r*3; map[idx(x,y)]=tile; (slotPos[kind]||(slotPos[kind]=[])).push({x,y});
+  }
+}
+function slotIndexAt(kind, tx, ty){
+  const arr=slotPos[kind]||[];
+  for(let i=0;i<arr.length;i++){ const p=arr[i]; if(p.x===tx && p.y===ty) return i; }
+  return -1;
+}
+
+/* ===== Spawns ===== */
+function spawnWildFor(sceneName){
+  wildSpawns=[]; let pool=[];
+  if(sceneName==='meadow') pool=['Otter','Beaver','Frog','Trout','Goat','Cheetah','Dog','Tortoise','Horse','Hawk','Eagle','Rabbit','Raccoon','Parrot'];
+  if(sceneName==='forest') pool=['Beaver','Otter','Hawk','Owl','Eagle','Parrot','Goat','Dog','Tortoise','Rabbit','Bear','Raccoon','Trout'];
+  if(sceneName==='desert') pool=['Camel','Vulture','Lizard','Iguana','Chameleon','Dog','Cheetah','Hawk','Rabbit'];
+  if(sceneName==='wetlands') pool=['Frog','Duck','Heron','Salmon','Trout','Otter','Turtle','Beaver','Owl'];
+  let tries=0;
+  while(wildSpawns.length<40 && tries<15000){
+    tries++;
+    const x=rand(0,mapW-1), y=rand(0,mapH-1);
+    if(sceneName==='meadow' && idx(x,y)===idx(housePos.x,housePos.y)) continue;
+    const t = map[idx(x,y)];
+    if(!spawnHabitatOk(pool, t)) continue;
+    if(wildSpawns.some(s=>s.x===x&&s.y===y)) continue;
+    const nm = pool[rand(0,pool.length-1)];
+    if(!spawnHabitatOk([nm], t)) continue;
+    const nearStart = Math.hypot(x-player.x,y-player.y) < 12;
+    const rare = (!nearStart) && Math.random()<rngRare;
+    wildSpawns.push({x,y,name:nm,rare});
+  }
+  // bias a few friendly spawns near start (gentle start)
+  for(let i=0;i<6;i++){
+    const nx=clamp(Math.floor(player.x)+rand(-5,5),0,mapW-1);
+    const ny=clamp(Math.floor(player.y)+rand(-5,5),0,mapH-1);
+    const t=map[idx(nx,ny)];
+    const near=['Frog','Beaver','Rabbit','Otter'][rand(0,3)];
+    if(spawnHabitatOk([near],t)) wildSpawns.push({x:nx,y:ny,name:near,rare:false});
+  }
+}
+function spawnHabitatOk(nms,t){
+  function ok(name){
+    const a=info(name); if(!a) return false;
+    if(a.kind==='water') return t===TYPES.WATER;
+    if(a.kind==='land') return t!==TYPES.WATER && t!==TYPES.MOUNTAIN;
+    if(a.kind==='air')  return t!==TYPES.MOUNTAIN;
+    return true;
+  }
+  return nms.some(n=>ok(n));
+}
+
+/* ===== Reachability guarantee for quest species ===== */
+function basePassable(t){ return t!==TYPES.WATER && t!==TYPES.MOUNTAIN; }
+function floodReachable(sx,sy){
+  const q=[[sx,sy]], seen=new Uint8Array(mapW*mapH); seen[idx(sx,sy)]=1;
+  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  while(q.length){
+    const [x,y]=q.shift();
+    for(const [dx,dy] of dirs){
+      const nx=x+dx, ny=y+dy;
+      if(!inBounds(nx,ny)) continue;
+      const id=idx(nx,ny); if(seen[id]) continue;
+      if(basePassable(map[id])){ seen[id]=1; q.push([nx,ny]); }
+    }
+  }
+  return seen;
+}
+function ensureQuestAnimalsReachable(sceneName){
+  const need=new Set(questDefs[sceneName].need);
+  const seen=floodReachable(Math.floor(player.x),Math.floor(player.y));
+  for(const s of wildSpawns){ if(need.has(s.name) && seen[idx(s.x,s.y)]) need.delete(s.name); }
+  for(const name of need){
+    let placed=false, tries=0;
+    while(!placed && tries++<4000){
+      const x=rand(0,mapW-1), y=rand(0,mapH-1);
+      if(!seen[idx(x,y)]) continue;
+      const t=map[idx(x,y)]; if(!spawnHabitatOk([name],t)) continue;
+      wildSpawns.push({x,y,name,rare:false}); placed=true;
+    }
+    // fallback: put on path near player
+    if(!placed){
+      outer: for(let r=1;r<10;r++){
+        for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){
+          const x=Math.floor(player.x)+dx, y=Math.floor(player.y)+dy;
+          if(!inBounds(x,y)) continue;
+          if(map[idx(x,y)]===TYPES.PATH){ wildSpawns.push({x,y,name,rare:false}); placed=true; break outer; }
+        }
+      }
+    }
+  }
+}
+
+/* ===== Unlocking ===== */
+// Marks the next scene in the biome loop as unlocked.  Called when a quest
+// is completed.  Uses the current value of `scene` to determine which
+// biome’s completion unlocks the next.  For example, completing the meadow
+// quest unlocks forest.
+function unlockNextScene(){
+  const i=SCENES.indexOf(scene);
+  const nextScene=SCENES[(i+1)%SCENES.length];
+  unlocked[nextScene] = true;
+}
+
+/* ===== Controls ===== */
+window.addEventListener('keydown', e=>{
+  keys[e.key]=true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup', e=>{ keys[e.key]=false; });
+window.addEventListener('keydown', e=>{
+  if(e.key==='q'||e.key==='Q') cycleActive();
+  if(e.key==='e'||e.key==='E') actionButton();
+  if(e.key==='Enter') actionButton();
+  if(e.key==='Escape') closeAllSidebars();
+  // Open the start menu on desktop via the "P" key (stands for pause/start)
+  if(e.key==='p' || e.key==='P') toggleStartMenu();
+});
+
+function pressKey(k,d){ keys[k]=d; }
+function bindTouch(el, keyName){
+  el.addEventListener('mousedown',()=>pressKey(keyName,true));
+  el.addEventListener('mouseup',()=>pressKey(keyName,false));
+  el.addEventListener('mouseleave',()=>pressKey(keyName,false));
+  el.addEventListener('touchstart',(e)=>{ e.preventDefault(); pressKey(keyName,true); }, {passive:false});
+  el.addEventListener('touchend',(e)=>{ e.preventDefault(); pressKey(keyName,false); }, {passive:false});
+}
+bindTouch(document.getElementById('btnUp'),'ArrowUp');
+bindTouch(document.getElementById('btnDown'),'ArrowDown');
+bindTouch(document.getElementById('btnLeft'),'ArrowLeft');
+bindTouch(document.getElementById('btnRight'),'ArrowRight');
+document.getElementById('btnA').addEventListener('click',()=>actionButton());
+document.getElementById('btnB').addEventListener('click',()=>cycleActive());
+// On mobile, the Start button opens the start menu instead of performing an in-game action
+document.getElementById('btnStart').addEventListener('click', (e)=>{
+  e.preventDefault();
+  toggleStartMenu();
+});
+
+/* ===== Actions ===== */
+function cycleActive(){
+  if(companions.length===0) return;
+  const i=companions.indexOf(activePetName);
+  activePetName = i<0 ? companions[0] : companions[(i+1)%companions.length];
+  syncInventoryUI();
+}
+function actionButton(){
+  if(scene!=='house'){
+    const nearHouse = (scene==='meadow' && Math.hypot(player.x-housePos.x, player.y-housePos.y) < 1.2);
+    const nearBack = portals.back && Math.hypot(player.x-portals.back.x, player.y-portals.back.y)<1.2;
+    const nearForward = portals.forward && Math.hypot(player.x-portals.forward.x, player.y-portals.forward.y)<1.2;
+    const n = nearNPC(); // returns NPC or null
+
+    if(nearHouse){ genHouse(); return; }
+    if(n){ interactNPC(n); return; }
+    if(nearBack){ goPrevScene(); return; }
+    if(nearForward){ goNextScene(); return; }
+
+    const t=tag();
+    if(t==='BRIDGE'){
+      const tx=Math.floor(player.x+lastDir.x), ty=Math.floor(player.y+lastDir.y);
+      if(inBounds(tx,ty) && map[idx(tx,ty)]===TYPES.WATER){ map[idx(tx,ty)]=TYPES.BRIDGE; toast('Beaver built a bridge.'); }
+      else toast('No water ahead to bridge.', true);
+    } else if(t==='SCOUT'||t==='SCENT'){ pingAnimalsTimer=300; toast('Scanning for animals…'); }
+    else toast('No active action for this companion.');
+  } else {
+    const p=getInteractionTarget(); if(!p){ toast('Stand on/next to a slot and press Enter/E.', true); return; }
+    const {tx,ty,tile}=p; if(tile===TYPES.DOOR){ genScene('meadow'); return; }
+    if([TYPES.ENC_WATER,TYPES.ENC_LAND,TYPES.ENC_AIR].includes(tile)){
+      const k = tile===TYPES.ENC_WATER?'water':(tile===TYPES.ENC_LAND?'land':'air');
+      const slotIndex = slotIndexAt(k, tx, ty); if(slotIndex<0) return;
+      const arr = enclosures[k];
+      if(arr[slotIndex]){ companions.push(arr[slotIndex].name); arr[slotIndex]=null; toast('Retrieved'); syncInventoryUI(); }
+      else{
+        if(!activePetName){ toast('No active companion selected.', true); return; }
+        if(kind()!==k){ toast('Wrong habitat.', true); return; }
+        const ci=companions.indexOf(activePetName); if(ci<0){ toast('You do not have '+activePetName, true); return; }
+        companions.splice(ci,1);
+        const cap = 70 + 10*(decor[k]||0);
+        arr[slotIndex]={name:activePetName, px:rand(4,12), py:rand(4,12), happy:Math.min(60,cap)};
+        toast('Placed '+activePetName+' in '+k+' enclosure.'); syncInventoryUI();
+      }
+    }
+  }
+}
+function getInteractionTarget(){
+  const px=Math.floor(player.x), py=Math.floor(player.y);
+  const under=inBounds(px,py)?{tx:px,ty:py,tile:map[idx(px,py)]}:null;
+  if(under && [TYPES.ENC_WATER,TYPES.ENC_LAND,TYPES.ENC_AIR,TYPES.DOOR].includes(under.tile)) return under;
+  const adjx=px+lastDir.x, adjy=py+lastDir.y; if(inBounds(adjx,adjy)) return {tx:adjx,ty:adjy,tile:map[idx(adjx,adjy)]};
+  return null;
+}
+function nearNPC(){
+  for(const n of npcs){
+    if(Math.hypot(player.x-n.x, player.y-n.y) < 1.2) return n;
+  }
+  return null;
+}
+function interactNPC(n){
+  if(n.type==='main'){
+    let deliveredNow=[];
+    for(const need of quest.need){
+      if(quest.delivered && quest.delivered.includes(need)) continue;
+      const ii=companions.findIndex(nm=>baseName(nm)===need);
+      if(ii>=0){ companions.splice(ii,1); (quest.delivered||(quest.delivered=[])).push(need); deliveredNow.push(need); }
+    }
+    if(deliveredNow.length){ toast('Delivered: '+deliveredNow.join(', ')); syncInventoryUI(); }
+    if(quest.delivered && quest.delivered.length===quest.need.length && !quest.complete){
+      quest.complete=true;
+      coins += quest.rewards.coins||0;
+      toast('Quest complete! +' + (quest.rewards.coins||0) + ' coins.');
+      // Unlock the next biome if the quest signals it
+      if(quest.rewards.open_next){
+        unlockNextScene();
+      }
+      // After awarding coins and potentially unlocking, refresh UI and quest status
+      syncInventoryUI();
+      syncQuestUI();
+    } else {
+      const remaining = quest.need.filter(nm=>!(quest.delivered||[]).includes(nm));
+      toast(remaining.length?('Quest: Bring '+remaining.join(' & ')) : 'Quest already complete.' );
+    }
+  } else if(n.type==='trade'){
+    // simple trade: 2x Beaver -> Iguana (example varies per scene)
+    const offers={ meadow:{give:'Beaver',take:'Iguana'},
+                   forest:{give:'Otter', take:'Owl'},
+                   desert:{give:'Lizard',take:'Camel'},
+                   wetlands:{give:'Frog', take:'Heron'} }[scene];
+    const have = companions.filter(nm=>baseName(nm)===offers.give).length;
+    if(have>=2){ // do trade
+      let removed=0;
+      for(let i=companions.length-1;i>=0 && removed<2;i--){ if(baseName(companions[i])===offers.give){ companions.splice(i,1); removed++; } }
+      companions.push(offers.take);
+      toast('Traded 2× '+offers.give+' for '+offers.take+'.');
+      syncInventoryUI();
+    } else {
+      toast('Trade needs 2× '+offers.give+'.');
+    }
+  }
+}
+
+/* ===== Scene navigation ===== */
+function goNextScene(){
+  const i=SCENES.indexOf(scene);
+  const next=SCENES[(i+1)%SCENES.length];
+  genScene(next);
+}
+function goPrevScene(){
+  const i=SCENES.indexOf(scene);
+  const prev=SCENES[(i-1+SCENES.length)%SCENES.length];
+  genScene(prev);
+}
+
+/* ===== UI sync ===== */
+function syncInventoryUI(){
+  const counts={}; for(const n of companions){ const bn=baseName(n); counts[bn]=(counts[bn]||0)+1; }
+  const grid=document.getElementById('inventoryGrid_sb'); grid.innerHTML='';
+  Object.keys(counts).sort().forEach(n=>{
+    const a=info(n)||{}; const div=document.createElement('div'); div.className='card';
+    div.innerHTML=`<b>${n}</b><div class="note">${(a.kind||'').toUpperCase()} — ${a.ability||''}</div><div class="note">Owned: ${counts[n]}</div>`;
+    grid.appendChild(div);
+  });
+  const sel=document.getElementById('petSelect_sb');
+  sel.innerHTML = companions.map(n=>`<option value="${n}" ${n===activePetName?'selected':''}>${n}</option>`).join('');
+  if(!activePetName && companions.length>0){ activePetName=companions[0]; }
+  setBoth('activePetName','activePetName2', activePetName || 'None');
+  setBoth('activeAbility','activeAbility2', (info(activePetName)?.tag)||'—');
+  setBoth('petCount','petCount2', String(companions.length));
+  setBoth('coinsLabel','coinsLabel2', String(coins)); setText('coinsLabelInv', String(coins));
+  updateJournal(); syncQuestUI();
+}
+document.getElementById('setActive_sb').addEventListener('click', ()=>{ activePetName=(document.getElementById('petSelect_sb').value)||null; syncInventoryUI(); });
+function updateJournal(){
+  const species=[...new Set(animals.map(a=>a.name))];
+  setBoth('discTotal','discTotal2', String(species.length));
+  setBoth('discCount','discCount2', String(discovered.size));
+  const grid=document.getElementById('journalGrid_sb'); grid.innerHTML='';
+  species.forEach(n=>{
+    const card=document.createElement('div'); card.className='dex'+(discovered.has(n)?'':' locked');
+    const cv=document.createElement('canvas'); cv.width=48; cv.height=48; const ctx=cv.getContext('2d'); drawAnimalIcon(ctx, n, 16,16, 1.5); card.appendChild(cv);
+    const nm=document.createElement('div'); nm.className='name'; nm.textContent=discovered.has(n)?n:'???'; card.appendChild(nm);
+    grid.appendChild(card);
+  });
+}
+function syncQuestUI(){
+  setBoth('sceneLabel','sceneLabel2', scene.charAt(0).toUpperCase()+scene.slice(1));
+  const html = `<b>${quest.name||''}</b><br>${quest.desc||quest.description||''}<br><br>` +
+    (quest.complete? `<span style="color:#35c48d">Completed ✓</span>` :
+     `Needed:<br>${quest.need.map(n=> (quest.delivered||[]).includes(n)?'✓ '+n:'— '+n).join('<br>')}`);
+  const qb=document.getElementById('questBox_sb'); if(qb) qb.innerHTML=html;
+}
+
+/* ===== Render ===== */
+function draw(){
+  // Reveal fog
+  if(scene!=='house'){
+    const r=revealRadius();
+    for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
+      const px=Math.floor(player.x)+x, py=Math.floor(player.y)+y;
+      if(!inBounds(px,py)) continue; if(x*x+y*y<=r*r) fog[idx(px,py)]=1;
+    }
+  } else { fog.fill(1); }
+  // camera (40x22 tiles fits 960x528 at TILE=24)
+  const viewW=40, viewH=22;
+  const camX=clamp(Math.floor(player.x - viewW/2), 0, mapW - viewW);
+  const camY=clamp(Math.floor(player.y - viewH/2), 0, mapH - viewH);
+  g.clearRect(0,0,game.width,game.height);
+
+  // tiles
+  for(let y=0;y<viewH;y++){
+    for(let x=0;x<viewW;x++){
+      const tx=camX+x, ty=camY+y, t=inBounds(tx,ty)?map[idx(tx,ty)]:TYPES.GRASS;
+      // base tile
+      g.fillStyle=typeColor[t]||'#20314f'; g.fillRect(x*TILE,y*TILE,TILE,TILE);
+      if(scene!=='house'){
+        if(t===TYPES.FOREST){ g.fillStyle='#183a22'; g.fillRect(x*TILE+8,y*TILE+4,8,14); }
+        else if(t===TYPES.MOUNTAIN){ g.fillStyle='#a5adb9'; g.fillRect(x*TILE+6,y*TILE+6,12,12); }
+        else if(t===TYPES.HOUSE){
+          g.fillStyle='#b64732'; g.fillRect(x*TILE+3, y*TILE+3, 18, 7);
+          g.fillStyle='#e6d3a1'; g.fillRect(x*TILE+5, y*TILE+10, 14, 10);
+          g.fillStyle='#5a3b29'; g.fillRect(x*TILE+11, y*TILE+14, 2, 6);
+          g.fillStyle='#2b3147'; g.fillRect(x*TILE+7, y*TILE+12, 3, 3);
+          g.fillStyle='#2b3147'; g.fillRect(x*TILE+15, y*TILE+12, 3, 3);
+        }
+        else if(t===TYPES.BRIDGE){ g.fillStyle='#b98547'; g.fillRect(x*TILE, y*TILE+10, TILE, 4); }
+        else if(t===TYPES.PATH){ g.fillStyle='#5e7b4f'; g.fillRect(x*TILE, y*TILE, TILE, TILE); }
+        else if(t===TYPES.PORTAL){ g.fillStyle='#ff8c00'; g.fillRect(x*TILE+4,y*TILE+4,16,16); g.fillStyle='#000'; g.fillRect(x*TILE+10,y*TILE+6,4,12); }
+        else if(t===TYPES.NPC){ drawNPC(x*TILE,y*TILE); }
+      } else {
+        if(t===TYPES.WALL){ g.fillStyle='#525d7a'; g.fillRect(x*TILE+2,y*TILE+2,TILE-4,TILE-4); }
+        if(t===TYPES.DOOR){ g.fillStyle='#ffcc00'; g.fillRect(x*TILE+4,y*TILE+6,16,12); }
+        if(t===TYPES.SIGN){ g.fillStyle='#aaaaaa'; g.fillRect(x*TILE+6,y*TILE+6,12,8); }
+        if(t===TYPES.THEME_MEADOW){ g.fillStyle='#356c40'; g.fillRect(x*TILE+4,y*TILE+15,16,3); g.fillStyle='#3fa44e'; g.fillRect(x*TILE+8,y*TILE+12,4,3); }
+        if(t===TYPES.THEME_WATER){ g.fillStyle='rgba(255,255,255,0.08)'; g.fillRect(x*TILE+2,y*TILE+6,20,3); g.fillRect(x*TILE+5,y*TILE+12,14,2); }
+        if(t===TYPES.THEME_DESERT){ g.fillStyle='#b69454'; g.fillRect(x*TILE+6,y*TILE+14,12,2); g.fillStyle='#c9a765'; g.fillRect(x*TILE+10,y*TILE+10,4,2); }
+        if(t===TYPES.THEME_AIR){ g.fillStyle='rgba(255,255,255,0.25)'; g.fillRect(x*TILE+5,y*TILE+6,14,6); }
+        if([TYPES.ENC_WATER,TYPES.ENC_LAND,TYPES.ENC_AIR].includes(t)){
+          g.fillStyle = t===TYPES.ENC_WATER?'#1f6c8f':(t===TYPES.ENC_LAND?'#3a5f3a':'#6b6b2b');
+          g.fillRect(x*TILE+2,y*TILE+2,TILE-4,TILE-4);
+          const k = t===TYPES.ENC_WATER?'water':(t===TYPES.ENC_LAND?'land':'air');
+          const tx2=tx, ty2=ty; const slot = slotIndexAt(k, tx2, ty2);
+          const entry=(k==='water'?enclosures.water:k==='land'?enclosures.land:enclosures.air)[slot];
+          if(entry){
+            entry.px+=(Math.random()-.5)*0.8; entry.py+=(Math.random()-.5)*0.8;
+            entry.px=Math.max(4,Math.min(12,entry.px)); entry.py=Math.max(4,Math.min(12,entry.py));
+            drawAnimalAt((x*TILE)+entry.px,(y*TILE)+entry.py, entry.name, 1.0);
+            g.fillStyle='#000'; g.fillRect(x*TILE+3,y*TILE+3,18,3);
+            g.fillStyle='#35c48d'; g.fillRect(x*TILE+3,y*TILE+3, Math.floor(18*(entry.happy||50)/100),3);
+          }
+        }
+      }
+      // fog overlay for overworld scenes
+      if(scene!=='house' && !fog[idx(tx,ty)]){ g.fillStyle='rgba(0,0,0,.45)'; g.fillRect(x*TILE,y*TILE,TILE,TILE); }
+    }
+  }
+  // animals
+  if(scene!=='house'){
+    for(const s of wildSpawns){
+      if(s.x>=camX && s.x<camX+viewW && s.y>=camY && s.y<camY+viewH){
+        const seenFog=fog[idx(s.x,s.y)];
+        const ax=(s.x-camX)*TILE, ay=(s.y-camY)*TILE;
+        drawAnimalAt(ax+6,ay+6,s.name, seenFog?1:0.35);
+        if(s.rare && seenFog){ g.fillStyle='#ffd700'; g.fillRect(ax+2, ay+2, 3,3); }
+      }
+    }
+  }
+  // player
+  const px=(player.x-camX)*TILE, py=(player.y-camY)*TILE; drawPlayer(px,py);
+
+  // overlays
+  if(scene!=='house' && isNight()){ g.fillStyle='rgba(0,0,40,0.25)'; g.fillRect(0,0,game.width,game.height); }
+  if(scene==='desert' && weather===WEATHER.SAND){ g.fillStyle='rgba(200,180,80,0.15)'; g.fillRect(0,0,game.width,game.height); }
+  if(scene!=='house' && weather===WEATHER.RAIN){ g.fillStyle='rgba(120,160,255,0.35)'; for(let i=0;i<90;i++){ const x=Math.random()*game.width, y=Math.random()*game.height; g.fillRect(x,y,2,8); } }
+
+  // CTA labels
+  if(scene!=='house'){
+    const nearHouse = (scene==='meadow' && Math.hypot(player.x-housePos.x, player.y-housePos.y) < 1.2);
+    const nearBack = portals.back && Math.hypot(player.x-portals.back.x, player.y-portals.back.y)<1.2;
+    const nearForward = portals.forward && Math.hypot(player.x-portals.forward.x, player.y-portals.forward.y)<1.2;
+    ctaEnter.style.display = (nearHouse||nearBack||nearForward)?'inline-block':'none';
+    if(nearHouse) ctaEnter.textContent='Enter House (E)';
+    else if(nearBack) ctaEnter.textContent='Prev Biome (E)';
+    else if(nearForward) ctaEnter.textContent='Next Biome (E)';
+    ctaExit.style.display='none';
+  } else {
+    ctaEnter.style.display='none'; ctaExit.style.display='inline-block'; ctaExit.textContent='Exit (E)';
+  }
+
+  setBoth('timeLabel','timeLabel2', timeString());
+  setBoth('weatherLabel','weatherLabel2', weather);
+  drawMini();
+}
+function drawNPC(ax,ay){
+  g.fillStyle='#f2d3a0'; g.fillRect(ax+8,ay+6,8,8);
+  g.fillStyle='#6a3a1a'; g.fillRect(ax+6,ay+14,12,8);
+  g.fillStyle='#000'; g.fillRect(ax+11,ay+9,2,2);
+  g.fillStyle='#fff'; g.font='10px monospace'; g.fillText('!', ax+12, ay+4);
+}
+function drawPlayer(px,py){
+  g.fillStyle='#eaeaea'; g.fillRect(px+8,py+6,8,8);
+  g.fillStyle='#3a75c4'; g.fillRect(px+6,py+14,12,8);
+  g.fillStyle='#2b2b2b'; g.fillRect(px+6,py+22,5,2); g.fillRect(px+13,py+22,5,2);
+  g.fillStyle='#000'; g.fillRect(px+11,py+9,2,2);
+}
+function drawMini(){
+  mctx.clearRect(0,0,mini.width,mini.height);
+  const sx=mini.width/mapW, sy=mini.height/mapH;
+  for(let y=0;y<mapH;y++) for(let x=0;x<mapW;x++){
+    const t=map[idx(x,y)]; mctx.fillStyle=typeColor[t]||'#20314f'; mctx.fillRect(x*sx,y*sy,sx,sy);
+    if(scene!=='house' && !fog[idx(x,y)]){ mctx.fillStyle='rgba(0,0,0,.5)'; mctx.fillRect(x*sx,y*sy,sx,sy); }
+  }
+  if(scene!=='house' && pingAnimalsTimer>0){
+    mctx.fillStyle='#ffea00'; for(const s of wildSpawns){ if(fog[idx(s.x,s.y)]) mctx.fillRect(s.x*sx, s.y*sy, Math.max(1,sx), Math.max(1,sy)); }
+  }
+  mctx.fillStyle='#fff'; mctx.fillRect(player.x*sx-1, player.y*sy-1, 2,2);
+}
+function drawAnimalAt(ax,ay,name,alpha=1){ g.save(); g.globalAlpha=alpha; drawAnimalSprite(g,baseName(name),ax,ay,1); g.restore(); }
+function drawAnimalIcon(ctx,name,x,y,scale){ ctx.save(); drawAnimalSprite(ctx,name,x,y,scale); ctx.restore(); }
+function drawAnimalSprite(ctx,name,x,y,s){
+  function R(cx,cy,w,h,c){ ctx.fillStyle=c; ctx.fillRect(Math.floor(x+cx*s), Math.floor(y+cy*s), Math.ceil(w*s), Math.ceil(h*s)); }
+  const a=info(name); const k=a?.kind||'land';
+  const body = (name==='Frog') ? '#4fd36b' :
+               (name==='Otter') ? '#8b5a3c' : (name==='Beaver') ? '#7a4e2b' :
+               (name==='Salmon') ? '#e06a6a' : (name==='Trout') ? '#e0866a' :
+               (name==='Turtle') ? '#6a8f5a' :
+               (name==='Duck') ? '#d9e6ff' :
+               (name==='Heron') ? '#cfd8e8' :
+               (name==='Goat') ? '#cfcfcf' : (name==='Cheetah') ? '#d9a441' : (name==='Dog') ? '#b58b65' :
+               (name==='Tortoise') ? '#6a8f5a' : (name==='Horse') ? '#7b4a2e' : (name==='Hawk') ? '#a07c3a' :
+               (name==='Eagle') ? '#c8b18a' : (name==='Parrot') ? '#2aa84a' :
+               (name==='Camel') ? '#b78b59' : (name==='Vulture') ? '#a09060' :
+               (name==='Lizard'||name==='Iguana'||name==='Chameleon') ? '#66bb66' :
+               (name==='Rabbit') ? '#c7c7c7' : (name==='Bear') ? '#5a4a3a' : (name==='Raccoon') ? '#7b7b7b' :
+               (k==='water') ? '#40c3ff' : (k==='air') ? '#e0e668' : '#ffd166';
+  const accent = '#000';
+  R(1,4,10,6,body);
+  if(['Hawk','Eagle','Parrot','Owl','Falcon','Vulture','Heron'].includes(name)) R(9,5,3,2,'#ffd966');
+  else if(['Otter','Beaver','Dog','Horse','Goat','Cheetah','Tortoise','Camel','Bear','Rabbit','Raccoon','Lizard','Chameleon','Iguana'].includes(name)) R(9,5,2,2,'#f0e0d0');
+  else if(['Salmon','Trout','Duck','Turtle'].includes(name)) R(0,5,3,2,'#8ddbe0');
+  if(k==='land'){ R(2,10,2,2,accent); R(8,10,2,2,accent); }
+  if(k==='water'){ R(0,7,2,2,accent); R(10,7,2,2,accent); }
+  if(k==='air'){ R(0,4,2,4,accent); R(10,4,2,4,accent); }
+  R(4,6,1,1,'#000'); R(6,6,1,1,'#000');
+  if(name==='Cheetah'){ R(3,5,1,1,'#000'); R(5,7,1,1,'#000'); R(7,5,1,1,'#000'); }
+}
+
+/* ===== Loop ===== */
+let last=0;
+function update(dt){
+  let dx=0,dy=0;
+  if(keys['ArrowUp']||keys['w']||keys['W']) dy-=1;
+  if(keys['ArrowDown']||keys['s']||keys['S']) dy+=1;
+  if(keys['ArrowLeft']||keys['a']||keys['A']) dx-=1;
+  if(keys['ArrowRight']||keys['d']||keys['D']) dx+=1;
+  if(dx||dy) lastDir={x:dx,y:dy};
+  const spd=speed();
+  let nx=player.x+dx*spd, ny=player.y+dy*spd;
+  const t=inBounds(Math.floor(nx),Math.floor(ny))?map[idx(Math.floor(nx),Math.floor(ny))]:TYPES.GRASS;
+  if(passable(t)){ player.x=clamp(nx,0,mapW-0.01); player.y=clamp(ny,0,mapH-0.01); }
+
+  if(scene!=='house'){
+    for(let i=wildSpawns.length-1;i>=0;i--){
+      const s=wildSpawns[i];
+      if(Math.hypot(player.x-s.x, player.y-s.y)<0.5){
+        const nm=s.name+(s.rare?' ★':''); const base=s.name;
+        companions.push(nm); discovered.add(base); wildSpawns.splice(i,1);
+        toast('Collected: '+nm); syncInventoryUI();
+      }
+    }
+    if(pingAnimalsTimer>0) pingAnimalsTimer--;
+  } else {
+    if(Math.random()<0.02){
+      ['water','land','air'].forEach(k=>{
+        const cap=70 + 10*(decor[k]||0);
+        (enclosures[k]||[]).forEach(e=>{ if(e){ e.happy=Math.max(0,(e.happy||50)-0.5); e.happy=Math.min(cap, e.happy); } });
+      });
+    }
+  }
+
+  timeMin = (timeMin + 0.5) % (24*60);
+  weatherTimer--; if(weatherTimer<=0){
+    if(scene==='meadow'||scene==='forest'){ weather = Math.random()<0.25 ? WEATHER.RAIN : WEATHER.CLEAR; }
+    else if(scene==='desert'){ weather = Math.random()<0.25 ? WEATHER.SAND : WEATHER.CLEAR; }
+    else { weather = Math.random()<0.15 ? WEATHER.RAIN : WEATHER.CLEAR; }
+    weatherTimer = 900 + Math.floor(Math.random()*600);
+  }
+}
+function passable(t){
+  if(scene==='house') return t!==TYPES.WALL;
+  if(t===TYPES.MOUNTAIN) return tag()==='CLIMB';
+  if(t===TYPES.WATER) return ['SWIM','SWIM+','SWIFT_SWIM','MOUNT'].includes(tag());
+  return true;
+}
+function loop(ts){ const dt = ts - last; last = ts; update(dt); draw(); drawToast(); requestAnimationFrame(loop); }
+
+/* ===== Toasts ===== */
+let toastTimer=0, toastMsg='', toastBad=false;
+function toast(msg,bad=false,ms=1500){ toastMsg=msg; toastBad=bad; toastTimer=ms/16; }
+function drawToast(){
+  if(toastTimer>0){ dbg.textContent = toastMsg + (toastBad ? ' ⚠️' : ''); toastTimer--; }
+  else { dbg.textContent = `running — ${scene}`; }
+}
+
+/* ===== Save/Load/Reset ===== */
+function doSave(){
+  const enc={scene, map:Array.from(map), mapW, mapH, fog:Array.from(fog), player, housePos, portals, npcs,
+    companions, activePetName, enclosures, decor, discovered:[...discovered], timeMin, weather, coins, quest};
+  localStorage.setItem(saveKey, JSON.stringify(enc));
+  toast('Saved.');
+}
+function doLoad(){
+  const raw=localStorage.getItem(saveKey); if(!raw){ toast('No save.', true); return; }
+  try{
+    const enc=JSON.parse(raw);
+    scene=enc.scene||'meadow'; mapW=enc.mapW; mapH=enc.mapH; map=new Uint8Array(enc.map); fog=new Uint8Array(enc.fog);
+    player=enc.player; housePos=enc.housePos||housePos; portals=enc.portals||{back:null,forward:null}; npcs=enc.npcs||[];
+    companions=enc.companions||[]; activePetName=enc.activePetName||null; enclosures=enc.enclosures||{water:[],land:[],air:[]}; decor=enc.decor||{water:0,land:0,air:0};
+    discovered=new Set(enc.discovered||[]); timeMin=enc.timeMin||360; weather=enc.weather||WEATHER.CLEAR; coins=enc.coins||0; quest=enc.quest||quest;
+    // refresh procedural assets for current scene to avoid blank map artifacts
+    genScene(scene);
+    syncInventoryUI(); toast('Loaded.');
+  }catch(e){ console.error(e); toast('Load failed.', true); }
+}
+function doReset(){
+  localStorage.removeItem(saveKey); companions=[]; activePetName=null; enclosures={water:[],land:[],air:[]}; decor={water:0,land:0,air:0}; discovered=new Set();
+  coins=0; timeMin=360; weather=WEATHER.CLEAR; weatherTimer=0; genScene('meadow'); syncInventoryUI(); toast('New world.');
+}
+
+/* ===== Sidebars ===== */
+const sbInventory=document.getElementById('sbInventory'), sbJournal=document.getElementById('sbJournal'), sbQuests=document.getElementById('sbQuests'), sbCare=document.getElementById('sbCare');
+const toggleInventory=document.getElementById('toggleInventory'), toggleJournal=document.getElementById('toggleJournal'), toggleQuests=document.getElementById('toggleQuests'), toggleCare=document.getElementById('toggleCare');
+const scrim=document.getElementById('scrim');
+function openSidebar(sb,btn){ closeAllSidebars(); sb.classList.add('open'); scrim.classList.add('open'); if(btn) btn.setAttribute('aria-pressed','true'); }
+function closeSidebar(sb,btn){ sb.classList.remove('open'); if(btn) btn.setAttribute('aria-pressed','false'); maybeHideScrim(); }
+function closeAllSidebars(){ [sbInventory,sbJournal,sbQuests,sbCare].forEach(el=>el.classList.remove('open')); [toggleInventory,toggleJournal,toggleQuests,toggleCare].forEach(b=>b.setAttribute('aria-pressed','false')); scrim.classList.remove('open'); }
+function maybeHideScrim(){ if(!sbInventory.classList.contains('open') && !sbJournal.classList.contains('open') && !sbQuests.classList.contains('open') && !sbCare.classList.contains('open')) scrim.classList.remove('open'); }
+toggleInventory.onclick=()=> sbInventory.classList.contains('open') ? closeSidebar(sbInventory,toggleInventory) : openSidebar(sbInventory,toggleInventory);
+toggleJournal.onclick =()=> sbJournal.classList.contains('open')  ? closeSidebar(sbJournal,toggleJournal)   : openSidebar(sbJournal,toggleJournal);
+toggleQuests.onclick  =()=> sbQuests.classList.contains('open')   ? closeSidebar(sbQuests,toggleQuests)    : openSidebar(sbQuests,toggleQuests);
+toggleCare.onclick    =()=> sbCare.classList.contains('open')     ? closeSidebar(sbCare,toggleCare)        : openSidebar(sbCare,toggleCare);
+document.querySelectorAll('.sbClose').forEach(btn=> btn.addEventListener('click', ()=>{ const id=btn.getAttribute('data-close'); const el=document.getElementById(id); if(el){ el.classList.remove('open'); maybeHideScrim(); } [toggleInventory,toggleJournal,toggleQuests,toggleCare].forEach(b=>b.setAttribute('aria-pressed','false')); }));
+scrim.addEventListener('click', closeAllSidebars);
+
+/* ===== Start Menu ===== */
+const startMenu=document.getElementById('startMenu');
+const startSave=document.getElementById('startSave');
+const startLoad=document.getElementById('startLoad');
+const startReset=document.getElementById('startReset');
+const startClose=document.getElementById('startClose');
+
+function showStartMenu(){
+  startMenu.style.display='block';
+  scrim.classList.add('open');
+}
+function hideStartMenu(){
+  startMenu.style.display='none';
+  scrim.classList.remove('open');
+}
+function toggleStartMenu(){
+  if(startMenu.style.display==='block') hideStartMenu();
+  else { closeAllSidebars(); showStartMenu(); }
+}
+
+// Hook up start menu buttons to save/load/reset
+startSave.onclick=()=>{ doSave(); hideStartMenu(); };
+startLoad.onclick=()=>{ doLoad(); hideStartMenu(); };
+startReset.onclick=()=>{ doReset(); hideStartMenu(); };
+startClose.onclick=()=>{ hideStartMenu(); };
+// Hide the start menu when scrim is tapped
+scrim.addEventListener('click', ()=>{ hideStartMenu(); });
+
+// Save/Load/Reset controls are now accessible via the Start menu; inventory buttons removed
+document.getElementById('btnFeedAll_sb').onclick=()=>{ ['water','land','air'].forEach(k=>{ (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=Math.min(100,(e.happy||50)+10); }); }); toast('Fed all.'); };
+document.getElementById('btnCleanAll_sb').onclick=()=>{ ['water','land','air'].forEach(k=>{ (enclosures[k]||[]).forEach(e=>{ if(e) e.happy=Math.min(100,(e.happy||50)+10); }); }); toast('Cleaned all.'); };
+document.getElementById('btnAddDecorLand_sb').onclick =()=>{ decor.land=(decor.land||0)+1; toast('Added land decor.'); };
+document.getElementById('btnAddDecorWater_sb').onclick=()=>{ decor.water=(decor.water||0)+1; toast('Added water decor.'); };
+document.getElementById('btnAddDecorAir_sb').onclick  =()=>{ decor.air=(decor.air||0)+1; toast('Added air decor.'); };
+
+/* ===== Boot ===== */
+function boot(){
+  genScene('meadow'); // fresh
+  syncInventoryUI();
+  requestAnimationFrame(loop);
+  ctaEnter.onclick=()=>actionButton(); ctaExit.onclick =()=>actionButton();
+}
+if(document.readyState==='complete' || document.readyState==='interactive'){ boot(); }
+else { window.addEventListener('DOMContentLoaded', boot); }
+})();
+</script>
+</body>
+</html>
