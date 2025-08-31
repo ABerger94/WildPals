@@ -9376,6 +9376,284 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+
+<!-- v29: Craft panel UI (scoped) -->
+<style>
+#wp-craft .wp-craft-head{ position:sticky; top:0; display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; background:#0f1730; border-bottom:1px solid #203259; z-index:2; }
+#wp-craft .wp-craft-close{ padding:6px 10px; }
+#wp-craft .wp-craft-body{ padding:10px 10px 14px; }
+#wp-craft .craft-cols{ display:grid; grid-template-columns: 1fr; gap:10px; }
+@media (min-width:520px){ #wp-craft .craft-cols{ grid-template-columns: 1fr 1fr; } }
+#wp-craft .craft-list .invItem{ cursor:pointer; display:flex; align-items:center; gap:8px; background:#0e1a33; padding:6px; border:1px solid #1f3568; border-radius:8px; }
+#wp-craft .craft-list .invItem img{ width:20px; height:20px; image-rendering:pixelated; }
+#wp-craft .craft-list .invItem .meta{ flex:1; }
+#wp-craft .craft-list .invItem .name{ font-weight:700; font-size:13px; color:#e7f0ff; }
+#wp-craft .craft-list .invItem .qty{ font-size:11px; color:#9fb3d1; }
+#wp-craft .craft-list .invItem.active{ outline:2px solid #4da3ff; }
+#wp-craft .craft-detail{ background:#0e1428; border:1px solid #1f2d54; border-radius:10px; padding:10px; min-height:160px; }
+#wp-craft .craft-detail .name{ font-weight:700; margin-bottom:6px; }
+#wp-craft .craft-detail .req{ font-size:13px; color:#9fb3d1; margin:6px 0; }
+#wp-craft .craft-detail .actions{ display:flex; gap:8px; margin-top:10px; }
+#wp-craft .craft-detail .missing{ color:#ff6b6b; font-size:13px; }
+#wp-craft .searchRow{ display:flex; gap:8px; align-items:center; margin:6px 0 2px; }
+#wp-craft .searchRow input{ flex:1; padding:6px 8px; border-radius:8px; border:1px solid #28407e; background:#0f1730; color:#e9f1ff; }
+#wp-craft .pill{ font-size:12px; padding:3px 8px; border-radius:999px; border:1px solid #3558ad; background:#122043; color:#cfe0ff; }
+</style>
+
+<!-- v29: Craft panel renderer (non-destructive) -->
+<script>
+(function(){
+  const NS = 'wpv29';
+  let wired = false;
+  let lastKey = '';
+
+  function getNode(){
+    return document.getElementById('wp-craft');
+  }
+
+  function toastSafe(msg){
+    try{ if (typeof toast==='function') { toast(msg); return; } }catch(_){}
+    try{
+      let t = document.getElementById('toast');
+      if (!t){ t = document.createElement('div'); t.id='toast'; document.body.appendChild(t); }
+      t.textContent = msg; t.style.display='block';
+      setTimeout(()=>{ t.style.display='none'; }, 1400);
+    }catch(_){ console.log('[Craft]', msg); }
+  }
+
+  function coinsGet(){ try{ if (typeof getCoins==='function') return getCoins()|0; }catch(_){}
+    if (window.player && Number.isFinite(window.player.coins)) return window.player.coins|0;
+    return 0;
+  }
+  function coinsSet(v){ try{ if (typeof setCoins==='function'){ setCoins(v|0); return; } }catch(_){}
+    if (window.player){ window.player.coins = v|0; }
+  }
+  function coinsSpend(n){
+    const c = coinsGet();
+    if (c < n) return false;
+    coinsSet(c - n);
+    return true;
+  }
+  function coinsAdd(n){ coinsSet(coinsGet() + (n|0)); }
+
+  function invObj(){ return (window.inventory || (window.inventory = {})); }
+  function invGet(name){ const inv = invObj(); return inv[name]||0; }
+  function invAdd(name, qty){ const inv = invObj(); inv[name] = (inv[name]||0) + (qty|0); if (typeof addToInventory==='function') try{ addToInventory(name, qty|0) }catch(_){} }
+  function invRemove(name, qty){
+    if (typeof removeFromInventory==='function') try{ return removeFromInventory(name, qty|0); }catch(_){}
+    const inv = invObj(); inv[name] = Math.max(0, (inv[name]||0) - (qty|0)); return true;
+  }
+  function invUpdateUI(){
+    try{ if (typeof updateInventoryUI==='function') updateInventoryUI(); }catch(_){}
+    try{ if (typeof renderInventory==='function') renderInventory(); }catch(_){}
+  }
+
+  function ensureShell(panel){
+    if (panel.__built) return;
+    panel.innerHTML = ''
+      + '<div class="wp-craft-head"><strong>Crafting</strong>'
+      + '  <div class="row">'
+      + '    <button id="wp-craft-close" class="wp-craft-close">Close</button>'
+      + '  </div>'
+      + '</div>'
+      + '<div class="wp-craft-body">'
+      + '  <div class="searchRow"><input id="wp-craft-search" placeholder="Search recipes…"/></div>'
+      + '  <div class="craft-cols">'
+      + '    <div id="craftList" class="craft-list"></div>'
+      + '    <div id="craftDetail" class="craft-detail"><div class="empty">Select a recipe to see details.</div></div>'
+      + '  </div>'
+      + '</div>';
+    const closeBtn = panel.querySelector('#wp-craft-close');
+    if (closeBtn && !closeBtn.__bind){ closeBtn.__bind = true; closeBtn.addEventListener('click', function(){ try{ closeCraft(); }catch(_){ panel.style.display='none'; const s=document.getElementById('scrim'); if (s) s.style.display='none'; } }, {capture:true}); }
+    panel.__built = true;
+  }
+
+  function canAfford(r){
+    if (r.cost && coinsGet() < r.cost) return false;
+    for (const k in r.req){ if (invGet(k) < r.req[k]) return false; }
+    return true;
+  }
+
+  function renderDetail(r){
+    const panel = getNode();
+    const detail = panel && panel.querySelector('#craftDetail');
+    if (!detail) return;
+    detail.innerHTML = '';
+    const name = document.createElement('div'); name.className='name'; name.textContent = r.name;
+    const req = document.createElement('div'); req.className='req';
+    const parts = [];
+    for (const k in r.req){
+      const have = invGet(k), need = r.req[k];
+      parts.push((have>=need?'':'❌ ') + need + '× ' + k + ' ('+have+'/'+need+')');
+    }
+    if (r.cost) parts.push(((coinsGet()>=r.cost)?'':'❌ ') + r.cost + ' coins');
+    req.textContent = parts.join(' • ');
+
+    const actions = document.createElement('div'); actions.className='actions';
+    const craftBtn = document.createElement('button'); craftBtn.textContent = 'Craft';
+    craftBtn.disabled = !canAfford(r);
+    craftBtn.addEventListener('click', function(){
+      // spend coins first
+      if (r.cost && !coinsSpend(r.cost)){ toastSafe('Not enough coins'); return; }
+      // verify materials
+      for (const k in r.req){
+        if (invGet(k) < r.req[k]){ toastSafe('Missing materials'); if (r.cost) coinsAdd(r.cost); return; }
+      }
+      // remove materials
+      for (const k in r.req){ invRemove(k, r.req[k]); }
+      // add output
+      const outQty = (r.out && (r.out.qty|0)) || 1;
+      const outName = (r.out && r.out.name) || r.name;
+      invAdd(outName, outQty);
+      invUpdateUI();
+      toastSafe('Crafted ' + r.name + '!');
+      // re-render list to refresh availability state
+      renderList();
+      renderDetail(r);
+    });
+    actions.appendChild(craftBtn);
+
+    // Optional: quick craft ×5
+    const craft5 = document.createElement('button'); craft5.textContent = 'Craft ×5';
+    craft5.disabled = !canAffordTimes(r, 5);
+    craft5.addEventListener('click', function(){
+      craftTimes(r, 5);
+    });
+    actions.appendChild(craft5);
+
+    detail.appendChild(name);
+    detail.appendChild(req);
+    detail.appendChild(actions);
+  }
+
+  function canAffordTimes(r, n){
+    const cost = (r.cost||0) * n;
+    if (cost && coinsGet() < cost) return false;
+    for (const k in r.req){ if (invGet(k) < r.req[k]*n) return false; }
+    return true;
+  }
+  function craftTimes(r, n){
+    const cost = (r.cost||0) * n;
+    if (cost && !coinsSpend(cost)){ toastSafe('Not enough coins'); return; }
+    for (const k in r.req){
+      const need = r.req[k]*n;
+      if (invGet(k) < need){ toastSafe('Missing materials'); if (cost) coinsAdd(cost); return; }
+    }
+    for (const k in r.req){ invRemove(k, r.req[k]*n); }
+    const outQty = ((r.out && (r.out.qty|0)) || 1) * n;
+    const outName = (r.out && r.out.name) || r.name;
+    invAdd(outName, outQty);
+    invUpdateUI();
+    toastSafe('Crafted ' + r.name + ' ×' + n + '!');
+    renderList();
+    renderDetail(r);
+  }
+
+  function filteredRecipes(){
+    const raw = Array.isArray(window.recipes) ? window.recipes : [];
+    const q = (document.getElementById('wp-craft-search')?.value || '').trim().toLowerCase();
+    if (!q) return raw;
+    return raw.filter(r => (r.name && r.name.toLowerCase().includes(q)) || (r.id && String(r.id).toLowerCase().includes(q)));
+  }
+
+  function renderList(){
+    const panel = getNode();
+    const host = panel && panel.querySelector('#craftList');
+    if (!host) return;
+    host.innerHTML = '';
+    const data = filteredRecipes();
+    if (!data.length){
+      host.innerHTML = '<div class="invItem"><div class="meta"><div class="name">No recipes found</div></div></div>';
+      return;
+    }
+    let selectedRow = null;
+
+    data.forEach(r => {
+      const row = document.createElement('div'); row.className = 'invItem';
+      row.dataset.key = r.key || r.id || r.name;
+      const img = document.createElement('img'); img.alt = r.name || ''; if (r.icon) img.src = r.icon; else img.style.display='none';
+      const meta = document.createElement('div'); meta.className='meta';
+      const nm = document.createElement('div'); nm.className='name'; nm.textContent = r.name || (r.id||'Recipe');
+      const rq = document.createElement('div'); rq.className='qty';
+      const parts = [];
+      if (r && r.req){
+        Object.keys(r.req).forEach(k=>parts.push(r.req[k]+'× '+k));
+      }
+      if (r.cost) parts.push(r.cost+' coins');
+      rq.textContent = parts.join(' • ');
+      meta.appendChild(nm); meta.appendChild(rq);
+      row.appendChild(img); row.appendChild(meta);
+
+      row.addEventListener('click', function(){
+        if (selectedRow) selectedRow.classList.remove('active');
+        selectedRow = row; row.classList.add('active');
+        lastKey = row.dataset.key || '';
+        try{ localStorage.setItem('wp_lastCraftKey', lastKey); }catch(_){}
+        renderDetail(r);
+      });
+
+      host.appendChild(row);
+    });
+
+    // auto-select last or first
+    try{ lastKey = lastKey || localStorage.getItem('wp_lastCraftKey') || ''; }catch(_){}
+    let toSelect = null;
+    if (lastKey){
+      toSelect = Array.from(host.children).find(el => (el.dataset.key === lastKey));
+    }
+    if (!toSelect) toSelect = host.firstElementChild;
+    if (toSelect) toSelect.click();
+  }
+
+  function setHeaderCount(){
+    const panel = getNode();
+    const strong = panel && panel.querySelector('.wp-craft-head strong');
+    if (!strong) return;
+    const rc = Array.isArray(window.recipes) ? window.recipes.length : 0;
+    strong.textContent = 'Crafting' + (rc ? (' ('+rc+')') : '');
+  }
+
+  function renderCrafting(){
+    const panel = getNode();
+    if (!panel) return;
+    ensureShell(panel);
+    setHeaderCount();
+    renderList();
+  }
+
+  // Observe visibility of #wp-craft to render when shown (do not alter open/close code elsewhere)
+  function observeOpen(){
+    const panel = getNode();
+    if (!panel) return;
+    if (wired) return;
+    wired = true;
+
+    // Search input live filter
+    panel.addEventListener('input', function(e){
+      const t = e.target;
+      if (t && t.id === 'wp-craft-search'){ renderList(); }
+    });
+
+    const mo = new MutationObserver(() => {
+      const visible = panel.style.display !== 'none';
+      if (visible){ renderCrafting(); }
+    });
+    mo.observe(panel, { attributes:true, attributeFilter:['style', 'class'] });
+
+    // Also render immediately if already visible on init
+    if (panel.style.display !== 'none'){ renderCrafting(); }
+  }
+
+  function init(){
+    observeOpen();
+  }
+
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+
 </body>
 </html>
 <script>
