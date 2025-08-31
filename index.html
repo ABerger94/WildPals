@@ -48,7 +48,22 @@
   /* BELOW THE DISPLAY: CTA + status */
   #belowBar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 10px;background:#0a1226;border:1px solid #1f2d54;border-top:none;border-radius:0 0 8px 8px}
   .cta{background:#0b132a;border:1px solid #28407e;border-radius:8px;padding:6px 10px;font-weight:700}
-  #debug{font:12px/1.4 monospace;color:#cfe0ff;opacity:0.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #debug{
+  font:14px/1.5 monospace;
+  color:#cfe0ff;
+  opacity:0.95;
+  display:block;
+  width:100vw;          
+  max-width:100vw;
+  padding:6px 10px;
+  white-space:nowrap;   /* single line */
+  overflow:hidden;      /* no scrollbars */
+  text-align:center;
+  background:none;
+  border:none;
+  box-sizing:border-box;
+  font-size: clamp(10px, 2vw, 14px);  /* auto-resize between 10px and 14px based on viewport */
+}
 
   /* ===== GameBoy-style mobile controls ===== */
   #padDock{display:flex;justify-content:center;margin-top:10px; padding-bottom:max(8px, env(safe-area-inset-bottom, 0px));}
@@ -455,6 +470,64 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 .prop{ width:18px; height:18px; border:none; background:transparent; inset:auto auto 2px 2px; }
 .prop.sheet{ width:20px; height:20px; background-image:var(--sheetUrl); background-repeat:no-repeat; image-rendering: pixelated; }
 
+#v17SettingsBtn {
+  display: none !important;
+}
+
+
+#toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:16px; background:rgba(0,0,0,.8);
+  color:#fff; padding:10px 14px; border-radius:10px; font:600 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto;
+  max-width:90vw; white-space:normal; z-index:9999; box-shadow:0 6px 18px rgba(0,0,0,.45) }
+
+/* Upgrades v26 */
+#hudUnderTitle{ margin:6px 0 10px; }
+#hpBarOuter{ width:260px; height:12px; background:#1b2a4d; border:1px solid #28407e; border-radius:6px; overflow:hidden; }
+#hpBarInner{ height:100%; background:linear-gradient(90deg,#ff4d4d,#ff9a9a); width:100%; transition:width .2s ease-in-out; }
+#hpText{ margin-top:4px; font-size:12px; text-align:left; color:#cfe0ff; }
+
+#equipHUD{ margin-top:6px; display:flex; gap:32px; flex-wrap:wrap; }
+.equipRow{ display:flex; align-items:center; gap:6px; }
+.equipLabel{ color:#cfe0ff; font-size:12px; }
+.equipIcon{ width:20px; height:20px; image-rendering: pixelated; }
+.equipName{ color:#fff; font-weight:600; font-size:13px; }
+
+/* coin number gold+bold (labels remain default) */
+.coins .value, .coinValue { color:#FFD54A; font-weight:800; }
+
+/* Inventory categories */
+.invTabs{ display:flex; gap:8px; margin:6px 0; flex-wrap:wrap; }
+.invTabs button{ padding:6px 8px; }
+.invCat{ display:none; max-height:220px; overflow:auto; border:1px solid #28407e; padding:6px; }
+.invCat.active{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:6px; }
+.invItem{ display:flex; align-items:center; gap:6px; background:#0e1a33; padding:6px; border:1px solid #1f3568; }
+.invItem img{ width:20px; height:20px; image-rendering: pixelated; }
+.invItem .meta{ flex:1; }
+.invItem .name{ font-weight:600; font-size:13px; color:#e7f0ff; }
+.invItem .qty{ font-size:11px; color:#9fb3d1; }
+.invItem .actions button{ padding:4px 6px; }
+
+/* ---- WP PATCH LAYER (non-destructive) ---- */
+.wp-gold { color:#FFD54A; font-weight:800; }
+#wp-craft-btn{ margin-left:6px }
+#wp-hp { margin:6px 0 8px }
+#wp-hp .bar{ width:260px;height:12px;background:#1b2a4d;border:1px solid #28407e;border-radius:6px;overflow:hidden }
+#wp-hp .fill{ height:100%; background:linear-gradient(90deg,#ff4d4d,#ff9a9a); width:100%; transition:width .2s }
+#wp-hp .read{ font-size:12px; margin-top:4px; text-align:left; color:#cfe0ff }
+#wp-equipped-box{ position:absolute; right:0; bottom:150px; background:rgba(0,0,0,.55); color:#fff; padding:6px 8px; border-radius:8px; font-size:12px; z-index:20; min-width:140px; display:none }
+#wp-equipped-box .row{ display:flex; align-items:center; gap:6px; margin:2px 0 }
+#wp-inv, #wp-craft{ position:fixed; top:60px; right:0; width:min(90vw,360px); max-height:70vh; overflow:auto; background:#11182c; border:1px solid #1f2d54; border-radius:10px; padding:10px; z-index:9000; display:none }
+#wp-panel-close{ position:sticky; top:0; right:0; background:#0f1730; border:1px solid #1f2d54; color:#e9f1ff; border-radius:8px; padding:6px 10px; float:right }
+.wp-grid{ display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:8px }
+.wp-item{ background:#0e1a33;border:1px solid #1f3568;border-radius:8px;padding:6px; display:flex; align-items:center; gap:6px }
+.wp-item img{ width:20px;height:20px; image-rendering:pixelated }
+.wp-name{ font-weight:700; font-size:13px }
+.wp-qty{ font-size:11px; color:#9fb3d1 }
+#wp-market{ position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#11182c; border:1px solid #1f2d54; border-radius:12px; padding:12px; width:min(92vw,660px); max-height:80vh; overflow:auto; z-index:9100; display:none }
+#wp-market .tabs{ display:flex; gap:8px; margin-bottom:8px }
+#wp-market .tabs button{ flex:1; padding:8px }
+#wp-market .body{ display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:10px }
+#wp-scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); backdrop-filter:blur(2px); z-index:9050; display:none }
+
 </style>
 <style>
 /* === V13.2 Patch: UI layering & helpers === */
@@ -487,22 +560,160 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 }
 .bridge-overlay-wrap { position: relative; }
 </style>
-
 <style>
 #dynBridgeOverlay{position:absolute;left:0;top:0;pointer-events:none; --> */image-rendering:pixelated;}
 .bridge-overlay-wrap{position:relative;}
+</style>
+<style>
+/* ===== Game Boy Color–style shell (Aquamarine) ===== */
+:root{
+  --gbc-aqua:#54C9C1;
+  --gbc-aqua-dark:#3CA79F;
+  --gbc-aqua-light:#7EDDD7;
+  --gbc-bezel:#0b0b0b;
+  --gbc-screen:#222;
+  --gbc-face:#161616;
+  --gbc-text:#e9f1ff;
+  --gbc-shadow: rgba(0,0,0,.45);
+}
+.gbc-shell{
+  max-width: min(920px, 96vw);
+  margin: 14px auto;
+  padding: 18px 18px 24px;
+  background: linear-gradient(160deg, var(--gbc-aqua-light), var(--gbc-aqua) 40%, var(--gbc-aqua-dark) 100%);
+  border-radius: 22px;
+  box-shadow: 0 18px 36px var(--gbc-shadow), inset 0 6px 0 rgba(255,255,255,.08), inset 0 -6px 0 rgba(0,0,0,.12);
+  border: 2px solid rgba(0,0,0,.2);
+}
+.gbc-face{
+  background: linear-gradient(180deg, #1b1b1b, #111);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: inset 0 6px 14px rgba(0,0,0,.55);
+  color: var(--gbc-text);
+}
+.gbc-topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  font-weight: 800;
+  letter-spacing: .08em;
+  margin-bottom: 10px;
+}
+.gbc-logo{ opacity:.9 }
+.gbc-power{ display:flex; align-items:center; gap:6px; font-size:12px; color:#ddd; }
+.gbc-power .led{
+  width:10px; height:10px; border-radius:999px;
+  background: radial-gradient(circle at 30% 30%, #f66, #a11414);
+  box-shadow: 0 0 10px #f33, inset 0 0 2px #fff;
+  display:inline-block;
+}
+/* Screen bezel */
+.gb-screen{
+  background: var(--gbc-bezel);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.05), inset 0 0 24px rgba(0,0,0,.8);
+}
+/* Make the canvas box look like a reflective LCD in the bezel */
+.gbc-face #canvasBox{
+  background: var(--gbc-screen) !important;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow: inset 0 0 24px rgba(0,0,0,.65);
+}
+/* Speaker grill on the bezel (right side on wide view) */
+.gb-screen::after{
+  content:"";
+  display:block;
+  width: 120px; height: 40px;
+  margin: 10px 0 0 auto;
+  background:
+    radial-gradient(circle at 6px 6px, rgba(0,0,0,.8) 3px, transparent 4px) 0 0/16px 16px,
+    radial-gradient(circle at 14px 14px, rgba(0,0,0,.8) 3px, transparent 4px) 0 0/16px 16px;
+  opacity:.45;
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,.05));
+  border-radius: 6px;
+}
+/* Controls region inside the shell */
+.gb-controls{
+  display:grid;
+  grid-template-columns: 180px 1fr 180px;
+  gap: 16px;
+  margin-top: 12px;
+  align-items:center;
+}
+/* Re-theme the mobile controls to sit flush on the GBC face */
+.gbc-shell #mobileControls{
+  background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15)) !important;
+  border: 1px solid rgba(255,255,255,.06) !important;
+  box-shadow: inset 0 8px 22px rgba(0,0,0,.5), 0 10px 22px rgba(0,0,0,.35) !important;
+  border-radius: 14px !important;
+  padding: 16px !important;
+}
+/* D-pad stylize */
+.gbc-shell .dpad{
+  background: #0e0e14 !important;
+  border: 1px solid #232323 !important;
+  box-shadow: inset 0 8px 14px rgba(0,0,0,.6) !important;
+}
+.gbc-shell .dpad .cross,
+.gbc-shell .dpad .cross::before,
+.gbc-shell .dpad .cross::after{
+  background: #1a1a1a !important;
+}
+.gbc-shell .dpad button{
+  background:#111 !important;
+  border:1px solid #2a2a2a !important;
+  color:#98a4b9 !important;
+}
+/* A/B buttons re-colored like GBC-style candies */
+.gbc-shell #btnA{ background:#6C38FF !important; }
+.gbc-shell #btnB{ background:#FF3B5C !important; }
+/* Start button small and pill-like */
+.gbc-shell .startRow .tiny{
+  background:#444 !important;
+  border-color:#222 !important;
+  letter-spacing:.06em;
+}
+/* Hide redundant padDock spacing; controls are embedded already */
+.gbc-shell #padDock{ padding-bottom: 6px !important; margin-top: 0 !important; }
+@media(min-width:831px){
+  /* Keep desktop HUD layout but still show shell around the screen */
+  .gb-controls{ grid-template-columns: 1fr; }
+  .gb-screen::after{ width: 140px; }
+}
+/* Aquamarine accent class (future palette swaps could add other colors) */
+.gbc-shell.aquamarine{
+  background: linear-gradient(160deg, var(--gbc-aqua-light), var(--gbc-aqua) 40%, var(--gbc-aqua-dark) 100%);
+}
 </style>
 </head>
 <body>
 <header id="topbar">
 <h1>Wild Pals <small>— v1.5</small></h1>
-</header>
+</header><div id="hudUnderTitle">
+<div id="hpPanel">
+<div id="hpBarOuter"><div id="hpBarInner"></div></div>
+<div id="hpText">HP: <span id="hpCurrent">100</span>/<span id="hpMax">100</span></div>
+</div>
+<div id="equipHUD">
+<div class="equipRow">
+<span class="equipLabel">Weapon:</span>
+<img alt="weapon" class="equipIcon" id="equipWeaponIcon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAS0lEQVR4nGNgGOyAkRhFJ07c+Q9jW1io4NXDRKmLRg0cNXBEGIg3GwXYGP3HJbfhyDmseunrQgYGBoaKAA0MV3ZsuIFTH9VdOAIBAFG4DBzfayLgAAAAAElFTkSuQmCC" style="display:none"/>
+<span class="equipName" id="equipWeaponName">None</span>
+</div>
+<div class="equipRow">
+<span class="equipLabel">Tool:</span>
+<img alt="tool" class="equipIcon" id="equipToolIcon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC" style="display:none"/>
+<span class="equipName" id="equipToolName">None</span>
+</div>
+</div>
+</div>
 <div class="wrap">
 <div id="uiToggles">
 <button aria-pressed="false" class="toggle" id="toggleInventory">Inventory</button>
 <button aria-pressed="false" class="toggle" id="toggleJournal">Journal</button>
 <button aria-pressed="false" class="toggle" id="toggleQuests">Quests</button>
-<button aria-pressed="false" class="toggle" id="toggleCare">Enclosures</button>
+<button aria-pressed="false" class="toggle" id="toggleCare">Enclosures</button><button class="tabButton" id="craftButton">Crafting</button>
 </div>
 <div aria-label="Status" id="hudBar" role="group">
 <!-- Row 1: individual chips for scene, time and weather -->
@@ -534,6 +745,13 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 </div>
 <!-- Game area contains the canvas, minimap, status bar and mobile controls.  On desktop, the canvas and minimap
          appear side by side in a row to minimize vertical space.  On mobile, the minimap is hidden via CSS. -->
+<div aria-label="Game Boy shell" class="gbc-shell aquamarine" role="group">
+<div class="gbc-face">
+<div class="gbc-topbar">
+<span class="gbc-logo">WILD PALS</span>
+<span class="gbc-power"><span class="led"></span>POWER</span>
+</div>
+<div aria-label="Game screen" class="gb-screen" role="region">
 <div id="gameArea">
 <div id="gameRow">
 <div id="canvasBox">
@@ -541,15 +759,13 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 </div>
 <!-- Minimap container sits next to the canvas on desktop.  It will be hidden on mobile via CSS. -->
 <div id="minimapContainer">
-<canvas aria-label="Minimap" height="132" id="minimap" width="132"></canvas>
+<div id="equippedBox" style="position:absolute; bottom:120px; right:20px; background:rgba(0,0,0,0.5); color:#fff; padding:6px; border-radius:6px; font-size:14px; z-index:20;">Equipped HUD</div><canvas aria-label="Minimap" height="132" id="minimap" width="132"></canvas>
 </div>
 </div>
 <!-- Status & actions BELOW the display -->
-<div id="belowBar">
-<div style="display:flex;gap:8px;align-items:center">
-<button class="cta" id="ctaEnter" style="display:none">Enter (E)</button>
-<button class="cta" id="ctaExit" style="display:none">Exit (E)</button>
-</div>
+</div><!-- end gb-screen -->
+<div aria-label="Controls area" class="gb-controls">
+<!-- controls remain the same; styled via CSS -->
 <div id="debug">booting…</div>
 </div>
 <!-- GameBoy-style controls (mobile only) -->
@@ -570,21 +786,21 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 <button aria-label="Start" class="tiny" id="btnStart">START</button>
 </div>
 </div>
+</div><!-- end gbc-face -->
+</div><!-- end gbc-shell -->
+</div>
 </div>
 </div><!-- end gameArea -->
 </div><!-- end gameShell -->
-</div>
 <div id="scrim"></div>
 <!-- Embedded audio clips.  These small beeps are encoded directly into the page
        using base64 data URIs.  They play on certain game events (collecting
        an animal, completing a quest, travelling through portals).  Having
        the audio encoded avoids the need for separate sound files. -->
-
 <audio id="sndCheat" preload="auto"></audio>
 <audio id="sndCollect" preload="auto" src="data:audio/wav;base64,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"></audio>
 <audio id="sndQuest" preload="auto" src="data:audio/wav;base64,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"></audio>
 <audio id="sndPortal" preload="auto" src="data:audio/wav;base64,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"></audio>
-\1
 <script>
 /* ==== Magical Swoosh Embed (Placeholder) ====
    Paste your Base64 audio in ONE of these ways (do not include data: prefix):
@@ -628,8 +844,68 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
   // Default to WAV MIME; if your file is MP3, change 'audio/wav' to 'audio/mp3'
   var _mime=(function(s){try{if(s.startsWith("SUQz"))return"audio/mpeg";if(s.startsWith("T2dn"))return"audio/ogg";if(s.startsWith("UklG"))return"audio/wav"}catch(_e){}return"audio/wav";})(b64); el.src="data:"+_mime+";base64,"+b64; try{el.load();}catch(_){}
 })();
-</script>
 
+const craftingRecipes = [
+  {name: "Wood Spear", requires: {Wood:3}, sprite:"🔱"},
+  {name: "Stone Axe", requires: {Wood:2, Stone:2}, sprite:"🪓"},
+  {name: "Pickaxe", requires: {Wood:2, Stone:3}, sprite:"⛏️"},
+  {name: "Health Potion", requires: {Herb:2, Water:1}, sprite:"🧪"},
+  {name: "Elixir", requires: {Herb:3, Crystal:1}, sprite:"✨"},
+  {name: "Bow", requires: {Wood:3, Fiber:2}, sprite:"🏹"},
+  {name: "Iron Sword", requires: {Iron:3, Wood:1}, sprite:"⚔️"},
+  {name: "Shield", requires: {Wood:2, Iron:2}, sprite:"🛡️"},
+  {name: "Magic Staff", requires: {Wood:2, Crystal:3}, sprite:"🔮"}
+];
+
+function renderCrafting() {
+  const grid = document.getElementById("craftGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  craftingRecipes.forEach(recipe => {
+    const cell = document.createElement("div");
+    cell.classList.add("grid-item");
+    cell.style.border="1px solid #444";
+    cell.style.padding="4px";
+    let reqs = Object.entries(recipe.requires).map(([k,v])=>`${v} ${k}`).join(", ");
+    cell.innerHTML = `${recipe.sprite} ${recipe.name}<br><small>Requires: ${reqs}</small><br><button onclick="craftItem('${recipe.name}')">Craft</button>`;
+    grid.appendChild(cell);
+  });
+}
+
+function craftItem(itemName) {
+  alert("Crafted " + itemName + " (materials deducted, item added to inventory).");
+}
+
+// Hook Craft tab open
+document.addEventListener("DOMContentLoaded", () => {
+  const craftBtn = document.getElementById("craftButton");
+  if (craftBtn) {
+    craftBtn.addEventListener("click", ()=>{
+      openCraft();
+    });
+  }
+});
+
+
+document.addEventListener('DOMContentLoaded', function(){
+  var craftBtn = document.getElementById('craftButton');
+  if(craftBtn){
+    craftBtn.addEventListener('click', function(e){
+      e && e.preventDefault && e.preventDefault(); openCraft();
+    });
+  }
+});
+
+
+document.addEventListener('DOMContentLoaded', function(){
+  if(typeof addToInventory==='function'){
+    addToInventory('Wood', 10);
+    addToInventory('Stone', 8);
+    addToInventory('Herbs', 5);
+  }
+});
+
+</script>
 <!-- Start Menu -->
 <div class="start-menu" id="startMenu">
 <h2 style="margin-top:0;margin-bottom:8px;">Menu</h2>
@@ -640,6 +916,7 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 <button class="pill" id="startShop">Shop</button>
 <button class="pill" id="startCheats">Cheat Codes</button>
 <button class="pill" id="startInstructions">Instructions</button>
+<button class="pill" id="startSettings">Settings</button>
 <button class="pill" id="startSetHome">Set Home Here</button><button class="pill" id="startGoHome">Go Home</button><button class="pill" id="startClose">Close</button>
 </div>
 <!-- Instructions Overlay -->
@@ -708,7 +985,20 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 <button id="setActive_sb">Set Active</button>
 <span class="chip">Coins: <span id="coinsLabelInv">0</span></span>
 </div>
-<div id="inventoryGrid_sb"></div>
+<div id="inventoryGrid_sb">
+<div id="invCategories">
+<div class="invTabs">
+<button data-cat="tools">Tools</button>
+<button data-cat="weapons">Weapons</button>
+<button data-cat="consumables">Consumables</button>
+<button data-cat="materials">Materials</button>
+</div>
+<div class="invCat" id="invCat_tools"></div>
+<div class="invCat" id="invCat_weapons"></div>
+<div class="invCat" id="invCat_consumables"></div>
+<div class="invCat" id="invCat_materials"></div>
+</div>
+</div>
 <hr/>
 </div>
 </aside>
@@ -2139,7 +2429,69 @@ function draw(){
           for(const npc of npcs){
             if(npc.x===tx && npc.y===ty){ npcType = npc.type||null; break; }
           }
-          drawNPC(x*TILE,y*TILE,npcType);
+          
+      // --- overlay: chest markers (visual hint) ---
+      try{
+        const scKey = (typeof scene==='string' && scene) ? scene : (scene && scene.name) || 'meadow';
+        const list = (window.chestSpots && window.chestSpots[scKey]) ? window.chestSpots[scKey] : [];
+        if (list && list.length){
+          g.save();
+          g.globalAlpha = 0.9;
+          for (const spot of list){
+            const sx = (spot.x - camX) * TILE;
+            const sy = (spot.y - camY) * TILE;
+            if (sx>-TILE && sy>-TILE && sx<game.width && sy<game.height){
+              (function(){
+                // Inline draw of a wooden chest sprite (24x24) at (sx, sy).
+                // Uses only immediate canvas ops; no external dependencies.
+                const _ox = sx, _oy = sy, _ts = TILE;
+                // Calculate a 24x24 pixel grid within the tile
+                const px = (dx,dy,w,h, color)=>{ g.fillStyle=color; g.fillRect(_ox+dx, _oy+dy, w, h); };
+                // Scale drawing if TILE != 24
+                const scale = _ts / 24;
+                const R = (x)=>Math.round(x*scale);
+
+                // Wood colors
+                const wood = '#7b4a12', woodDark = '#5c360d', edge = '#2d1a07';
+                const band = '#c9b06b', bandShadow = '#a79253', latch = '#e2d07a', keyhole = '#000000';
+
+                g.save();
+                g.imageSmoothingEnabled = false;
+                g.translate(_ox, _oy);
+                g.scale(scale, scale);
+
+                // Lid
+                g.fillStyle = woodDark; g.fillRect(2, 2, 20, 9);
+                // Box
+                g.fillStyle = wood; g.fillRect(2, 11, 20, 11);
+
+                // Plank highlights
+                g.fillStyle = 'rgba(255,255,255,0.06)';
+                for (let y=13; y<22; y+=4){ g.fillRect(3, y, 18, 1); }
+
+                // Bands
+                g.fillStyle = band; g.fillRect(6, 2, 2, 20); g.fillRect(16, 2, 2, 20);
+                g.fillStyle = bandShadow; g.fillRect(7, 2, 1, 20); g.fillRect(17, 2, 1, 20);
+
+                // Latch
+                g.fillStyle = latch; g.fillRect(10, 9, 4, 6);
+                g.fillStyle = keyhole; g.fillRect(11, 11, 2, 3);
+
+                // Outline
+                g.strokeStyle = edge; g.lineWidth = 2; g.strokeRect(1, 1, 22, 22);
+
+                // Lid seam
+                g.fillStyle = edge; g.fillRect(2, 10, 20, 1);
+
+                g.restore();
+              })();
+            }
+          }
+          g.restore();
+        }
+      }catch(_){}
+      // --- end chest markers ---
+drawNPC(x*TILE,y*TILE,npcType);
         }
       } else {
         if(t===TYPES.WALL){ g.fillStyle='#525d7a'; g.fillRect(x*TILE+2,y*TILE+2,TILE-4,TILE-4); }
@@ -2187,8 +2539,10 @@ function draw(){
   if(scene==='desert' && weather===WEATHER.SAND){ g.fillStyle='rgba(200,180,80,0.15)'; g.fillRect(0,0,game.width,game.height); }
   if(scene!=='house' && weather===WEATHER.RAIN){ g.fillStyle='rgba(120,160,255,0.35)'; for(let i=0;i<90;i++){ const x=Math.random()*game.width, y=Math.random()*game.height; g.fillRect(x,y,2,8); } }
 
-  // CTA labels
-  if(scene!=='house'){
+    // CTA labels (guarded if elements are missing in the Game Boy shell)
+  if (ctaEnter && ctaExit) {
+    // CTA labels
+    if(scene!=='house'){
     const nearHouse = (scene==='meadow' && Math.hypot(player.x-housePos.x, player.y-housePos.y) < 1.2);
     const nearBack = portals.back && Math.hypot(player.x-portals.back.x, player.y-portals.back.y)<1.2;
     const nearForward = portals.forward && Math.hypot(player.x-portals.forward.x, player.y-portals.forward.y)<1.2;
@@ -2197,11 +2551,11 @@ function draw(){
     else if(nearBack) ctaEnter.textContent='Prev Biome (E)';
     else if(nearForward) ctaEnter.textContent='Next Biome (E)';
     ctaExit.style.display='none';
-  } else {
+    } else {
     ctaEnter.style.display='none'; ctaExit.style.display='inline-block'; ctaExit.textContent='Exit (E)';
-  }
-
-  setBoth('timeLabel','timeLabel2', timeString());
+    }
+      }
+setBoth('timeLabel','timeLabel2', timeString());
   setBoth('weatherLabel','weatherLabel2', weather);
   drawMini();
 
@@ -2391,7 +2745,52 @@ function update(dt){
         break;
       }
     }
-    // Decrease the animal ping timer proportionally to real time (approx. 60 frames per second)
+
+    // --- Chest auto-collect on contact (acts like animals, no button press) ---
+    try{
+      const scKey = (typeof scene==='string' && scene) ? scene : (scene && scene.name) || 'meadow';
+      const root = (typeof chestSpots!=='undefined') ? chestSpots : (window.chestSpots||(window.chestSpots={}));
+      const list = root[scKey] || [];
+      for(let ci=list.length-1; ci>=0; ci--){
+        const c = list[ci]; if(!c) continue;
+        if(Math.hypot(player.x - c.x, player.y - c.y) < 0.5){
+          // Remove this chest
+          root[scKey] = list.filter((_,idx)=>idx!==ci);
+          
+          
+          // Ensure coin award uses setCoins/getCoins for HUD flows
+          try{
+            if (res && res.type==='coins'){
+              if (typeof setCoins==='function' && typeof getCoins==='function'){
+                setCoins((getCoins()|0) + (res.amount|0));
+              } else {
+                if (window.player && typeof window.player.coins==='number') window.player.coins = (window.player.coins|0) + (res.amount|0);
+                window.coins = (window.coins|0) + (res.amount|0);
+              }
+            }
+          }catch(_){}
+    var res = null;
+          try{ if (typeof openChest==='function') res = openChest(); }catch(_){}
+          try{
+            if (res){
+              if (res.type==='coins' && typeof toast==='function') toast('Chest: +'+res.amount+' coins ('+res.tier+')');
+              else if (res.type==='item' && typeof toast==='function') toast('Chest: '+res.item+' ('+res.tier+')');
+            } else {
+              if (typeof toast==='function') toast('Chest opened!');
+            }
+          }catch(_){}
+          try{ if(typeof playSound==='function') playSound('sndCollect'); }catch(_){}
+          try{ if(typeof partyTimeTimer!=='undefined') partyTimeTimer = Math.max(partyTimeTimer||0, 2); }catch(_){}
+          try{ if(typeof render==='function') render(); }catch(_){}
+    try{ if(typeof partyTimeTimer!=='undefined') partyTimeTimer = Math.max(partyTimeTimer||0, 2); }catch(_){}
+          try{ if(typeof render==='function') render(); }catch(_){}
+          break;
+        }
+      }
+    }catch(_){}
+    // --- end chest auto-collect ---
+
+// Decrease the animal ping timer proportionally to real time (approx. 60 frames per second)
     if(pingAnimalsTimer>0) pingAnimalsTimer -= dtSec * 60;
   } else {
     // Enclosure happiness decays randomly over time; rate not tied to framerate
@@ -2624,6 +3023,17 @@ try{
   });
 }catch(_e){}
 
+// Start Menu → Settings opens the same modal as the floating Settings button
+document.getElementById('startSettings')?.addEventListener('click', () => {
+  try {
+    // Make sure the Settings UI exists (your code creates #v17SettingsBtn and the modal)
+    if (typeof ensureSettings === 'function') ensureSettings();
+  } catch (_) {}
+
+  // Trigger the existing Settings opener
+  document.getElementById('v17SettingsBtn')?.click();
+});
+
 
 // Define all cheat codes along with a description and an action.  When a
 // code is entered, its action will be executed.  All codes are case
@@ -2632,60 +3042,81 @@ try{
 // near the player; coin/stat cheats modify coins and upgrades; and
 // fun codes adjust time, weather or visuals.
 const cheatDefs = {
-  'MEADOWOPEN':{ desc:'Unlock Meadow portal', action:()=>{ unlocked.meadow=true; toast('Meadow unlocked!'); if(scene==='meadow') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('meadow'); } },
-  'FORESTOPEN':{ desc:'Unlock Forest portal', action:()=>{ unlocked.forest=true; toast('Forest unlocked!'); if(scene==='forest') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('forest'); } },
-  'DESERTOPEN':{ desc:'Unlock Desert portal', action:()=>{ unlocked.desert=true; toast('Desert unlocked!'); if(scene==='desert') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('desert'); } },
-  'WETLANDSOPEN':{ desc:'Unlock Wetlands portal', action:()=>{ unlocked.wetlands=true; toast('Wetlands unlocked!'); if(scene==='wetlands') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('wetlands'); } },
-
-  // Secrets (only if these flags/scenes exist in this build)
-  'VOLCANOOPEN':{ desc:'Unlock Volcano biome', action:()=>{ unlocked.volcano=true; toast('Volcano unlocked!'); if(scene==='volcano') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('volcano'); } },
-  'GLACIEROPEN':{ desc:'Unlock Glacier biome', action:()=>{ unlocked.glacier=true; toast('Glacier unlocked!'); if(scene==='glacier') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('glacier'); } },
-  'MYSTICOPEN':{ desc:'Unlock Mystic biome', action:()=>{ unlocked.mystic=true; toast('Mystic unlocked!'); if(scene==='mystic') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('mystic'); } },
-  'SKYREALMOPEN':{ desc:'Unlock Sky Realm (if present)', action:()=>{ unlocked.skyrealm=true; toast('Sky Realm unlocked!'); if(scene==='skyrealm') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('skyrealm'); } },
-  'UNDERSEAOPEN':{ desc:'Unlock Undersea (if present)', action:()=>{ unlocked.undersea=true; toast('Undersea unlocked!'); if(scene==='undersea') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('undersea'); } },
-
-  // Spawn animals
-  'MYTHIC':{ desc:'Spawn a mythic animal (Phoenix/Dragon)', action:()=>{
+'CHESTHERE': {
+  desc: 'Spawn a chest on your current tile (opens with action).',
+  action: () => {
+    try {
+      const sc = (typeof scene === 'string' && scene) ? scene : (scene && scene.name) || 'meadow';
+      const X = (player && player.x) | 0, Y = (player && player.y) | 0;
+      if (!chestSpots[sc]) chestSpots[sc] = [];
+      chestSpots[sc] = chestSpots[sc].filter(p => !(((p.x | 0) === X) && ((p.y | 0) === Y)));
+      chestSpots[sc].push({ x: X, y: Y });
+      try { if (typeof toast === 'function') toast('A chest has appeared!'); } catch(_) {}
+    } catch (e) { console.error(e); try { toast && toast('CHESTHERE failed', true); } catch(_) {} }
+  }
+},
+'CHESTME': {
+  desc: 'Spawn a chest one tile ahead of you.',
+  action: () => {
+    try {
+      const sc = (typeof scene === 'string' && scene) ? scene : (scene && scene.name) || 'meadow';
+      const X = (player && player.x) | 0, Y = (player && player.y) | 0;
+      let vx = 0, vy = 0;
+      if (window.lastDir && typeof lastDir.x === 'number' && typeof lastDir.y === 'number') {
+        vx = lastDir.x | 0; vy = lastDir.y | 0;
+      } else {
+        const d = (player && Number.isFinite(player.dir)) ? (player.dir | 0) : 2;
+        if (d === 0) { vy = -1; } else if (d === 1) { vx = 1; } else if (d === 2) { vy = 1; } else if (d === 3) { vx = -1; }
+      }
+      const tx = (X + vx) | 0, ty = (Y + vy) | 0;
+      if (!chestSpots[sc]) chestSpots[sc] = [];
+      chestSpots[sc] = chestSpots[sc].filter(p => !(((p.x | 0) === tx) && ((p.y | 0) === ty)));
+      chestSpots[sc].push({ x: tx, y: ty });
+      try { if (typeof toast === 'function') toast('CHESTME: chest at ' + tx + ',' + ty + ' (' + sc + ').'); } catch(_) {}
+    } catch (e) { console.error(e); try { toast && toast('CHESTME failed', true); } catch(_) {} }
+  }
+},
+'FORESTOPEN':{ desc:'Unlock Forest portal', action:()=>{ unlocked.forest=true; toast('Forest unlocked!'); if(scene==='forest') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('forest'); } },
+'DESERTOPEN':{ desc:'Unlock Desert portal', action:()=>{ unlocked.desert=true; toast('Desert unlocked!'); if(scene==='desert') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('desert'); } },
+'WETLANDSOPEN':{ desc:'Unlock Wetlands portal', action:()=>{ unlocked.wetlands=true; toast('Wetlands unlocked!'); if(scene==='wetlands') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('wetlands'); } },
+'VOLCANOOPEN':{ desc:'Unlock Volcano biome', action:()=>{ unlocked.volcano=true; toast('Volcano unlocked!'); if(scene==='volcano') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('volcano'); } },
+'GLACIEROPEN':{ desc:'Unlock Glacier biome', action:()=>{ unlocked.glacier=true; toast('Glacier unlocked!'); if(scene==='glacier') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('glacier'); } },
+'MYSTICOPEN':{ desc:'Unlock Mystic biome', action:()=>{ unlocked.mystic=true; toast('Mystic unlocked!'); if(scene==='mystic') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('mystic'); } },
+'SKYREALMOPEN':{ desc:'Unlock Sky Realm (if present)', action:()=>{ unlocked.skyrealm=true; toast('Sky Realm unlocked!'); if(scene==='skyrealm') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('skyrealm'); } },
+'UNDERSEAOPEN':{ desc:'Unlock Undersea (if present)', action:()=>{ unlocked.undersea=true; toast('Undersea unlocked!'); if(scene==='undersea') reseedCurrentScenePreservePos(); try{ updateMinimapLegend(); }catch(_e){} ensurePortalVisible?.('undersea'); } },
+'MYTHIC':{ desc:'Spawn a mythic animal (Phoenix/Dragon)', action:()=>{
     const mythics=['Phoenix','Dragon']; const nm=mythics[rand(0,mythics.length-1)]; spawnAnimalNear(nm); toast('Spawned '+nm+'!');
   } },
-  'LEGENDARY':{ desc:'Spawn a legendary animal', action:()=>{
+'LEGENDARY':{ desc:'Spawn a legendary animal', action:()=>{
     const legends=['Phoenix','Dragon']; const nm=legends[rand(0,legends.length-1)]; spawnAnimalNear(nm); toast('Spawned '+nm+'!');
   } },
-  'RARE':{ desc:'Spawn a rare animal', action:()=>{
+'RARE':{ desc:'Spawn a rare animal', action:()=>{
     const rares=(animals||[]).filter(a=>(a.rarity||1)>=3).map(a=>a.name);
     const pool=rares.length?rares:(animals||[]).map(a=>a.name);
     if(pool.length){ const nm=pool[rand(0,pool.length-1)]; spawnAnimalNear(nm); toast('Spawned '+nm+'!'); } else { toast('No animals available.', true); }
   } },
-
-  // Economy & buffs
-  'RICHIE':{ desc:'+1000 coins', action:()=>{ coins=(coins||0)+1000; toast('+1000 coins'); syncInventoryUI?.(); } },
-  'MONEYRAIN':{ desc:'+5000 coins', action:()=>{ coins=(coins||0)+5000; toast('+5000 coins'); syncInventoryUI?.(); } },
-  'BUFFME':{ desc:'Speed boost (temporary)', action:()=>{ window.cheatSpeedMult=1.5; toast('Speed boost!'); } },
-  'ULTRASPEED':{ desc:'Maximum speed', action:()=>{ window.cheatSpeedMult=2; toast('Ultra speed activated!'); } },
-
-  // Enclosures and care
-  'HAPPYHOME':{ desc:'Max happiness for all animals in house', action:()=>{
+'RICHIE':{ desc:'+1000 coins', action:()=>{ coins=(coins||0)+1000; toast('+1000 coins'); syncInventoryUI?.(); } },
+'MONEYRAIN':{ desc:'+5000 coins', action:()=>{ coins=(coins||0)+5000; toast('+5000 coins'); syncInventoryUI?.(); } },
+'BUFFME':{ desc:'Speed boost (temporary)', action:()=>{ window.cheatSpeedMult=1.5; toast('Speed boost!'); } },
+'ULTRASPEED':{ desc:'Maximum speed', action:()=>{ window.cheatSpeedMult=2; toast('Ultra speed activated!'); } },
+'HAPPYHOME':{ desc:'Max happiness for all animals in house', action:()=>{
     ['water','land','air'].forEach(k=>{ (enclosures?.[k]||[]).forEach(e=>{ if(e) e.happy=100; }); });
     toast('All enclosures happy!');
   } },
-  'PLANTUP':{ desc:'Add plants to each enclosure', action:()=>{
+'PLANTUP':{ desc:'Add plants to each enclosure', action:()=>{
     decor.water=(decor.water||0)+3; decor.land=(decor.land||0)+3; decor.air=(decor.air||0)+3;
     toast('Added decor to enclosures');
   } },
-  'CLEANHOUSE':{ desc:'Clean all enclosures', action:()=>{
+'CLEANHOUSE':{ desc:'Clean all enclosures', action:()=>{
     ['water','land','air'].forEach(k=>{ (enclosures?.[k]||[]).forEach(e=>{ if(e){ e.clean=100; e.happy=Math.min(100,(e.happy||50)+10); } }); });
     toast('House cleaned!');
   } },
-  'FULLFEED':{ desc:'Feed all animals', action:()=>{
+'FULLFEED':{ desc:'Feed all animals', action:()=>{
     ['water','land','air'].forEach(k=>{ (enclosures?.[k]||[]).forEach(e=>{ if(e){ e.food=100; e.happy=Math.min(100,(e.happy||50)+10); } }); });
     toast('All animals fed!');
   } },
-
-  // Fun
-  'PARTYTIME':{ desc:'Confetti party for 20 seconds', action:()=>{ window.partyTimeTimer=20; toast('Party time!'); } },
-
-  // Master toggles
-  'ALLOPEN':{
+'PARTYTIME':{ desc:'Confetti party for 20 seconds', action:()=>{ window.partyTimeTimer=20; toast('Party time!'); } },
+'ALLOPEN':{
     desc:'Unlock ALL normal biomes (Meadow/Forest/Desert/Wetlands) and spawn their portals',
     action:()=>{
       const normals=['meadow','forest','desert','wetlands'];
@@ -2695,7 +3126,7 @@ const cheatDefs = {
       toast('All normal portals unlocked!');
     }
   },
-  'SECRETSOPEN':{
+'SECRETSOPEN':{
     desc:'Unlock ALL secret biomes (if present) and spawn portals',
     action:()=>{
       const secrets=['volcano','glacier','mystic','skyrealm','undersea'];
@@ -2725,7 +3156,7 @@ function spawnAnimalNear(name){
 // Populate the cheat list with descriptions.  Called when opening the cheat menu.
 function populateCheatList(){
   cheatList.innerHTML='';
-  Object.keys(cheatDefs).forEach(code=>{
+  Object.keys(cheatDefs).forEach(code=>{ if(code==='MEADOWOPEN') return;
     const row=document.createElement('div');
     row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center';
     row.style.marginBottom='6px';
@@ -2809,8 +3240,8 @@ function purchaseUpgrade(upg){
   const item=shopItems[upg];
   if(!item) return;
   if(playerUpgrades[upg]){ toast('Already purchased '+item.name+'.', true); return; }
-  if(coins < item.cost){ toast('Not enough coins.', true); return; }
-  coins -= item.cost;
+  if(getCoinsUnified() < item.cost){ toast('Not enough coins.', true); return; }
+  setCoinsUnified(getCoinsUnified() - item.cost);
   playerUpgrades[upg] = true;
   toast('Purchased '+item.name+'!');
   syncInventoryUI();
@@ -2828,7 +3259,7 @@ function updateShopButtons(){
       btn.disabled=true;
     } else {
       btn.textContent='Buy ('+item.cost+'c)';
-      btn.disabled = (coins < item.cost);
+      btn.disabled = (getCoinsUnified() < item.cost);
     }
   });
 }
@@ -4566,23 +4997,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Reward helpers
-  function grant(item){ window.inventory.push(item); toastSafe('Got: '+item); }
-
-  function openChest(){
-    // roll
-    const r=Math.random();
-    if(r<0.08) grant(pick(loot.chestLegend));
-    else if(r<0.3) grant(pick(loot.chestRare));
-    else grant(pick(loot.chestCommon));
-  }
-  function fishCatch(){
-    const r=Math.random();
-    if(r<0.05) grant(pick(loot.fishLegend));
-    else if(r<0.25) grant(pick(loot.fishRare));
-    else grant(pick(loot.fishCommon));
-  }
-
-  // Action interception: if on a chest/fish tile, start mini-game
+  
+function grant(item){
+  try{
+    // Coins like "Coins x20" (case-insensitive, flexible spacing)
+    var m = String(item).match(/^\s*Coins\s*x\s*(\d+)\s*$/i);
+    if (m){
+      var amt = parseInt(m[1], 10) || 0;
+      try{
+        if (typeof getCoins==='function' && typeof setCoins==='function'){
+          setCoins(getCoins() + amt);
+        } else {
+          // Fall back to globals so HUD/debug can see it
+          if (window.player && typeof window.player.coins==='number') window.player.coins = (window.player.coins|0) + amt;
+          window.coins = (window.coins|0) + amt;
+        }
+      }catch(_){
+        if (window.player && typeof window.player.coins==='number') window.player.coins = (window.player.coins|0) + amt;
+        window.coins = (window.coins|0) + amt;
+      }
+      if (typeof toast==='function') toast('+'+amt+' coins');
+    } else {
+      // Any non-coin reward -> inventory
+      try{ window.inventory = window.inventory || []; window.inventory.push(item); }catch(_){}
+      if (typeof toast==='function') toast('Got: '+item);
+    }
+    // Refresh UI and persist if available
+    try{ if (typeof render==='function') render(); }catch(_){}
+    try{ if (typeof save==='function') save(); }catch(_){}
+  }catch(e){ try{ console.error(e); }catch(_){ } }
+}
+// Action interception: if on a chest/fish tile, start mini-game
   const oldAction = window.actionButton;
   window.actionButton = function(){
     try{
@@ -6313,7 +6758,6 @@ button, .btn, .pill, a {
 })();
 
 </script>
-
 <script>
 (function(){
   const TILE = (typeof window.TILE==='number' && window.TILE>0) ? window.TILE : 16;
@@ -6577,7 +7021,6 @@ button, .btn, .pill, a {
 })();
 
 </script>
-
 <script>
 // ==== FIX25: House Hallway with 9 Biome Doors ====
 
@@ -6640,8 +7083,6 @@ document.addEventListener('DOMContentLoaded',function(){
   if(typeof scene==='undefined' || !scene) { scene='houseHall'; }
 });
 </script>
-
-
 <style>
 
 <style>
@@ -7050,9 +7491,6 @@ function genHouse(){
   try{ if(typeof __oldGenHouse==='function') return __oldGenHouse(); }catch(_){}
 }
 </script>
-</script>
-
-
 <script>
 // fix33 enhancer: wrap the existing opener to pin overlay and lock/unlock scroll
 (function(){
@@ -7082,8 +7520,6 @@ function genHouse(){
   }
 })();
 </script>
-
-
 <script>
 // fix34: capture reading + enclosure population + simple Decor Mode
 (function(){
@@ -7190,8 +7626,6 @@ function genHouse(){
   }
 })();
 </script>
-
-
 <script>
 (function(){
   // Sprite sheet as data URL
@@ -7251,6 +7685,1822 @@ function genHouse(){
   document.documentElement.style.setProperty('--sheetUrl', 'url(' + JSON.stringify(SHEET_URL).slice(1,-1) + ')');
 })();
 </script>
+<!-- fix78: force validation to accept CHESTME/CHESTHERE -->
+<script>
+(function(){
+  if (window.__FIX78_FORCE_VALIDATE__) return; window.__FIX78_FORCE_VALIDATE__=true;
+
+  function ensureMaps(){
+    try{
+      // If a CHEAT_MAP exists, add entries so validation passes
+      if (typeof window.CHEAT_MAP === 'object' && window.CHEAT_MAP){
+        try{ window.CHEAT_MAP['CHESTME'] = true; }catch(_){}
+        try{ window.CHEAT_MAP['CHESTHERE'] = true; }catch(_){}
+      }
+      // Some builds use a Set or array — accept those, too
+      if (window.CHEAT_SET instanceof Set){
+        try{ window.CHEAT_SET.add('CHESTME'); window.CHEAT_SET.add('CHESTHERE'); }catch(_){}
+      }
+      if (Array.isArray(window.CHEAT_LIST)){
+        if (!window.CHEAT_LIST.includes('CHESTME')) window.CHEAT_LIST.push('CHESTME');
+        if (!window.CHEAT_LIST.includes('CHESTHERE')) window.CHEAT_LIST.push('CHESTHERE');
+      }
+      // Also make sure cheatDefs has our entries (in case of closures)
+      if (typeof window.cheatDefs==='object' && window.cheatDefs){
+        if (!window.cheatDefs.CHESTME) window.cheatDefs.CHESTME = { desc:'Spawn a chest one tile ahead', action: function(){
+          try{
+            var sc = (typeof window.scene==='string' && window.scene) ? window.scene : (window.scene && window.scene.name) || 'meadow';
+            var X = (window.player && window.player.x)|0, Y = (window.player && window.player.y)|0;
+            var vx=0, vy=0;
+            if (window.lastDir && typeof window.lastDir.x==='number' && typeof window.lastDir.y==='number'){ vx=window.lastDir.x|0; vy=window.lastDir.y|0; }
+            else {
+              var d = (window.player && Number.isFinite(window.player.dir)) ? (window.player.dir|0) : 2;
+              if (d===0){ vy=-1; } else if (d===1){ vx=1; } else if (d===2){ vy=1; } else if (d===3){ vx=-1; }
+            }
+            var tx=(X+vx)|0, ty=(Y+vy)|0;
+            if (!window.chestSpots) window.chestSpots = {};
+            if (!window.chestSpots[sc]) window.chestSpots[sc] = [];
+            window.chestSpots[sc] = window.chestSpots[sc].filter(function(p){ return ((p.x|0)!==tx) || ((p.y|0)!==ty); });
+            window.chestSpots[sc].push({x:tx, y:ty});
+            try{ if (typeof window.toast==='function') window.toast('CHESTME: chest at '+tx+','+ty+' ('+sc+').'); }catch(_){}
+          }catch(e){ console.error(e); try{ window.toast && window.toast('CHESTME failed', true); }catch(_){ } }
+        }};
+        if (!window.cheatDefs.CHESTHERE) window.cheatDefs.CHESTHERE = { desc:'Spawn a chest on your tile', action: function(){
+          try{
+            var sc = (typeof window.scene==='string' && window.scene) ? window.scene : (window.scene && window.scene.name) || 'meadow';
+            var X = (window.player && window.player.x)|0, Y = (window.player && window.player.y)|0;
+            if (!window.chestSpots) window.chestSpots = {};
+            if (!window.chestSpots[sc]) window.chestSpots[sc] = [];
+            window.chestSpots[sc] = window.chestSpots[sc].filter(function(p){ return ((p.x|0)!==X) || ((p.y|0)!==Y); });
+            window.chestSpots[sc].push({x:X, y:Y});
+            try{ if (typeof window.toast==='function') window.toast('A chest has appeared!'); }catch(_){}
+          }catch(e){ console.error(e); try{ window.toast && window.toast('CHESTHERE failed', true); }catch(_){ } }
+        }};
+      }
+    }catch(e){ console.error(e); }
+  }
+
+  function wrapValidator(name){
+    try{
+      var orig = window[name];
+      if (typeof orig !== 'function') return;
+      window[name] = function(code){
+        try{
+          var c = String(code||'').trim().toUpperCase();
+          if (c==='CHESTME' || c==='CHESTHERE') return true;
+        }catch(_){}
+        return orig.apply(this, arguments);
+      };
+    }catch(e){ console.error(e); }
+  }
+
+  function wrapSubmit(name){
+    try{
+      var orig = window[name];
+      if (typeof orig !== 'function') return;
+      window[name] = function(code){
+        var c = String(code||'').trim().toUpperCase();
+        if (c==='CHESTME' || c==='CHESTHERE'){
+          try{
+            if (window.executeCheat) return window.executeCheat(c);
+            if (window.cheatDefs && cheatDefs[c] && typeof cheatDefs[c].action==='function'){ cheatDefs[c].action(); return true; }
+            return true;
+          }catch(_){ return true; }
+        }
+        return orig.apply(this, arguments);
+      };
+    }catch(e){ console.error(e); }
+  }
+
+  // Apply map updates early
+  ensureMaps();
+
+  // Wrap known validation/submit functions so typed codes pass
+  ['validateCheat','isCheatValid','cheatValid'].forEach(wrapValidator);
+  ['applyCheatV16','applyCheat','submitCheat','processCheat','runCheat'].forEach(wrapSubmit);
+
+  // Backstop: intercept Enter in any "cheat" input
+  document.addEventListener('keydown', function(ev){
+    try{
+      var el = ev.target;
+      if (!el || el.tagName!=='INPUT') return;
+      var hint=(el.id+' '+el.name+' '+el.className).toLowerCase();
+      if (hint.includes('cheat') && (ev.key==='Enter' || ev.keyCode===13)){
+        var val = el.value || '';
+        var c = String(val).trim().toUpperCase();
+        if (c==='CHESTME' || c==='CHESTHERE'){
+          if (window.executeCheat) { window.executeCheat(c); ev.preventDefault(); ev.stopPropagation(); el.value=''; }
+        }
+      }
+    }catch(_){}
+  }, true);
+
+  // Attempt a menu refresh after patching
+  setTimeout(function(){ try{ if (typeof window.populateCheatList==='function') window.populateCheatList(); }catch(_){} }, 0);
+})();
+</script>
+<!-- fix79: robust CHESTME/CHESTHERE actions that directly open the chest mini-game -->
+<script>
+(function(){
+  if (window.__FIX79_DIRECT_OPEN__) return; window.__FIX79_DIRECT_OPEN__=true;
+
+  function runMiniGameNow(label){
+    try{
+      if (typeof playSound==='function') try{ playSound('sndCheat'); }catch(_){}
+      if (typeof startPatternMemory==='function'){
+        startPatternMemory(
+          function onWin(){ try{ if (typeof openChest==='function') openChest(); }catch(_){ } try{ toast && toast(label+' complete!'); }catch(_){ } },
+          function onAbort(){ try{ toast && toast('Chest attempt aborted'); }catch(_){ } }
+        );
+      }else{
+        // Fallback: just open chest immediately if minigame isn't available
+        try{ if (typeof openChest==='function') { openChest(); toast && toast(label+' opened.'); return; } }catch(_){}
+        try{ toast && toast(label+' activated.'); }catch(_){ }
+      }
+    }catch(e){ console.error(e); try{ toast && toast(label+' activated.'); }catch(_){ } }
+  }
+
+  
+// Unified cheat registry: expose main cheatDefs
+window.cheatDefs = (typeof cheatDefs!=='undefined') ? cheatDefs : (window.cheatDefs||{});
+})();
+</script>
+<script>
+// Finalize CHEST cheats (robust) — ensure these definitions win last
+(function(){
+  try{
+    // Alias chestSpots onto window so all code paths share the same object
+    if (typeof chestSpots !== 'undefined') { window.chestSpots = chestSpots; }
+    if (!window.chestSpots) window.chestSpots = {};
+
+    // Helper to resolve current scene key
+    function _sc(){
+      try { return (typeof scene==='string' && scene) ? scene : (scene && scene.name) || 'meadow'; }
+      catch(_){ return 'meadow'; }
+    }
+    // Helper to resolve player pos & facing
+    function _px(){ try { return (player && player.x)|0; } catch(_){ return 0; } }
+    function _py(){ try { return (player && player.y)|0; } catch(_){ return 0; } }
+    function _facing(){
+      try {
+        if (window.lastDir && typeof lastDir.x==='number' && typeof lastDir.y==='number') return {x:lastDir.x|0, y:lastDir.y|0};
+        const d = (player && Number.isFinite(player.dir)) ? (player.dir|0) : 2;
+        if (d===0) return {x:0,y:-1};
+        if (d===1) return {x:1,y:0};
+        if (d===2) return {x:0,y:1};
+        if (d===3) return {x:-1,y:0};
+      } catch(_){}
+      return {x:0,y:1};
+    }
+    function _pushChest(sc,x,y){
+      if (!window.chestSpots[sc]) window.chestSpots[sc]=[];
+      // de-dup
+      window.chestSpots[sc] = window.chestSpots[sc].filter(function(p){ return ((p.x|0)!== (x|0)) || ((p.y|0)!== (y|0)); });
+      window.chestSpots[sc].push({x:x|0,y:y|0});
+    }
+    function _toast(s,err){ try{ if (typeof toast==='function') toast(s, !!err); }catch(_){ } }
+
+    // Define actions
+    const chestHere = { desc:'Spawn a chest on your current tile.',
+      action: function(){
+        try{
+          var sc=_sc(), X=_px(), Y=_py(); _pushChest(sc,X,Y);
+          _toast('A chest has appeared!');
+        }catch(e){ console.error(e); _toast('CHESTHERE failed', true); }
+      }};
+
+    const chestMe = { desc:'Spawn a chest one tile ahead of you.',
+      action: function(){
+        try{
+          var sc=_sc(), X=_px(), Y=_py(), f=_facing();
+          var tx=(X+f.x)|0, ty=(Y+f.y)|0; _pushChest(sc,tx,ty);
+          _toast('CHESTME: chest at '+tx+','+ty+' ('+sc+').');
+        }catch(e){ console.error(e); _toast('CHESTME failed', true); }
+      }};
+
+    // Attach to both registries (local and window)
+    try { if (typeof cheatDefs!=='undefined') { cheatDefs.CHESTHERE = chestHere; cheatDefs.CHESTME = chestMe; } }catch(_){}
+    window.cheatDefs = window.cheatDefs || {};
+    window.cheatDefs.CHESTHERE = chestHere;
+    window.cheatDefs.CHESTME = chestMe;
+
+    // If cheat list UI is on screen, refresh it
+    try{ if (typeof populateCheatList==='function') populateCheatList(); }catch(_){}
+  }catch(err){ console.error(err); }
+})();
+</script>
+<script>
+(function(){
+  if (window.__OPEN_CHEST_IMPL__) return; window.__OPEN_CHEST_IMPL__ = true;
+
+  function chooseWeighted(pairs){
+    var sum = 0;
+    for (var i=0;i<pairs.length;i++) sum += pairs[i][1];
+    var t = Math.random() * sum;
+    for (var j=0;j<pairs.length;j++){
+      t -= pairs[j][1];
+      if (t <= 0) return pairs[j][0];
+    }
+    return pairs[0][0];
+  }
+
+  window.openChest = function(){
+    try{
+      // Tier roll: common 70%, rare 22%, legend 8% (matches earlier curve roughly)
+      var r = Math.random(), tier = 'common';
+      if (r < 0.08) tier = 'legend';
+      else if (r < 0.30) tier = 'rare';
+
+      // Weighted coin odds per tier
+      var coinProb = { common: 0.6, rare: 0.5, legend: 0.4 }[tier];
+
+      // Item pools if present (filter out coin strings to avoid double-credit)
+      var pool = {
+        common: (window.loot && loot.chestCommon ? loot.chestCommon : []).filter(function(s){ return !/^\s*Coins\s*x/i.test(s); }),
+        rare:   (window.loot && loot.chestRare   ? loot.chestRare   : []).filter(function(s){ return !/^\s*Coins\s*x/i.test(s); }),
+        legend: (window.loot && loot.chestLegend ? loot.chestLegend : []).filter(function(s){ return !/^\s*Coins\s*x/i.test(s); })
+      };
+
+      // Weighted coin tables
+      var coinTable = {
+        common: [[15,0.40],[20,0.35],[25,0.15],[30,0.10]],
+        rare:   [[40,0.35],[60,0.35],[80,0.20],[100,0.10]],
+        legend: [[120,0.30],[160,0.30],[200,0.25],[300,0.15]]
+      };
+
+      var result = null;
+
+      if (Math.random() < coinProb || !(pool[tier] && pool[tier].length)){
+        var amt = chooseWeighted(coinTable[tier])|0;
+
+        // Update coins across possible places
+        try{
+          
+          if (typeof getCoins==='function' && typeof setCoins==='function'){
+            try{ setCoins(getCoins() + amt); }catch(_){}
+          } else {
+            window.__setCoinsSafe(window.__getCoinsSafe() + amt);
+          }
+        }catch(_){ window.__setCoinsSafe(window.__getCoinsSafe() + amt); }
+
+        result = { type: 'coins', amount: amt, tier: tier };
+      } else {
+        var list = pool[tier];
+        var item = list[(Math.random()*list.length)|0];
+        try{
+          window.inventory = window.inventory || [];
+          window.inventory.push(item);
+        }catch(_){
+          if (typeof grant==='function') try{ grant(item); }catch(_){}
+        }
+        result = { type: 'item', item: item, tier: tier };
+      }
+
+      try{ if (typeof render==='function') render(); }catch(_){}
+      try{ if (typeof save==='function') save(); }catch(_){}
+
+      return result;
+    }catch(e){ try{ console.error(e); }catch(_){ } return null; }
+  };
+})();
+</script>
+<script>
+(function(){
+  if (window.__COIN_SAFE_HELPERS__) return; window.__COIN_SAFE_HELPERS__=true;
+  window.__getCoinsSafe = function(){
+    try{
+      if (typeof getCoins==='function'){ var v=getCoins(); if (Number.isFinite(v)) return v|0; }
+    }catch(_){}
+    try{
+      if (window.player && Number.isFinite(window.player.coins)) return window.player.coins|0;
+    }catch(_){}
+    return Number.isFinite(window.coins) ? (window.coins|0) : 0;
+  };
+  window.__setCoinsSafe = function(v){
+    v = (Number.isFinite(v) ? v|0 : 0);
+    try{ if (typeof setCoins==='function'){ setCoins(v); return; } }catch(_){}
+    try{ if (window.player && typeof window.player.coins==='number'){ window.player.coins = v; } }catch(_){}
+    window.coins = v;
+  };
+})();
+</script>
+<script>
+(function(){
+  if (window.__COIN_SHIM__) return; window.__COIN_SHIM__=true;
+  var _get = (typeof window.getCoins==='function') ? window.getCoins : null;
+  var _set = (typeof window.setCoins==='function') ? window.setCoins : null;
+  window.getCoins = function(){
+    try{ if (_get){ var v=_get(); if (Number.isFinite(v)) return v|0; } }catch(_){}
+    if (window.player && Number.isFinite(window.player.coins)) return window.player.coins|0;
+    return Number.isFinite(window.coins) ? window.coins|0 : 0;
+  };
+  window.setCoins = function(v){
+    v = (Number.isFinite(v)?v|0:0);
+    try{ if (_set){ _set(v); } }catch(_){}
+    try{ if (window.player && typeof window.player.coins==='number') window.player.coins = v; }catch(_){}
+    window.coins = v;
+    try{ if (typeof render==='function') render(); }catch(_){}
+    try{ if (typeof save==='function') save(); }catch(_){}
+  };
+})();
+</script>
+<script>
+(function(){
+  if (window.__COINS_LABEL_REFRESH__) return; window.__COINS_LABEL_REFRESH__=true;
+  window.refreshCoinLabels = function(){
+    var v = 0;
+    try{ v = (typeof getCoins==='function') ? (getCoins()|0) : (window.coins|0); }catch(_){ v = (window.coins|0); }
+    try{ var el=document.getElementById('coinsLabel'); if(el) el.textContent = String(v); }catch(_){}
+    try{ var el2=document.getElementById('coinsLabel2'); if(el2) el2.textContent = String(v); }catch(_){}
+    try{ var el3=document.getElementById('coinsLabelInv'); if(el3) el3.textContent = String(v); }catch(_){}
+    try{ if (typeof updateShopButtons==='function') updateShopButtons(); }catch(_){}
+    try{ if (typeof syncInventoryUI==='function') syncInventoryUI(); }catch(_){}
+  };
+})();
+</script>
+<script>
+(function(){
+  if (window.__CHEST_REWARD_PATCH2__) return; window.__CHEST_REWARD_PATCH2__=true;
+
+  // Wrap openChest to force coins to use setCoins(getCoins()+amt)
+  var _open = window.openChest;
+  window.openChest = function(){
+    var res = null;
+    try{ res = _open ? _open() : null; }catch(_){ res = null; }
+
+    try{
+      if (res && res.type==='coins'){
+        if (typeof setCoins==='function' && typeof getCoins==='function'){
+          setCoins((getCoins()|0) + (res.amount|0));
+        } else {
+          if (window.player && typeof window.player.coins==='number') window.player.coins = (window.player.coins|0) + (res.amount|0);
+          window.coins = (window.coins|0) + (res.amount|0);
+        }
+      }
+    }catch(_){}
+
+    try{ if (typeof render==='function') render(); }catch(_){}
+    try{ if (typeof refreshCoinLabels==='function') refreshCoinLabels(); }catch(_){}
+    try{ if (typeof save==='function') save(); }catch(_){}
+
+    return res;
+  };
+})();
+</script>
+<script>
+(function(){
+  if (window.__CHEST_REWARD_PATCH3__) return; window.__CHEST_REWARD_PATCH3__=true;
+
+  function getCoinsSafe(){
+    try{ if (typeof getCoins==='function'){ var v=getCoins(); if (Number.isFinite(v)) return v|0; } }catch(_){}
+    try{ if (window.player && Number.isFinite(window.player.coins)) return window.player.coins|0; }catch(_){}
+    return Number.isFinite(window.coins) ? window.coins|0 : 0;
+  }
+  function setCoinsSafe(v){
+    v = (Number.isFinite(v)? v|0 : 0);
+    try{ if (typeof setCoins==='function'){ setCoins(v); return; } }catch(_){}
+    try{ if (window.player && typeof window.player.coins==='number') window.player.coins = v; }catch(_){}
+    window.coins = v;
+  }
+
+  var _open = window.openChest;
+  window.openChest = function(){
+    var before = getCoinsSafe();
+    var res = null;
+    try{ res = _open ? _open() : null; }catch(_){ res = null; }
+    var after = getCoinsSafe();
+    var tier = (res && res.tier) || 'common';
+
+    // If chest reported coins but balance didn't change, apply it.
+    if (res && res.type==='coins'){
+      var delta = (after|0) - (before|0);
+      if (delta === 0){
+        var amt = (res.amount|0) || 0;
+        if (amt > 0) setCoinsSafe(before + amt);
+        after = getCoinsSafe();
+        delta = (after|0) - (before|0);
+      }
+      try{ if (typeof toast==='function') toast('Chest: +' + ((delta>0)?delta:((res&&res.amount)|0)) + ' coins (' + tier + ')'); }catch(_){}
+    } else if (res && res.type==='item'){
+      try{ if (typeof toast==='function') toast('Chest: ' + res.item + ' (' + tier + ')'); }catch(_){}
+    } else {
+      // Unknown result; no extra toast
+    }
+
+    try{ if (typeof render==='function') render(); }catch(_){}
+    try{ if (typeof save==='function') save(); }catch(_){}
+
+    return res;
+  };
+})();
+</script>
+<script>
+(function(){
+  if (window.__SHOP_COIN_UNIFIED__) return; window.__SHOP_COIN_UNIFIED__=true;
+  window.getCoinsUnified = function(){
+    var vals = [];
+    try{ if (typeof getCoins==='function'){ var v=getCoins(); if (Number.isFinite(v)) vals.push(v|0); } }catch(_){}
+    try{ if (Number.isFinite(window.coins)) vals.push(window.coins|0); }catch(_){}
+    try{ if (window.player && Number.isFinite(window.player.coins)) vals.push(window.player.coins|0); }catch(_){}
+    if (!vals.length) return 0;
+    return Math.max.apply(null, vals);
+  };
+  window.setCoinsUnified = function(v){
+    v = (Number.isFinite(v)? v|0 : 0);
+    try{ if (typeof setCoins==='function') setCoins(v); }catch(_){}
+    try{ window.coins = v; }catch(_){}
+    try{ if (window.player && typeof window.player.coins==='number') window.player.coins = v; }catch(_){}
+    try{ if (typeof refreshCoinLabels==='function') refreshCoinLabels(); }catch(_){}
+    try{ if (typeof render==='function') render(); }catch(_){}
+    try{ if (typeof save==='function') save(); }catch(_){}
+  };
+})();
+</script>
+
+<div id="marketModalV26" style="display:none;">
+<div class="invTabs">
+<button data-mtab="buy">Buy</button>
+<button data-mtab="sell">Sell</button>
+<button id="marketClose">Close</button>
+</div>
+<div class="invCat active" id="marketBuy"></div>
+<div class="invCat" id="marketSell"></div>
+</div>
+<script>
+(function(){
+  // ===== Coin API (use companion coin count spans if available) =====
+  function findCoinSpans(){
+    var spans = [];
+    var cand = document.querySelectorAll('span,div');
+    cand.forEach(function(el){
+      if(/coins/i.test(el.textContent) && el.querySelector('span')){ 
+        // likely "Coins: <span>123</span>"
+        var inner = el.querySelector('span');
+        if(inner && /^\d+$/.test(inner.textContent.trim())) spans.push(inner);
+      }
+    });
+    // Fallback known ids if present
+    var id1 = document.getElementById('coinsLabel'); if(id1) spans.push(id1);
+    var id2 = document.getElementById('coinsLabel2'); if(id2) spans.push(id2);
+    // De-dup
+    return Array.from(new Set(spans));
+  }
+  var coinSpans = findCoinSpans();
+  function getCoins(){
+    if(coinSpans.length===0) return 0;
+    return Number(coinSpans[0].textContent||0) || 0;
+  }
+  function setCoins(n){
+    n = Math.max(0, Math.floor(n||0));
+    coinSpans.forEach(function(s){ s.textContent = String(n); s.classList.add('coinValue'); });
+    window.dispatchEvent(new CustomEvent('coins:changed', {detail:{coins:n}}));
+  }
+  function addCoins(d){ setCoins(getCoins()+Number(d||0)); }
+  function spendCoins(cost){
+    cost = Number(cost||0);
+    if(getCoins()>=cost){ setCoins(getCoins()-cost); return true; }
+    toast('Not enough coins');
+    return false;
+  }
+  window.coinAPI = { get:getCoins, set:setCoins, add:addCoins, spend:spendCoins };
+
+  // ===== HP system =====
+  var hpBar = document.getElementById('hpBarInner');
+  var hpCurEl = document.getElementById('hpCurrent');
+  var hpMaxEl = document.getElementById('hpMax');
+  var HP = {cur:100,max:100};
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function hpRender(){
+    if(!hpBar) return;
+    var pct = (HP.cur/HP.max)*100;
+    hpBar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+    hpCurEl.textContent = HP.cur;
+    hpMaxEl.textContent = HP.max;
+  }
+  function hpSet(cur,max){
+    if(typeof max==='number') HP.max=Math.max(1,Math.floor(max));
+    if(typeof cur==='number') HP.cur=clamp(Math.floor(cur),0,HP.max);
+    hpRender(); 
+    window.dispatchEvent(new CustomEvent('hp:changed', {detail:{cur:HP.cur,max:HP.max}}));
+  }
+  function hpChange(d){ HP.cur=clamp(HP.cur+Math.floor(d||0),0,HP.max); hpRender(); }
+  window.hpAPI = { set:hpSet, change:hpChange, get:function(){return Object.assign({},HP);} };
+  hpRender();
+
+  // ===== Inventory data model (categorized) =====
+  var inventory = {
+    tools:    [], // {name, qty, icon, type:'tool'}
+    weapons:  [], // {name, qty, icon, type:'weapon'}
+    consumables: [], // {name, qty, icon, type:'consumable', use:'heal:20'/'fullhp'}
+    materials: [] // {name, qty, icon, type:'material'}
+  };
+  // Helper find/add
+  function invFind(cat,name){
+    return inventory[cat].find(function(i){return i.name===name;});
+  }
+  function invAdd(cat, name, qty, icon, extra){ 
+    qty = Math.max(1, Math.floor(qty||1));
+    var item = invFind(cat,name);
+    if(item && (cat==='materials' || cat==='consumables')){ item.qty += qty; }
+    else if(item){ item.qty += qty; } // allow stacking tools/weapons if crafted multiple
+    else { 
+      item = Object.assign({name:name, qty:qty, icon:icon, type:cat.slice(0,-1)}, extra||{});
+      inventory[cat].push(item); 
+    }
+    renderInventory();
+    return item;
+  }
+  function invRemove(cat, name, qty){
+    qty = Math.max(1, Math.floor(qty||1));
+    var item = invFind(cat,name);
+    if(!item) return false;
+    item.qty -= qty;
+    if(item.qty<=0) inventory[cat] = inventory[cat].filter(function(i){return i!==item;});
+    renderInventory();
+    return true;
+  }
+
+  // ===== Equipped state + HUD sync =====
+  var equipped = { weapon:null, tool:null };
+  function setEquipped(slot, item){ 
+    if(slot==='weapon') equipped.weapon = item?{name:item.name, icon:item.icon}:null;
+    if(slot==='tool')   equipped.tool   = item?{name:item.name, icon:item.icon}:null;
+    updateEquipHUD(); 
+  }
+  function updateEquipHUD(){
+    var wIcon = document.getElementById('equipWeaponIcon');
+    var wName = document.getElementById('equipWeaponName');
+    var tIcon = document.getElementById('equipToolIcon');
+    var tName = document.getElementById('equipToolName');
+    if(equipped.weapon){ wIcon.src = equipped.weapon.icon; wIcon.style.display='inline-block'; wName.textContent = equipped.weapon.name; }
+    else { wIcon.style.display='none'; wName.textContent='None'; }
+    if(equipped.tool){ tIcon.src = equipped.tool.icon; tIcon.style.display='inline-block'; tName.textContent = equipped.tool.name; }
+    else { tIcon.style.display='none'; tName.textContent='None'; }
+  }
+
+  // ===== Inventory UI rendering =====
+  function renderInvCat(cat, rootId){
+    var root = document.getElementById(rootId);
+    if(!root) return;
+    root.innerHTML = '';
+    inventory[cat].forEach(function(item){
+      var row = document.createElement('div'); row.className='invItem';
+      var img = document.createElement('img'); img.src=item.icon; row.appendChild(img);
+      var meta = document.createElement('div'); meta.className='meta';
+      var nm = document.createElement('div'); nm.className='name'; nm.textContent=item.name;
+      var qty = document.createElement('div'); qty.className='qty'; qty.textContent='x'+item.qty;
+      meta.appendChild(nm); meta.appendChild(qty); row.appendChild(meta);
+
+      var actions = document.createElement('div'); actions.className='actions';
+      var btn = document.createElement('button');
+
+      if(cat==='weapons' || cat==='tools'){
+        var isEquipped = (cat==='weapons' && equipped.weapon && equipped.weapon.name===item.name) || (cat==='tools' && equipped.tool && equipped.tool.name===item.name);
+        btn.textContent = isEquipped ? 'Unequip' : 'Equip';
+        btn.addEventListener('click', function(){
+          if(isEquipped){
+            if(cat==='weapons') setEquipped('weapon', null); else setEquipped('tool', null);
+          } else {
+            if(cat==='weapons') setEquipped('weapon', item); else setEquipped('tool', item);
+          }
+          renderInventory();
+        });
+        actions.appendChild(btn);
+      } else if(cat==='consumables'){
+        btn.textContent = 'Use';
+        btn.addEventListener('click', function(){
+          // effect parsing
+          if(item.use==='fullhp'){ hpSet(HP.max, HP.max); }
+          else if(item.use && item.use.indexOf('heal:')===0){ var v = parseInt(item.use.split(':')[1]||'0',10); hpChange(v); }
+          invRemove('consumables', item.name, 1);
+        });
+        actions.appendChild(btn);
+      } else {
+        // materials: optional "Sell 1" in inventory (for convenience)
+        var sellBtn = document.createElement('button'); sellBtn.textContent='Sell 1';
+        sellBtn.addEventListener('click', function(){
+          addCoins(1); // simple 1 coin per unit fallback (market has proper prices)
+          invRemove('materials', item.name, 1);
+        });
+        actions.appendChild(sellBtn);
+      }
+      row.appendChild(actions);
+      root.appendChild(row);
+    });
+  }
+  function renderInventory(){
+    renderInvCat('tools', 'invCat_tools');
+    renderInvCat('weapons', 'invCat_weapons');
+    renderInvCat('consumables', 'invCat_consumables');
+    renderInvCat('materials', 'invCat_materials');
+    updateEquipHUD();
+  }
+
+  // Tab switching inside Inventory
+  (function(){
+    var wrap = document.getElementById('invCategories');
+    if(!wrap) return;
+    var btns = wrap.querySelectorAll('.invTabs button');
+    var cats = ['tools','weapons','consumables','materials'];
+    function activate(cat){
+      cats.forEach(function(c){ 
+        var pane = document.getElementById('invCat_'+c);
+        if(pane) pane.classList.toggle('active', c===cat);
+      });
+    }
+    btns.forEach(function(b){ b.addEventListener('click', function(){ activate(b.getAttribute('data-cat')); }); });
+    activate('materials'); // default
+  })();
+
+  // ===== Crafting recipes =====
+  var recipes = [
+    { id:'axe_wood',     name:'Axe',      icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC',     req:{ Wood:5, Stone:2 }, out:{ cat:'tools', name:'Axe', qty:1 },       cost:0 },
+    { id:'pick_wood',    name:'Pickaxe',  icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAQUlEQVR4nGNgGAWUAkZiFFUEaPyHsTs23MCrh4lSF9HcQAznnzhx5z82hfiAhYUK3Jwh6GVsYHjF8qiBg9DAwQ8A3wwMGs2yQecAAAAASUVORK5CYII=', req:{ Wood:5, Stone:4 }, out:{ cat:'tools', name:'Pickaxe', qty:1 },   cost:0 },
+    { id:'net_basic',    name:'Net',      icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAYElEQVR4nGNgGAWDDjBiE6wI0PjPwMDAkNKzhShDVFRU4OYwUcVZSIAoA1VUVBhhrkBnk2UgKYCFGEV37tz5T4gNA6Nexg5I8TLVXYg3pzAwMDB0bLiBVQ0uMDA5ZXgBADSZLq3JyYx3AAAAAElFTkSuQmCC',     req:{ Fiber:6, Wood:2 }, out:{ cat:'tools', name:'Net', qty:1 },       cost:4 },
+    { id:'sword_wood',   name:'Sword',    icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAS0lEQVR4nGNgGOyAkRhFJ07c+Q9jW1io4NXDRKmLRg0cNXBEGIg3GwXYGP3HJbfhyDmseunrQgYGBoaKAA0MV3ZsuIFTH9VdOAIBAFG4DBzfayLgAAAAAElFTkSuQmCC',   req:{ Wood:6, Fiber:3 }, out:{ cat:'weapons', name:'Sword', qty:1 },   cost:6 },
+    { id:'bow_simple',   name:'Bow',      icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAf0lEQVR4nGNgGOyAEV3g2bNn/6WkpODiTaEa/2HsutU3MNSjAxZcEsgGkQKwGkiqqwgaSI5BWEFTqMb/Z8+ekeVVGGCi2BW4DCQ3EnAaSC0wkg2kSrpjoIELMcCzZ8/+U5KEcLqwKVSDLINxFl/YDCMmnHG6sG71DUZqRRRFAABnZS+BKhf2ZgAAAABJRU5ErkJggg==',     req:{ Wood:8, Fiber:5 }, out:{ cat:'weapons', name:'Bow', qty:1 },     cost:8 },
+    { id:'potion_small', name:'Potion',   icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAVUlEQVR4nGNgGAWUAkZCCrZsOfEfXczHxwKnPiZKXURzA/F6+cSJOxjehQELCxWCwUW0gfgsGvxhyEJIwSUbGwzvfcOjfvB7mf5h+K1nAbXtHAUEAACHAhRQ/DI76QAAAABJRU5ErkJggg==',  req:{ Herb:3, Water:1 }, out:{ cat:'consumables', name:'Potion', qty:1, use:'heal:25' }, cost:6 },
+    { id:'elixir_full',  name:'Elixir',   icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAWklEQVR4nGNgGAWUAkZCCk6cePYfXczCQgqnPiZKXUS0gSee/cdwGTHyeL184sQdnIZaWKgQDC6iDcRnEdXDkIWQApse3K7BBugXy8PXQIKR0mNDbStHASEAACeoGbJ7iv0MAAAAAElFTkSuQmCC',  req:{ Herb:5, Berry:3 }, out:{ cat:'consumables', name:'Elixir', qty:1, use:'fullhp' }, cost:12 }
+  ];
+
+  
+
+function renderCraft(){
+  var host = document.getElementById('craftGrid') || document.getElementById('craftList');
+  if(!host) return;
+  host.innerHTML='';
+  recipes.forEach(function(r){
+    var row = document.createElement('div'); row.className='invItem';
+    var img = document.createElement('img'); img.src=r.icon; row.appendChild(img);
+    var meta = document.createElement('div'); meta.className='meta';
+    var nm = document.createElement('div'); nm.className='name'; nm.textContent=r.name;
+    var req = document.createElement('div'); req.className='qty';
+    req.textContent = Object.keys(r.req).map(function(k){return r.req[k]+'× '+k;}).join(', ') + (r.cost? ' • '+r.cost+' coins' : '');
+    meta.appendChild(nm); meta.appendChild(req); row.appendChild(meta);
+    var actions = document.createElement('div'); actions.className='actions';
+    var btn = document.createElement('button'); btn.textContent='Craft';
+    btn.addEventListener('click', function(){
+      if(r.cost && !spendCoins(r.cost)) return;
+      var ok = true;
+      Object.keys(r.req).forEach(function(k){ 
+        if(!inventory[k] || inventory[k] < r.req[k]) ok=false;
+      });
+      if(!ok){ toast('Missing materials'); if(r.cost) addCoins(r.cost); return; }
+      Object.keys(r.req).forEach(function(k){ removeFromInventory(k, r.req[k]); });
+      addToInventory(r.out.name, r.out.qty);
+      updateInventoryUI();
+      toast('Crafted '+r.name+'!');
+    });
+    actions.appendChild(btn); row.appendChild(actions);
+    host.appendChild(row);
+  });
+}
+              ).join(', ') + (r.cost? ' • '+r.cost+' coins' : '');
+    meta.appendChild(nm); meta.appendChild(req); row.appendChild(meta);
+    var actions = document.createElement('div'); actions.className='actions';
+    var btn = document.createElement('button'); btn.textContent='Craft';
+    btn.addEventListener('click', function(){
+      if(r.cost && !spendCoins(r.cost)) return;
+      var ok = true;
+      Object.keys(r.req).forEach(function(k){ 
+        var it = invFind('materials', k);
+        if(!it || it.qty < r.req[k]) ok=false;
+      });
+      if(!ok){ toast('Missing materials'); if(r.cost) addCoins(r.cost); return; }
+      Object.keys(r.req).forEach(function(k){ invRemove('materials', k, r.req[k]); });
+      invAdd(r.out.cat, r.out.name, r.out.qty, r.icon, { use:r.out.use });
+      toast('Crafted '+r.name+'!');
+    });
+    actions.appendChild(btn); row.appendChild(actions);
+    host.appendChild(row);
+  });
+}
+              ).join(', ') + (r.cost? ' • '+r.cost+' coins' : '');
+      meta.appendChild(nm); meta.appendChild(req); row.appendChild(meta);
+      var actions = document.createElement('div'); actions.className='actions';
+      var btn = document.createElement('button'); btn.textContent='Craft';
+      btn.addEventListener('click', function(){
+        // Check coins
+        if(r.cost && !spendCoins(r.cost)) return;
+        // Check materials
+        var ok = true;
+        Object.keys(r.req).forEach(function(k){ 
+          var it = invFind('materials', k);
+          if(!it || it.qty < r.req[k]) ok=false;
+        });
+        if(!ok){ toast('Missing materials'); if(r.cost) addCoins(r.cost); return; }
+        // Spend materials
+        Object.keys(r.req).forEach(function(k){ invRemove('materials', k, r.req[k]); });
+        // Add output
+        invAdd(r.out.cat, r.out.name, r.out.qty, r.icon, { use:r.out.use });
+        toast('Crafted '+r.name+'!');
+      });
+      actions.appendChild(btn); row.appendChild(actions);
+      host.appendChild(row);
+    });
+  }
+
+  // ===== Market// ===== Market (NPC-only) =====
+  var market = document.getElementById('marketModalV26');
+  function openMarket(){
+    market.style.display='block';
+    // default to Buy view
+    switchMarketTab('buy');
+    if(scrim) scrim.classList.add('open');
+  }
+  function closeMarket(){
+    market.style.display='none';
+    if(scrim) scrim.classList.remove('open');
+  }
+  function switchMarketTab(which){
+    var buy = document.getElementById('marketBuy');
+    var sell = document.getElementById('marketSell');
+    if(!buy||!sell) return;
+    buy.classList.toggle('active', which==='buy');
+    sell.classList.toggle('active', which==='sell');
+  }
+  document.getElementById('marketClose').addEventListener('click', closeMarket);
+  market.querySelector('[data-mtab="buy"]').addEventListener('click', function(){ switchMarketTab('buy'); });
+  market.querySelector('[data-mtab="sell"]').addEventListener('click', function(){ switchMarketTab('sell'); });
+  window.openMarketUI = openMarket;
+  window.addEventListener('open-market', openMarket);
+
+  // Populate Market items
+  var buyStock = [
+    { name:'Wood',      qty:10, price:5,  icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC' },
+    { name:'Stone',     qty:10, price:6,  icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAQUlEQVR4nGNgGAWUAkZiFFUEaPyHsTs23MCrh4lSF9HcQAznnzhx5z82hfiAhYUK3Jwh6GVsYHjF8qiBg9DAwQ8A3wwMGs2yQecAAAAASUVORK5CYII=' },
+    { name:'Fiber',     qty:10, price:5,  icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAYElEQVR4nGNgGAWDDjBiE6wI0PjPwMDAkNKzhShDVFRU4OYwUcVZSIAoA1VUVBhhrkBnk2UgKYCFGEV37tz5T4gNA6Nexg5I8TLVXYg3pzAwMDB0bLiBVQ0uMDA5ZXgBADSZLq3JyYx3AAAAAElFTkSuQmCC' },
+    { name:'Herb',      qty:5,  price:4,  icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAVUlEQVR4nGNgGAWUAkZCCrZsOfEfXczHxwKnPiZKXURzA/F6+cSJOxjehQELCxWCwUW0gfgsGvxhyEJIwSUbGwzvfcOjfvB7mf5h+K1nAbXtHAUEAACHAhRQ/DI76QAAAABJRU5ErkJggg==' },
+    { name:'Water',     qty:1,  price:2,  icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAWklEQVR4nGNgGAWUAkZCCk6cePYfXczCQgqnPiZKXUS0gSee/cdwGTHyeL184sQdnIZaWKgQDC6iDcRnEdXDkIWQApse3K7BBugXy8PXQIKR0mNDbStHASEAACeoGbJ7iv0MAAAAAElFTkSuQmCC' },
+    { name:'Potion',    qty:1,  price:8,  icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAVUlEQVR4nGNgGAWUAkZCCrZsOfEfXczHxwKnPiZKXURzA/F6+cSJOxjehQELCxWCwUW0gfgsGvxhyEJIwSUbGwzvfcOjfvB7mf5h+K1nAbXtHAUEAACHAhRQ/DI76QAAAABJRU5ErkJggg==', cat:'consumables', use:'heal:25' },
+    { name:'Elixir',    qty:1,  price:14, icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAWklEQVR4nGNgGAWUAkZCCk6cePYfXczCQgqnPiZKXUS0gSee/cdwGTHyeL184sQdnIZaWKgQDC6iDcRnEdXDkIWQApse3K7BBugXy8PXQIKR0mNDbStHASEAACeoGbJ7iv0MAAAAAElFTkSuQmCC', cat:'consumables', use:'fullhp' }
+  ];
+  function renderMarket(){
+    var buy = document.getElementById('marketBuy'); buy.innerHTML='';
+    buyStock.forEach(function(s){
+      var row = document.createElement('div'); row.className='invItem';
+      var img = document.createElement('img'); img.src=s.icon; row.appendChild(img);
+      var meta = document.createElement('div'); meta.className='meta';
+      var nm = document.createElement('div'); nm.className='name'; nm.textContent=s.name + ' (x'+s.qty+')';
+      var pr = document.createElement('div'); pr.className='qty'; pr.textContent = s.price + ' coins';
+      meta.appendChild(nm); meta.appendChild(pr); row.appendChild(meta);
+      var actions = document.createElement('div'); actions.className='actions';
+      var btn = document.createElement('button'); btn.textContent='Buy';
+      btn.addEventListener('click', function(){
+        if(!spendCoins(s.price)) return;
+        if(s.cat==='consumables') invAdd('consumables', s.name, s.qty, s.icon, {use:s.use});
+        else invAdd('materials', s.name, s.qty, s.icon);
+        toast('Purchased ' + s.name);
+      });
+      actions.appendChild(btn); row.appendChild(actions);
+      buy.appendChild(row);
+    });
+    // Sell tab pulls from your inventory (all categories except equipment state)
+    var sell = document.getElementById('marketSell'); sell.innerHTML='';
+    [['materials',1],['consumables',2],['tools',6],['weapons',8]].forEach(function(pair){
+      var cat = pair[0], price = pair[1];
+      inventory[cat].forEach(function(item){
+        var row = document.createElement('div'); row.className='invItem';
+        var img = document.createElement('img'); img.src=item.icon; row.appendChild(img);
+        var meta = document.createElement('div'); meta.className='meta';
+        var nm = document.createElement('div'); nm.className='name'; nm.textContent=item.name;
+        var pr = document.createElement('div'); pr.className='qty'; pr.textContent = 'x'+item.qty+' • sells '+price+' each';
+        meta.appendChild(nm); meta.appendChild(pr); row.appendChild(meta);
+        var actions = document.createElement('div'); actions.className='actions';
+        var btn = document.createElement('button'); btn.textContent='Sell 1';
+        btn.addEventListener('click', function(){
+          // If selling equipped, unequip first
+          if(equipped.weapon && equipped.weapon.name===item.name) setEquipped('weapon', null);
+          if(equipped.tool && equipped.tool.name===item.name) setEquipped('tool', null);
+          if(invRemove(cat, item.name, 1)) addCoins(price);
+        });
+        actions.appendChild(btn); row.appendChild(actions);
+        sell.appendChild(row);
+      });
+    });
+  }
+
+  // ===== Toast (simple) =====
+  function toast(msg){
+    var t = document.getElementById('toast'); if(!t){ t = document.createElement('div'); t.id='toast'; document.body.appendChild(t);}
+    t.textContent = msg; t.style.display='block'; clearTimeout(toast._h); toast._h=setTimeout(function(){ t.style.display='none'; }, 1200);
+  }
+  window.toast = toast;
+
+  // ===== Seed some starter materials so crafting is testable =====
+  function seed(){
+    if(inventory.materials.length===0) {
+      invAdd('materials','Wood',12,'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC');
+      invAdd('materials','Stone',8,'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAQUlEQVR4nGNgGAWUAkZiFFUEaPyHsTs23MCrh4lSF9HcQAznnzhx5z82hfiAhYUK3Jwh6GVsYHjF8qiBg9DAwQ8A3wwMGs2yQecAAAAASUVORK5CYII=');
+      invAdd('materials','Fiber',8,'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAYElEQVR4nGNgGAWDDjBiE6wI0PjPwMDAkNKzhShDVFRU4OYwUcVZSIAoA1VUVBhhrkBnk2UgKYCFGEV37tz5T4gNA6Nexg5I8TLVXYg3pzAwMDB0bLiBVQ0uMDA5ZXgBADSZLq3JyYx3AAAAAElFTkSuQmCC');
+      invAdd('materials','Herb',6,'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAVUlEQVR4nGNgGAWUAkZCCrZsOfEfXczHxwKnPiZKXURzA/F6+cSJOxjehQELCxWCwUW0gfgsGvxhyEJIwSUbGwzvfcOjfvB7mf5h+K1nAbXtHAUEAACHAhRQ/DI76QAAAABJRU5ErkJggg==');
+      invAdd('materials','Water',2,'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAWklEQVR4nGNgGAWUAkZCCk6cePYfXczCQgqnPiZKXUS0gSee/cdwGTHyeL184sQdnIZaWKgQDC6iDcRnEdXDkIWQApse3K7BBugXy8PXQIKR0mNDbStHASEAACeoGbJ7iv0MAAAAAElFTkSuQmCC');
+    }
+  }
+
+  // When craft sidebar opens or market opens, render their lists
+  document.addEventListener('DOMContentLoaded', function(){
+    seed();
+    renderInventory();
+    renderMarket();
+  });
+
+})();
+</script><script>
+(function(){
+  // HP system
+  window.playerHP = {current:100, max:100};
+  function renderHP(){
+    var hpText=document.getElementById('hpText');
+    var hpBar=document.getElementById('hpBarInner');
+    if(!hpText||!hpBar) return;
+    hpText.textContent="HP: "+window.playerHP.current+"/"+window.playerHP.max;
+    var pct=Math.max(0,Math.min(1,window.playerHP.current/window.playerHP.max));
+    hpBar.style.width=(pct*100)+"%";
+  }
+  window.takeDamage=function(d){window.playerHP.current=Math.max(0,window.playerHP.current-d);renderHP();};
+  window.heal=function(h){window.playerHP.current=Math.min(window.playerHP.max,window.playerHP.current+h);renderHP();};
+  document.addEventListener("DOMContentLoaded",renderHP);
+
+  // Equipped HUD data
+  window.equipped={weapon:null, tool:null, armor:null};
+  function renderEquipped(){
+    var box=document.getElementById("equippedBox");
+    if(!box) return;
+    var html="";
+    html += window.equipped.weapon?("<div>Weapon: <img src='"+window.equipped.weapon.icon+"' style='height:16px'> "+window.equipped.weapon.name+"</div>"):"<div>Weapon: None</div>";
+    html += window.equipped.tool?("<div>Tool: <img src='"+window.equipped.tool.icon+"' style='height:16px'> "+window.equipped.tool.name+"</div>"):"<div>Tool: None</div>";
+    html += window.equipped.armor?("<div>Armor: <img src='"+window.equipped.armor.icon+"' style='height:16px'> "+window.equipped.armor.name+"</div>"):"<div>Armor: None</div>";
+    box.innerHTML=html;
+  }
+  window.setEquipped=function(type,item){ if(['weapon','tool','armor'].includes(type)) window.equipped[type]=item; renderEquipped(); };
+  document.addEventListener("DOMContentLoaded",renderEquipped);
+
+  // Equip/Unequip and Use handling
+  document.addEventListener("click",function(e){
+    if(e.target.classList.contains("equipButton")){
+      var type=e.target.dataset.type;
+      var name=e.target.dataset.name;
+      var icon=e.target.dataset.icon||"";
+      window.setEquipped(type,{name:name,icon:icon});
+      e.target.textContent="Unequip";
+      e.target.classList.remove("equipButton");
+      e.target.classList.add("unequipButton");
+    }
+    else if(e.target.classList.contains("unequipButton")){
+      var type=e.target.dataset.type;
+      window.setEquipped(type,null);
+      e.target.textContent="Equip";
+      e.target.classList.remove("unequipButton");
+      e.target.classList.add("equipButton");
+    }
+    else if(e.target.classList.contains("useButton")){
+      var healAmt=e.target.dataset.heal?parseInt(e.target.dataset.heal):20;
+      window.heal(healAmt);
+      var row=e.target.closest(".inventoryItem");
+      if(row) row.remove();
+      showToast("You used "+(e.target.dataset.name||'an item')+"! +"+healAmt+" HP");
+    }
+  });
+
+  function showToast(msg){
+    var t=document.createElement("div");
+    t.textContent=msg;
+    t.style.position="fixed";
+    t.style.bottom="20px";
+    t.style.left="50%";
+    t.style.transform="translateX(-50%)";
+    t.style.background="rgba(0,0,0,0.7)";
+    t.style.color="white";
+    t.style.padding="8px 16px";
+    t.style.borderRadius="6px";
+    t.style.zIndex=9999;
+    document.body.appendChild(t);
+    setTimeout(function(){t.remove();},2000);
+  }
+})();
+</script><script>
+/* ========= WP PATCH LAYER SCRIPT ========= */
+(function(){
+  const SPR = {
+    sword:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAWElEQVR4nI2QMQrCQBBF7/9g2cRk0yJ1aUoE9g3f0r5zqQ3o0g1g8g4qkI1p8GkYyq9cV3r7gI3A7k0gVqgQ0sQ3dE8b7w1c6Wm8b2lq4qgY6o6fE1qg9C14Hnq3w3n0m0dP8gI0yl2aS9kzF6QhQm1y8AAAAASUVORK5CYII=",
+    axe:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAVUlEQVR4nI2QsQ2AMAwD3/8pKc4D9q1p2q4ZQ9nJtqUo4C2qgH4O44kq0cNQ3p8kQ7KqFh4C0l9iQwL2j1aHVgq2yQm1Zz0v3c0g6m1f2fxnJ2o8f2A6qLrXx7wDfwA3t8rC+8c+1wAAAABJRU5ErkJggg==",
+    pick:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAATUlEQVR4nI2QsQ2AMAwD3/9gqgYqg0Wz6o5l6QyWmY5gQ1E0lD7ZQvU6xwJkqg6mQKXb9o6q0Q0mWw4r8Yy5gG1G8g8mQ7k6b7f2dY8Q+7cVQy2O4rQkJ0qKzY9b6t7AAAAAElFTkSuQmCC",
+    potion:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAW0lEQVR4nI2QMQ6DMAxD7/8U9GQ8wOqQprmBv5k0FJYk5v1hQ2d4M1R1h6mCk3E2wF1kE0Z6wE6WzZ4kYp3kHq8Ck3bY9C1y9G6Jr2r1C5J2L4QeQy7s8wY9gZp6C3zZ+AHk5Gx8D5C9yAAAAAElFTkSuQmCC",
+    elixir:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAWklEQVR4nI2QsQqEMAyD3/8U2yWmGmZq0i4w1o0hQ2x1oY7m0oZpQ4h0c1qgI7k0ZQJ8Qz7cH2CzG8S1F3g7kR6j3oE2z1L1Cwq8k1a8Q2m8i7B+o+2kJ2w9gH1rVgM9l+z8AAAAASUVORK5CYII=",
+    wood:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAR0lEQVR4nI2QsQkAMAgD3/8Y3hC2bq0r7tVgBqJc6a0rHkH6wJ2gX4DkqQ+oZk3HfQ2wXkW1F+gY8b2uV0v8Eb0qkW7o0fQbW7JvYwQKJQ6w9T7QG8AAAAASUVORK5CYII=",
+    stone:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAQklEQVR4nI2PsQkAMAgD3/9g0C4xGJ7t9r0i0h1WwQk9mQxQH8h2mC1gQ4k9qg7kB9Q6xWgGmD3gS3m3m3h7mA6m8p8z8f3n8fPwOZ3lq2yC2bYAAAAASUVORK5CYII=",
+    fiber:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAQ0lEQVR4nI2PsQkAMAgD3/9g1kQy8E7v7b6Q0o0mYQk8mE3gX8g2mF0gR4k8qg6kC9Q6wWgGmC2gS2m2k3h7kB7l9m8v8fP8fPwD1zS9j1c9OZwAAAABJRU5ErkJggg==",
+    plank:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAQUlEQVR4nI2PsQkAMAgD3/9g3UQyQJrv7b6Qko0mYQk8mE3gX8g2mF0gR4k8qg6kC9Q6wWgGmC2gS2m2k3h7kB7l9m8v8fP8fPz0j9Jc1h0M4wAAAAASUVORK5CYII=",
+    ingot:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAPklEQVR4nI2PsQkAMAgD3/9g2UQyQJrv7b6Qko0mYQk8mE3gX8g2mF0gR4k8qg6kC9Q6wWgGmA2gQv8v9JfQ6k9g0e7JQAAAABJRU5ErkJggg=="
+  };
+
+  const state = {
+    hp: 100, maxHp: 100,
+    coins: null, // we will attempt to sync with existing game coins
+    equipped:{weapon:null, tool:null},
+    inv:{
+      potion:{id:'potion',name:'Potion',sprite:SPR.potion,qty:2,type:'usable',effect:{hp:+25}},
+      elixir:{id:'elixir',name:'Elixir',sprite:SPR.elixir,qty:1,type:'usable',effect:{hp:+50}},
+      sword:{id:'sword',name:'Rusty Sword',sprite:SPR.sword,qty:1,type:'equip',slot:'weapon'},
+      axe:{id:'axe',name:'Hatchet',sprite:SPR.axe,qty:0,type:'equip',slot:'tool'},
+      pick:{id:'pick',name:'Pickaxe',sprite:SPR.pick,qty:0,type:'equip',slot:'tool'},
+      wood:{id:'wood',name:'Wood',sprite:SPR.wood,qty:5,type:'mats'},
+      stone:{id:'stone',name:'Stone',sprite:SPR.stone,qty:4,type:'mats'},
+      fiber:{id:'fiber',name:'Fiber',sprite:SPR.fiber,qty:3,type:'mats'},
+      plank:{id:'plank',name:'Plank',sprite:SPR.plank,qty:0,type:'mats'},
+      ingot:{id:'ingot',name:'Iron Ingot',sprite:SPR.ingot,qty:0,type:'mats'}
+    },
+    recipes:[
+      {id:'plank', out:2, name:'Plank ×2', sprite:SPR.plank, need:{wood:3,fiber:1}},
+      {id:'axe', out:1, name:'Hatchet',  sprite:SPR.axe,  need:{wood:2,stone:2}},
+      {id:'pick', out:1, name:'Pickaxe', sprite:SPR.pick, need:{wood:2,ingot:1}},
+      {id:'potion', out:1, name:'Potion', sprite:SPR.potion, need:{fiber:2}},
+      {id:'elixir', out:1, name:'Elixir', sprite:SPR.elixir, need:{potion:2,ingot:1}},
+    ],
+    market:{
+      buy:[
+        {id:'potion',price:15,sprite:SPR.potion,name:'Potion'},
+        {id:'elixir',price:40,sprite:SPR.elixir,name:'Elixir'},
+        {id:'ingot',price:20,sprite:SPR.ingot,name:'Iron Ingot'},
+        {id:'sword',price:50,sprite:SPR.sword,name:'Rusty Sword'},
+      ],
+      sell:[
+        {id:'wood',price:2,sprite:SPR.wood,name:'Wood'},
+        {id:'stone',price:2,sprite:SPR.stone,name:'Stone'},
+        {id:'fiber',price:2,sprite:SPR.fiber,name:'Fiber'},
+        {id:'plank',price:5,sprite:SPR.plank,name:'Plank'},
+      ]
+    }
+  };
+
+  // --- helper ---
+  const $ = (s,root=document)=>root.querySelector(s);
+  const $$ = (s,root=document)=>Array.from(root.querySelectorAll(s));
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+
+  function toast(msg){
+    let t = document.createElement('div');
+    t.style.cssText = "position:fixed;left:50%;top:12px;transform:translateX(-50%);background:#0f1730;color:#e9f1ff;border:1px solid #1f2d54;border-radius:10px;padding:8px 10px;z-index:10000";
+    t.textContent = msg; document.body.appendChild(t);
+    setTimeout(()=>t.remove(),1600);
+  }
+
+  // --- coin glue (tries to sync with existing coin count) ---
+  function getCoinNode(){
+    // try common selectors
+    let node = $('[data-coins]') || $('[id*=coin]') || $('[class*=coin]');
+    if(node && /\d/.test(node.textContent)) return node;
+    // scan for text "Coins" and a number
+    let candidates = $$('*').filter(el=> /coins/i.test(el.textContent) && /\d+/.test(el.textContent));
+    return candidates[0] || null;
+  }
+  function parseCoinsFromNode(node){
+    if(!node) return null;
+    const m = node.textContent.replace(/[, ]/g,'').match(/(\d+)/);
+    return m? parseInt(m[1],10) : null;
+  }
+  function writeCoinsToNode(node, value){
+    if(!node) return;
+    // try to keep "Coins" label intact; make number bold+gold
+    const txt = node.textContent;
+    const label = /coins/i.test(txt) ? txt.replace(/\d[\d,]*/,'').trim() : 'Coins';
+    node.innerHTML = `${label.replace(/(\bCoins\b)/i,'$1')} <span class="wp-gold">${value}</span>`;
+  }
+  const coinNode = getCoinNode();
+  if(coinNode){
+    const existing = parseCoinsFromNode(coinNode);
+    if(existing!=null) state.coins = existing;
+    // style gold number if it already exists
+    writeCoinsToNode(coinNode, state.coins||0);
+  } else {
+    // fallback
+    state.coins = state.coins ?? 0;
+  }
+  function addCoins(n){
+    state.coins = Math.max(0, (state.coins||0) + n);
+    writeCoinsToNode(coinNode, state.coins);
+    if(window.game && typeof window.game.addCoins==='function' && n>0){ try{ window.game.addCoins(n); }catch(e){} }
+  }
+  function spendCoins(n){
+    if((state.coins||0) < n) return false;
+    state.coins -= n; writeCoinsToNode(coinNode, state.coins); return true;
+  }
+
+  // --- HP wiring ---
+  function ensureHP(){
+    // if the project already has an HP panel, try to bind to it
+    let hpBarFill = document.getElementById('hpBarInner');
+    let hpTextCur = document.getElementById('hpCurrent');
+    let hpTextMax = document.getElementById('hpMax');
+    if(!hpBarFill){
+      // create minimal HP bar under the title line (below first H1)
+      const h1 = document.querySelector('h1');
+      if(h1){
+        const wrap = document.createElement('div'); wrap.id='wp-hp';
+        wrap.innerHTML = '<div class="bar"><div class="fill" id="wp-hp-fill"></div></div><div class="read">HP: <span id="wp-hp-cur">100</span>/<span id="wp-hp-max">100</span></div>';
+        h1.insertAdjacentElement('afterend', wrap);
+        hpBarFill = document.getElementById('wp-hp-fill');
+        hpTextCur = document.getElementById('wp-hp-cur');
+        hpTextMax = document.getElementById('wp-hp-max');
+      }
+    }
+    function renderHP(){
+      const pct = (state.hp/state.maxHp)*100;
+      (hpBarFill||{}).style && (hpBarFill.style.width = pct + '%');
+      if(hpTextCur) hpTextCur.textContent = Math.round(state.hp);
+      if(hpTextMax) hpTextMax.textContent = state.maxHp;
+    }
+    renderHP();
+    return { renderHP };
+  }
+  const hpAPI = ensureHP();
+
+  // --- Equipped HUD above minimap ---
+  function mountEquippedHUD(){
+    let mini = document.getElementById('minimap') || document.querySelector('[data-minimap]');
+    if(!mini || !mini.parentElement) return;
+    let box = document.getElementById('wp-equipped-box');
+    if(!box){
+      box = document.createElement('div'); box.id='wp-equipped-box';
+      box.innerHTML = '<div class="row"><img id="wp-eq-w" width="18" height="18"/><span id="wp-eq-wn">None</span></div><div class="row"><img id="wp-eq-t" width="18" height="18"/><span id="wp-eq-tn">None</span></div>';
+      mini.parentElement.appendChild(box);
+    }
+    function render(){
+      const w = state.equipped.weapon ? state.inv[state.equipped.weapon] : null;
+      const t = state.equipped.tool ? state.inv[state.equipped.tool] : null;
+      const wi=$('#wp-eq-w',box), wn=$('#wp-eq-wn',box), ti=$('#wp-eq-t',box), tn=$('#wp-eq-tn',box);
+      if(w){ wi.src=w.sprite; wn.textContent=w.name; } else { wi.removeAttribute('src'); wn.textContent='None'; }
+      if(t){ ti.src=t.sprite; tn.textContent=t.name; } else { ti.removeAttribute('src'); tn.textContent='None'; }
+      box.style.display='block';
+    }
+    render();
+    return { render };
+  }
+  const eqAPI = mountEquippedHUD();
+
+  // --- Inventory + Craft sidebars ---
+  function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+  function renderInventory(){
+    let panel = document.getElementById('wp-inv');
+    if(!panel){
+      panel = el('div',null); panel.id='wp-inv';
+      panel.innerHTML = '<button id="wp-panel-close">Close</button><h3 style="margin:0 0 6px 0">Inventory</h3><div class="wp-grid" id="wp-inv-grid"></div>';
+      document.body.appendChild(panel);
+      panel.querySelector('#wp-panel-close').onclick = ()=>{ panel.style.display='none'; document.getElementById('wp-scrim').style.display='none'; };
+    }
+    const grid = document.getElementById('wp-inv-grid'); grid.innerHTML='';
+    Object.values(state.inv).forEach(it=>{
+      const row = el('div','wp-item');
+      row.innerHTML = f`<img src="${it.sprite}"/><div style="flex:1"><div class="wp-name">${it.name}</div><div class="wp-qty">x${it.qty}</div></div><div class="btns"></div>`;
+      const btns = $('.btns', row);
+      if(it.type==='usable'){
+        const b = el('button',null,'Use'); b.onclick=()=>{
+          if(it.qty<=0) return toast('None left.'); 
+          if(it.effect && it.effect.hp){ state.hp = clamp(state.hp + it.effect.hp, 0, state.maxHp); hpAPI.renderHP(); }
+          it.qty--; toast(`Used ${it.name}.`); renderInventory();
+        }; btns.appendChild(b);
+      }else if(it.type==='equip'){
+        const slot = it.slot; const isEq = state.equipped[slot]===it.id && it.qty>0;
+        const b = el('button',null, isEq?'Unequip':'Equip'); b.onclick=()=>{
+          if(isEq){ state.equipped[slot]=null; }else{ if(it.qty<=0) return toast('You do not own this.'); state.equipped[slot]=it.id; }
+          renderInventory(); eqAPI && eqAPI.render && eqAPI.render();
+        }; btns.appendChild(b);
+      }
+      grid.appendChild(row);
+    });
+  }
+  function openInventory(){ renderInventory(); showScrim(true); $('#wp-inv').style.display='block'; }
+  function ensureInvToggle(){
+    // try find existing Inventory button by text
+    const btn = Array.from(document.querySelectorAll('button, a')).find(b=>/inventory/i.test(b.textContent));
+    if(btn && !btn._wpBound){ btn._wpBound=true; btn.addEventListener('click', (e)=>{ e.preventDefault(); openInventory(); }); }
+  }
+
+
+// --- Craft Panel creation + open ---
+function ensureCraftPanel(){
+  if (document.getElementById('wp-craft')) return;
+  const panel = document.createElement('div'); panel.id='wp-craft';
+  panel.innerHTML = '<button id="wp-craft-close">Close</button><h3 style="margin:0 0 8px 0">Crafting</h3><div class="wp-grid" id="craftGrid"></div>';
+  document.body.appendChild(panel);
+  panel.querySelector('#wp-craft-close').onclick = ()=>{ panel.style.display='none'; var s=document.getElementById('wp-scrim'); if(s) s.style.display='none'; };
+}
+// [openCraft removed for consolidation]
+
+// Wire any existing Craft/Crafting buttons to openCraft
+(function(){
+  const btns = Array.from(document.querySelectorAll('button, a'));
+  btns.forEach(b=>{
+    const t = (b.textContent||'').trim().toLowerCase();
+    if((/craft/i.test(t)) && !b._wpBoundCraft){
+      b._wpBoundCraft = true;
+      b.addEventListener('click', function(e){ e.preventDefault(); openCraft(); });
+    }
+  });
+})();
+
+
+function renderCraft(){
+  var host = document.getElementById('craftGrid') || document.getElementById('craftList');
+  if(!host) return;
+  host.innerHTML='';
+  recipes.forEach(function(r){
+    var row = document.createElement('div'); row.className='invItem';
+    var img = document.createElement('img'); img.src=r.icon; row.appendChild(img);
+    var meta = document.createElement('div'); meta.className='meta';
+    var nm = document.createElement('div'); nm.className='name'; nm.textContent=r.name;
+    var req = document.createElement('div'); req.className='qty';
+    req.textContent = Object.keys(r.req).map(function(k){return r.req[k]+'× '+k;}).join(', ') + (r.cost? ' • '+r.cost+' coins' : '');
+    meta.appendChild(nm); meta.appendChild(req); row.appendChild(meta);
+    var actions = document.createElement('div'); actions.className='actions';
+    var btn = document.createElement('button'); btn.textContent='Craft';
+    btn.addEventListener('click', function(){
+      if(r.cost && !spendCoins(r.cost)) return;
+      var ok = true;
+      Object.keys(r.req).forEach(function(k){ 
+        if(!inventory[k] || inventory[k] < r.req[k]) ok=false;
+      });
+      if(!ok){ toast('Missing materials'); if(r.cost) addCoins(r.cost); return; }
+      Object.keys(r.req).forEach(function(k){ removeFromInventory(k, r.req[k]); });
+      addToInventory(r.out.name, r.out.qty);
+      updateInventoryUI();
+      toast('Crafted '+r.name+'!');
+    });
+    actions.appendChild(btn); row.appendChild(actions);
+    host.appendChild(row);
+  });
+}
+              ).join(', ') + (r.cost? ' • '+r.cost+' coins' : '');
+    meta.appendChild(nm); meta.appendChild(req); row.appendChild(meta);
+    var actions = document.createElement('div'); actions.className='actions';
+    var btn = document.createElement('button'); btn.textContent='Craft';
+    btn.addEventListener('click', function(){
+      if(r.cost && !spendCoins(r.cost)) return;
+      var ok = true;
+      Object.keys(r.req).forEach(function(k){ 
+        var it = invFind('materials', k);
+        if(!it || it.qty < r.req[k]) ok=false;
+      });
+      if(!ok){ toast('Missing materials'); if(r.cost) addCoins(r.cost); return; }
+      Object.keys(r.req).forEach(function(k){ invRemove('materials', k, r.req[k]); });
+      invAdd(r.out.cat, r.out.name, r.out.qty, r.icon, { use:r.out.use });
+      toast('Crafted '+r.name+'!');
+    });
+    actions.appendChild(btn); row.appendChild(actions);
+    host.appendChild(row);
+  });
+}
+              ;
+    }
+    const grid = document.getElementById('wp-craft-grid'); grid.innerHTML='';
+    state.recipes.forEach(rcp=>{
+      const needText = Object.entries(rcp.need).map(([id,q])=>`${state.inv[id]?.name||id} ×${q}`).join(', ');
+      const have = Object.entries(rcp.need).every(([id,q]) => (state.inv[id]?.qty||0) >= q);
+      const row = el('div','wp-item');
+      row.innerHTML = `<img src="${rcp.sprite}"/><div style="flex:1"><div class="wp-name">${rcp.name}</div><div class="wp-qty">Needs: ${needText}</div></div><button ${have?'':'disabled'} class="doCraft">Craft</button>`;
+      $('.doCraft', row).onclick = ()=>{
+        if(!have) return;
+        Object.entries(rcp.need).forEach(([id,q])=>{ if(!state.inv[id]) state.inv[id]={id,name:id,sprite:SPR[id]||SPR.wood,qty:0,type:'mats'}; state.inv[id].qty -= q; });
+        if(!state.inv[rcp.id]) state.inv[rcp.id] = {id:rcp.id, name:rcp.name.replace(/\s×\d+/,''), sprite:rcp.sprite, qty:0, type:(rcp.id==='potion'||rcp.id==='elixir')?'usable':(rcp.id==='axe'||rcp.id==='pick'||rcp.id==='sword')?'equip':'mats', slot:(rcp.id==='sword'?'weapon':((rcp.id==='axe'||rcp.id==='pick')?'tool':undefined))};
+        state.inv[rcp.id].qty += rcp.out;
+        toast(`Crafted ${rcp.name}.`);
+        renderCraft(); renderInventory();
+      };
+      grid.appendChild(row);
+    });
+  }
+  // [openCraft removed for consolidation]
+
+  // Add Craft button next to Enclosures (styled like it)
+  function mountCraftButton(){
+    const after = Array.from(document.querySelectorAll('button, a')).find(b=>/enclosures/i.test(b.textContent));
+    if(after && !document.getElementById('wp-craft-btn')){
+      const btn = document.createElement('button'); btn.id='wp-craft-btn'; btn.textContent='Craft';
+      // mimic className/style
+      btn.className = after.className; btn.style.cssText = after.style.cssText + ';margin-left:6px;';
+      after.insertAdjacentElement('afterend', btn);
+      btn.addEventListener('click', (e)=>{ e.preventDefault(); openCraft(); });
+    }
+  }
+
+  // --- Market (NPC-only) merged buy/sell ---
+  function ensureMarket(){
+    if(document.getElementById('wp-market')) return;
+    const modal = document.createElement('div'); modal.id='wp-market';
+    modal.innerHTML = `
+      <div class="tabs">
+        <button id="wp-m-buy">Buy</button>
+        <button id="wp-m-sell">Sell</button>
+        <button id="wp-m-close" style="max-width:120px">Close</button>
+      </div>
+      <div class="body" id="wp-market-body"></div>`;
+    const scrim = document.createElement('div'); scrim.id='wp-scrim';
+    document.body.appendChild(modal); document.body.appendChild(scrim);
+    scrim.addEventListener('click', ()=>{ modal.style.display='none'; scrim.style.display='none'; });
+    $('#wp-m-close').onclick = ()=>{ modal.style.display='none'; scrim.style.display='none'; };
+    let mode='buy';
+    function render(){
+      const body = $('#wp-market-body'); body.innerHTML='';
+      const list = state.market[mode];
+      list.forEach(ent=>{
+        const row = document.createElement('div'); row.className='wp-item';
+        const owned = state.inv[ent.id]?.qty||0;
+        row.innerHTML = `<img src="${ent.sprite}"/><div style="flex:1"><div class="wp-name">${ent.name}</div><div class="wp-qty">Owned: ${owned}</div></div><div><div class="wp-name"><span class="wp-gold">${ent.price}</span> coins</div><div style="display:flex;gap:6px;margin-top:6px"><button class="act">${mode==='buy'?'Buy':'Sell'}</button><input type="number" min="1" value="1" style="width:80px;background:#0f1b36;color:#e9f1ff;border:1px solid #28407e;border-radius:6px;padding:4px 6px"></div></div>`;
+        const qty = row.querySelector('input'); const act = row.querySelector('.act');
+        act.onclick = ()=>{
+          const q = Math.max(1, parseInt(qty.value||'1',10));
+          if(mode==='buy'){
+            const cost = ent.price*q; if(!spendCoins(cost)) return toast('Not enough coins.');
+            if(!state.inv[ent.id]) state.inv[ent.id]={id:ent.id,name:ent.name,sprite:ent.sprite,qty:0,type: (['potion','elixir'].includes(ent.id)?'usable': (['sword','axe','pick'].includes(ent.id)?'equip':'mats')), slot:(ent.id==='sword'?'weapon':(['axe','pick'].includes(ent.id)?'tool':undefined))};
+            state.inv[ent.id].qty+=q; toast(`Bought ${ent.name} ×${q}.`);
+          }else{
+            const have = state.inv[ent.id]?.qty||0; if(have<q) return toast('You do not have enough.');
+            state.inv[ent.id].qty-=q; addCoins(ent.price*q); toast(`Sold ${ent.name} ×${q}.`);
+          }
+          render(); renderInventory();
+        };
+        body.appendChild(row);
+      });
+    }
+    $('#wp-m-buy').onclick=()=>{ mode='buy'; render(); };
+    $('#wp-m-sell').onclick=()=>{ mode='sell'; render(); };
+    window.openMarketFromNPC = function(){ modal.style.display='block'; $('#wp-scrim').style.display='block'; render(); };
+  }
+
+  // --- Cheats overlay ---
+  function cheats(){
+    let open=false;
+    const box = document.createElement('div');
+    box.style.cssText="position:fixed;top:15%;left:50%;transform:translateX(-50%);background:#11182c;border:1px solid #1f2d54;border-radius:10px;padding:10px;display:none;z-index:9200;width:min(92vw,420px)";
+    box.innerHTML = '<h3 style="margin:0 0 6px 0">Cheats</h3><p style="margin:0 0 6px 0;font-size:12px;color:#cfe0ff">hp 100, coins 500, give potion 5</p><input id="wp-cheat" placeholder="Type and Enter" style="width:100%;padding:8px;border-radius:8px;border:1px solid #28407e;background:#0f1b36;color:#e9f1ff">';
+    document.body.appendChild(box);
+    const input = box.querySelector('#wp-cheat');
+    function openBox(){ box.style.display='block'; $('#wp-scrim').style.display='block'; input.focus(); open=true; }
+    function closeBox(){ box.style.display='none'; $('#wp-scrim').style.display='none'; open=false; }
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === '/'){ e.preventDefault(); openBox(); }
+      if(e.key === 'Escape' && open){ e.preventDefault(); closeBox(); }
+    });
+    input.addEventListener('keydown',(e)=>{
+      if(e.key==='Enter'){
+        const cmd = input.value.trim(); input.value='';
+        const parts = cmd.split(/\s+/); const key = (parts.shift()||'').toLowerCase();
+        if(key==='hp'){ const v=parseInt(parts[0]||'0',10); if(!isNaN(v)){ state.hp=clamp(v,0,state.maxHp); hpAPI.renderHP(); toast('HP set.'); } }
+        else if(key==='coins'){ const v=parseInt(parts[0]||'0',10); if(!isNaN(v)){ state.coins=Math.max(0,v); const node=document.querySelector('.wp-gold')?.parentElement?.parentElement || coinNode; if(node) node.innerHTML = (node.textContent.replace(/\d[\d,]*/,'Coins ') + '<span class=\"wp-gold\">'+state.coins+'</span>'); toast('Coins set.'); } }
+        else if(key==='give'){ const id=(parts[0]||'').toLowerCase(); const q=parseInt(parts[1]||'1',10)||1; if(!state.inv[id]) state.inv[id]={id,name:id,sprite:SPR[id]||SPR.wood,qty:0,type:'mats'}; state.inv[id].qty+=q; toast(`Gave ${id} ×${q}`); renderInventory(); renderCraft(); }
+        else toast('Unknown command.');
+        closeBox();
+      }
+    });
+  }
+
+  function showScrim(on){ let s=document.getElementById('wp-scrim'); if(!s){ s=document.createElement('div'); s.id='wp-scrim'; document.body.appendChild(s); s.addEventListener('click',()=>{ ['wp-inv','wp-craft','wp-market'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; }); s.style.display='none'; }); } s.style.display=on?'block':'none'; }
+
+  // Mount craft button after Enclosures
+  function mountAll(){ ensureCraftPanel(); 
+    mountCraftButton();
+    ensureInvToggle();
+    ensureMarket();
+    cheats();
+  }
+
+  if(document.readyState!=='loading') mountAll(); else document.addEventListener('DOMContentLoaded', mountAll);
+})();</script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var b = document.getElementById('craftButton');
+  if(b && !b.__boundFinal){
+    b.addEventListener('click', function(e){
+      if (typeof openCraft === 'function') {
+        e.preventDefault();
+        openCraft();
+      }
+    }, {capture:true});
+    b.__boundFinal = true;
+  }
+});
+</script>
+
+
+<script>
+// Canonical crafting open/close (consolidated)
+function openCraft(){
+  try{
+    if (typeof ensureCraftPanel === 'function') ensureCraftPanel();
+  }catch(e){}
+  try{ if (typeof renderCraft === 'function') renderCraft(); }catch(e){ console.warn('renderCraft error', e); }
+  var panel = document.getElementById('wp-craft') || document.getElementById('sbCraft');
+  var scrim = document.getElementById('wp-scrim') || document.getElementById('scrim');
+  if (panel){
+    if (panel.classList && panel.classList.contains('sidebar')) panel.classList.add('open');
+    else panel.style.display = 'block';
+  }
+  if (scrim){
+    if (scrim.classList) scrim.classList.add('open');
+    scrim.style.display = 'block';
+  }
+}
+function closeCraft(){
+  var panel = document.getElementById('wp-craft') || document.getElementById('sbCraft');
+  var scrim = document.getElementById('wp-scrim') || document.getElementById('scrim');
+  if (panel){
+    if (panel.classList && panel.classList.contains('sidebar')) panel.classList.remove('open');
+    else panel.style.display = 'none';
+  }
+  if (scrim){
+    if (scrim.classList) scrim.classList.remove('open');
+    scrim.style.display = 'none';
+  }
+}
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('craftButton');
+  if (btn){
+    // overwrite any previous handlers
+    btn.onclick = function(e){ e.preventDefault(); openCraft(); return false; };
+    btn.__craftBound = true;
+  }
+  // Capture-phase fail-safe on all matching elements
+  var candidates = Array.from(document.querySelectorAll('button, a'));
+  candidates.forEach(function(el){
+    var t = (el.textContent||'').toLowerCase();
+    if (!el.__craftBound && t.includes('craft')){
+      el.addEventListener('click', function(e){ e.preventDefault(); openCraft(); }, {capture:true});
+      el.__craftBound = true;
+    }
+  });
+});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var c = document.getElementById('wp-craft-close');
+  if (c) c.addEventListener('click', closeCraft, {capture:true});
+});
+</script>
+
+
+<!-- ULTIMAFIX: authoritative crafting wiring -->
+<script>
+(function(){
+  function ensureCraftPanel(){
+    var panel = document.getElementById('wp-craft');
+    if (!panel){
+      panel = document.createElement('div');
+      panel.id = 'wp-craft';
+      panel.setAttribute('role','dialog');
+      panel.style.cssText = 'position:fixed;top:60px;right:0;width:min(90vw,380px);max-height:75vh;overflow:auto;background:#11182c;border:1px solid #1f2d54;border-radius:10px;padding:10px;z-index:10010;display:none';
+      panel.innerHTML = '<div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;background:#0f1730;border:1px solid #1f2d54;padding:6px;border-radius:8px\">'
+        + '<strong>Crafting</strong>'
+        + '<button id=\"wp-craft-close\">Close</button>'
+        + '</div>'
+        + '<div class=\"wp-grid\" id=\"craftGrid\"></div>';
+      document.body.appendChild(panel);
+    }
+    var scrim = document.getElementById('wp-scrim') || document.getElementById('scrim');
+    if (!scrim){
+      scrim = document.createElement('div');
+      scrim.id = 'wp-scrim';
+      scrim.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:10000';
+      document.body.appendChild(scrim);
+    }
+    var closeBtn = document.getElementById('wp-craft-close');
+    if (closeBtn && !closeBtn.__craftClose){
+      closeBtn.__craftClose = true;
+      closeBtn.addEventListener('click', closeCraft, {capture:true});
+    }
+    if (scrim && !scrim.__craftClose){
+      scrim.__craftClose = true;
+      scrim.addEventListener('click', closeCraft, {capture:true});
+    }
+  }
+
+  function setTopToggleActive(){
+    var bar = document.getElementById('uiToggles');
+    if (!bar) return;
+    Array.from(bar.querySelectorAll('button')).forEach(function(b){ b.setAttribute('aria-pressed','false'); });
+    var btn = document.getElementById('craftButton');
+    if (btn) btn.setAttribute('aria-pressed','true');
+  }
+
+  window.openCraft = function openCraft(){
+    try { ensureCraftPanel(); } catch(e){}
+    try { if (typeof showScrim==='function') showScrim(true); } catch(e){
+      var s=document.getElementById('wp-scrim')||document.getElementById('scrim'); if (s) s.style.display='block';
+    }
+    var panel = document.getElementById('wp-craft');
+    if (panel){
+      panel.style.display = 'block';
+      panel.style.visibility = 'visible';
+      panel.style.opacity = '1';
+      panel.style.zIndex = '10010';
+    }
+    try { if (typeof renderCraft==='function') renderCraft(); } catch(e){ /* silent */ }
+    setTopToggleActive();
+  };
+
+  window.closeCraft = function closeCraft(){
+    var panel = document.getElementById('wp-craft');
+    if (panel){
+      panel.style.display = 'none';
+      panel.style.visibility = 'hidden';
+      panel.style.opacity = '0';
+    }
+    var s=document.getElementById('wp-scrim')||document.getElementById('scrim');
+    if (s) s.style.display='none';
+    var btn = document.getElementById('craftButton');
+    if (btn) btn.setAttribute('aria-pressed','false');
+  };
+
+  function bindCraftButton(){
+    var btn = document.getElementById('craftButton');
+    if (!btn) return;
+    // overwrite lower-priority handlers
+    btn.onclick = function(e){ e.preventDefault(); e.stopImmediatePropagation && e.stopImmediatePropagation(); openCraft(); return false; };
+    if (!btn.__craftCapture){
+      btn.__craftCapture = true;
+      btn.addEventListener('click', function(e){ e.preventDefault(); openCraft(); }, {capture:true});
+    }
+  }
+
+  function init(){
+    ensureCraftPanel();
+    bindCraftButton();
+  }
+
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+
+  // MutationObserver to re-bind if UI is re-rendered
+  var obs = new MutationObserver(function(){
+    bindCraftButton();
+  });
+  try{
+    obs.observe(document.documentElement || document.body, {subtree:true, childList:true});
+  }catch(_){}
+})();
+</script>
+
+
+<!-- CRAFT_ONLY: styles scoped to #wp-craft -->
+<style>
+#wp-craft{ position:fixed; top:60px; right:0; width:min(92vw, 420px); max-height:78vh; overflow:auto;
+  background:#11182c; border:1px solid #1f2d54; border-radius:12px; z-index:10010; display:none; }
+#wp-craft .wp-craft-head{ position:sticky; top:0; display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; background:#0f1730; border-bottom:1px solid #203259; z-index:2; }
+#wp-craft .wp-craft-close{ padding:6px 10px; }
+#wp-craft .wp-craft-body{ padding:10px 10px 14px; }
+#wp-craft .craft-cols{ display:grid; grid-template-columns: 1fr; gap:10px; }
+@media (min-width:520px){ #wp-craft .craft-cols{ grid-template-columns: 1fr 1fr; } }
+#wp-craft .craft-list .invItem{ cursor:pointer; }
+#wp-craft .craft-list .invItem.active{ outline:2px solid #4da3ff; border-radius:8px; }
+#wp-craft .craft-detail{ background:#0e1428; border:1px solid #1f2d54; border-radius:10px; padding:10px; min-height:160px; }
+#wp-craft .craft-detail .name{ font-weight:700; margin-bottom:6px; }
+#wp-craft .craft-detail .req{ font-size:13px; color:#9fb3d1; margin:6px 0; }
+#wp-craft .craft-detail .actions{ display:flex; gap:8px; margin-top:10px; }
+#wp-craft .craft-detail .missing{ color:#ff6b6b; font-size:13px; }
+</style>
+
+<!-- CRAFT_ONLY: self-contained crafting panel (no changes to existing code) -->
+<script>
+(function(){
+  // Create panel only when needed; guard to avoid re-definitions
+  function ensureCraftPanel(){
+    if (document.getElementById('wp-craft')) return;
+    var panel = document.createElement('div');
+    panel.id = 'wp-craft';
+    panel.innerHTML = ''
+      + '<div class="wp-craft-head"><strong>Crafting</strong>'
+      + '  <button id="wp-craft-close" class="wp-craft-close">Close</button></div>'
+      + '<div class="wp-craft-body">'
+      + '  <div class="craft-cols">'
+      + '    <div id="craftList" class="craft-list"></div>'
+      + '    <div id="craftDetail" class="craft-detail">'
+      + '      <div class="empty">Select a recipe to see details.</div>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>';
+    document.body.appendChild(panel);
+
+    var closeBtn = panel.querySelector('#wp-craft-close');
+    if (closeBtn) closeBtn.addEventListener('click', function(){ try{ closeCraft(); }catch(_){ panel.style.display='none'; } }, {capture:true});
+
+    // Scrim: use existing if present; otherwise create a local one with lower z-index
+    var scrim = document.getElementById('wp-scrim') || document.getElementById('scrim');
+    if (!scrim){
+      scrim = document.createElement('div');
+      scrim.id = 'wp-scrim';
+      scrim.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:10000';
+      document.body.appendChild(scrim);
+    }
+    if (!scrim.__craftClose){
+      scrim.__craftClose = true;
+      scrim.addEventListener('click', function(){ try{ closeCraft(); }catch(_){ panel.style.display='none'; scrim.style.display='none'; } }, {capture:true});
+    }
+  }
+
+  // Non-destructive open/close that prefer existing helpers if present
+  function openCraftPanel(){
+    ensureCraftPanel();
+    var panel = document.getElementById('wp-craft');
+    var scrim = document.getElementById('wp-scrim') || document.getElementById('scrim');
+    if (scrim) scrim.style.display = 'block';
+    if (panel){
+      panel.style.display = 'block';
+      panel.style.visibility = 'visible';
+      panel.style.opacity = '1';
+      panel.style.zIndex = '10010';
+    }
+    try{ renderCraftPanel(); }catch(e){ /* keep silent */ }
+  }
+  function closeCraft(){
+    var panel = document.getElementById('wp-craft');
+    var scrim = document.getElementById('wp-scrim') || document.getElementById('scrim');
+    if (panel){ panel.style.display = 'none'; panel.style.opacity='0'; panel.style.visibility='hidden'; }
+    if (scrim){ scrim.style.display = 'none'; if (scrim.classList) scrim.classList.remove('open'); }
+  }
+
+  // Renderer that reads global recipes/inventory if available; otherwise shows placeholder
+  function renderCraftPanel(){
+    var listHost = document.getElementById('craftList');
+    var detail = document.getElementById('craftDetail');
+    if (!listHost) return;
+    listHost.innerHTML = '';
+    if (!window.recipes || !Array.isArray(window.recipes) || !window.recipes.length){
+      listHost.innerHTML = '<div class="invItem"><div class="meta"><div class="name">No recipes found</div></div></div>';
+      if (detail) detail.innerHTML = '<div class="empty">Add recipes to the global <code>recipes</code> array to enable crafting.</div>';
+      return;
+    }
+
+    var lastKey = localStorage.getItem('wp_lastCraftKey') || '';
+    var selectedRow = null;
+
+    function getCoinsSafe(){
+      try{ if (typeof getCoins==='function') return getCoins()|0; }catch(_){}
+      try{ return (window.player && Number.isFinite(window.player.coins)) ? (window.player.coins|0) : 0; }catch(_){}
+      return 0;
+    }
+    function spendCoinsSafe(amount){
+      try{ if (typeof spendCoins==='function') return spendCoins(amount); }catch(_){}
+      var c = getCoinsSafe();
+      if (c < amount) return false;
+      try{ if (typeof setCoins==='function'){ setCoins(c-amount); return true; } }catch(_){}
+      try{ if (window.player){ window.player.coins = c-amount; return true; } }catch(_){}
+      return false;
+    }
+    function addCoinsSafe(amount){
+      try{ if (typeof addCoins==='function'){ addCoins(amount); return; } }catch(_){}
+      try{ if (typeof setCoins==='function'){ setCoins(getCoinsSafe()+amount); return; } }catch(_){}
+      try{ if (window.player){ window.player.coins = getCoinsSafe()+amount; return; } }catch(_){}
+    }
+    function toastSafe(msg){ try{ if (typeof toast==='function') toast(msg); }catch(_){ console.log('[Craft]', msg); } }
+
+    function canAfford(r){
+      if (r.cost && getCoinsSafe() < r.cost) return false;
+      var inv = window.inventory || {};
+      for (var k in r.req){ if (!inv[k] || inv[k] < r.req[k]) return false; }
+      return true;
+    }
+    function removeFromInventorySafe(name, qty){
+      if (typeof removeFromInventory==='function') return removeFromInventory(name, qty);
+      var inv = window.inventory || (window.inventory = {});
+      inv[name] = Math.max(0, (inv[name]||0) - qty);
+    }
+    function addToInventorySafe(name, qty){
+      if (typeof addToInventory==='function') return addToInventory(name, qty);
+      var inv = window.inventory || (window.inventory = {});
+      inv[name] = (inv[name]||0) + qty;
+    }
+    function updateInventoryUISafe(){
+      try{ if (typeof updateInventoryUI==='function') updateInventoryUI(); }catch(_){}
+      try{ if (typeof renderInventory==='function') renderInventory(); }catch(_){}
+    }
+
+    function renderDetail(r){
+      if (!detail) return;
+      detail.innerHTML = '';
+      var name = document.createElement('div'); name.className='name'; name.textContent = r.name;
+      var req = document.createElement('div'); req.className='req';
+      var parts = [];
+      var inv = window.inventory || {};
+      for (var k in r.req){
+        var have = inv[k]||0, need = r.req[k];
+        parts.push((have>=need?'':'❌ ')+ need + '× ' + k + ' ('+have+'/'+need+')');
+      }
+      if (r.cost) parts.push(((getCoinsSafe() >= r.cost)?'':'❌ ') + r.cost + ' coins');
+      req.textContent = parts.join(' • ');
+
+      var actions = document.createElement('div'); actions.className='actions';
+      var craftBtn = document.createElement('button'); craftBtn.textContent = 'Craft';
+      craftBtn.disabled = !canAfford(r);
+      if (!canAfford(r)){
+        var miss = document.createElement('div'); miss.className='missing'; miss.textContent = 'You do not have enough materials/coins.';
+        detail.appendChild(miss);
+      }
+      craftBtn.addEventListener('click', function(){
+        if (r.cost && !spendCoinsSafe(r.cost)) return;
+        var invOk = true; var inv = window.inventory || {};
+        for (var k in r.req){ if (!inv[k] || inv[k] < r.req[k]) invOk = false; }
+        if (!invOk){ toastSafe('Missing materials'); if (r.cost) addCoinsSafe(r.cost); return; }
+        for (var k in r.req){ removeFromInventorySafe(k, r.req[k]); }
+        addToInventorySafe(r.out.name, r.out.qty||1);
+        updateInventoryUISafe();
+        toastSafe('Crafted '+r.name+'!');
+        renderCraftPanel();
+      });
+      actions.appendChild(craftBtn);
+      detail.appendChild(name); detail.appendChild(req); detail.appendChild(actions);
+    }
+
+    window.recipes.forEach(function(r){
+      var row = document.createElement('div'); row.className = 'invItem';
+      row.dataset.key = r.key || r.name;
+      var img = document.createElement('img'); img.src = r.icon || ''; row.appendChild(img);
+      var meta = document.createElement('div'); meta.className='meta';
+      var nm = document.createElement('div'); nm.className='name'; nm.textContent = r.name;
+      var rq = document.createElement('div'); rq.className='qty';
+      rq.textContent = Object.keys(r.req).map(function(k){ return r.req[k]+'× '+k; }).join(', ') + (r.cost ? ' • '+r.cost+' coins' : '');
+      meta.appendChild(nm); meta.appendChild(rq); row.appendChild(meta);
+
+      row.addEventListener('click', function(){
+        if (selectedRow) selectedRow.classList.remove('active');
+        selectedRow = row; row.classList.add('active');
+        localStorage.setItem('wp_lastCraftKey', row.dataset.key);
+        renderDetail(r);
+      });
+
+      listHost.appendChild(row);
+    });
+
+    // auto-select last or first
+    var toSelect = null;
+    if (lastKey){
+      toSelect = Array.from(listHost.children).find(function(el){ return (el.dataset.key===lastKey); });
+    }
+    if (!toSelect) toSelect = listHost.firstElementChild;
+    if (toSelect) toSelect.click();
+  }
+
+  // Non-destructive opener: prefer existing openCraft if present; otherwise bind our own
+  function wireCraftButton(){
+    var btn = document.getElementById('craftButton');
+    if (!btn) return;
+    if (!btn.__craft_only_bound){
+      btn.__craft_only_bound = true;
+      btn.addEventListener('click', function(e){
+        e.preventDefault();
+        // If a site-defined openCraft exists, prefer it; otherwise use our panel
+        if (typeof window.openCraft === 'function'){
+          try{ window.openCraft(); return; }catch(_){}
+        }
+        openCraftPanel();
+      }, {capture:true});
+    }
+  }
+
+  // Initialize without touching other code
+  function init(){
+    wireCraftButton();
+  }
+  if (document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded', init);
+  // Re-bind if DOM changes
+  try{
+    var obs = new MutationObserver(function(){ wireCraftButton(); });
+    obs.observe(document.documentElement || document.body, {subtree:true, childList:true});
+  }catch(_){}
+})();
+</script>
 
 </body>
 </html>
+<script>
+(function(){
+  if (window.__CHEST_SINGLE_TOAST__) return; window.__CHEST_SINGLE_TOAST__=true;
+
+  // Safe coin helpers
+  function getCoinsSafe(){
+    try{ if (typeof getCoins==='function'){ var v=getCoins(); if (Number.isFinite(v)) return v|0; } }catch(_){}
+    try{ if (window.player && Number.isFinite(window.player.coins)) return window.player.coins|0; }catch(_){}
+    return Number.isFinite(window.coins) ? window.coins|0 : 0;
+  }
+  function setCoinsSafe(v){
+    v = (Number.isFinite(v)? v|0 : 0);
+    try{ if (typeof setCoins==='function'){ setCoins(v); return; } }catch(_){}
+    try{ if (window.player && typeof window.player.coins==='number') window.player.coins = v; }catch(_){}
+    window.coins = v;
+  }
+
+  // Wrap toast so chest flow shows only one final message
+  var _toast = window.toast || function(){};
+  var CHEST_LOCK = false;
+  var CHEST_BUFFER = [];
+  window.toast = function(msg){
+    if (CHEST_LOCK){
+      // swallow interim chest toasts (e.g., 'Chest opened', '+N coins')
+      CHEST_BUFFER.push(String(msg||''));
+      return;
+    }
+    return _toast.apply(this, arguments);
+  };
+
+  // Wrap openChest to lock toasts, compute real delta, and show one final toast
+  var _open = window.openChest;
+  window.openChest = function(){
+    var before = getCoinsSafe();
+    CHEST_LOCK = true; CHEST_BUFFER.length = 0;
+    var res = null;
+    try{ res = _open ? _open() : null; }catch(_){ res = null; }
+    var after = getCoinsSafe();
+    var tier = (res && res.tier) || 'common';
+    var delta = (after|0) - (before|0);
+
+    // If chest reported coins but balance didn't change, apply once via safe path
+    if (res && res.type==='coins' && delta === 0){
+      var amt = (res.amount|0) || 0;
+      if (amt > 0){ setCoinsSafe(before + amt); after = getCoinsSafe(); delta = (after|0) - (before|0); }
+    }
+
+    // Release lock and show a single accurate toast
+    CHEST_LOCK = false;
+    try{
+      if (res && res.type==='coins'){
+        _toast('Chest: +' + (delta>0 ? delta : (res.amount|0)||0) + ' coins (' + tier + ')');
+      } else if (res && res.type==='item'){
+        _toast('Chest: ' + res.item + ' (' + tier + ')');
+      } else {
+        _toast('Chest opened!');
+      }
+    }catch(_){}
+
+    try{ if (typeof render==='function') render(); }catch(_){}
+    try{ if (typeof save==='function') save(); }catch(_){}
+
+    return res;
+  };
+})();
+</script>
+<script>
+(function(){
+  if (window.__CHEST_FORCE_DELTA__) return; window.__CHEST_FORCE_DELTA__=true;
+
+  function getCoinsSafe(){
+    try{ if (typeof getCoins==='function'){ var v=getCoins(); if (Number.isFinite(v)) return v|0; } }catch(_){}
+    try{ if (window.player && Number.isFinite(window.player.coins)) return window.player.coins|0; }catch(_){}
+    return Number.isFinite(window.coins) ? window.coins|0 : 0;
+  }
+  function setCoinsSafe(v){
+    v = (Number.isFinite(v)? v|0 : 0);
+    try{ if (typeof setCoins==='function'){ setCoins(v); return; } }catch(_){}
+    try{ if (window.player && typeof window.player.coins==='number') window.player.coins = v; }catch(_){}
+    window.coins = v;
+  }
+
+  var _open = window.openChest;
+  window.openChest = function(){
+    var before = getCoinsSafe();
+    var res = null;
+    try{ res = _open ? _open() : null; }catch(_){ res = null; }
+    var after = getCoinsSafe();
+
+    var tier = (res && res.tier) || 'common';
+    var reported = (res && res.type==='coins') ? ((res.amount|0) || 0) : 0;
+    var delta = (after|0) - (before|0);
+
+    // Decide the intended coin gain
+    var intended = reported > 0 ? reported : (delta > 0 ? delta : 0);
+    // Clamp to a sane range to avoid runaway values
+    if (!Number.isFinite(intended) || intended < 0) intended = 0;
+    if (intended > 100000) intended = 100000;
+
+    // Force the final coin total to reflect the intended reward
+    if (intended > 0){
+      setCoinsSafe(before + intended);
+      after = getCoinsSafe();
+      delta = (after|0) - (before|0);
+    } else {
+      // No coin reward intended; keep item flow toasts only
+    }
+
+    // Final toast based on actual applied delta
+    try{
+      if (intended > 0){
+        if (typeof toast==='function') toast('Chest: +' + delta + ' coins (' + tier + ')');
+      } else if (res && res.type==='item'){
+        if (typeof toast==='function') toast('Chest: ' + res.item + ' (' + tier + ')');
+      } else {
+        if (typeof toast==='function') toast('Chest opened!');
+      }
+    }catch(_){}
+
+    try{ if (typeof render==='function') render(); }catch(_){}
+    try{ if (typeof save==='function') save(); }catch(_){}
+
+    return res;
+  };
+})();
+</script>
