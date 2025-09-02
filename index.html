@@ -708,6 +708,20 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 #inventoryGrid_sb { display: none !important; }
 </style>
 
+<style>
+/* === Polished Quest Panel (non-destructive) === */
+#questPanel { padding: 10px; }
+#questPanel .questHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+#questPanel .questHeader .title{font-weight:800;font-size:14px;color:#e7f0ff}
+#questPanel .questHeader .status{font-size:12px;padding:2px 6px;border-radius:999px;border:1px solid #2a3d75}
+#questPanel .questHeader .status.done{background:#163b2c;color:#35c48d;border-color:#2a6b54}
+#questPanel .questDesc{font-size:12px;color:#bcd1ff;margin-bottom:10px}
+#questPanel .reqList{display:flex;flex-direction:column;gap:6px}
+#questPanel .req{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #213062;border-radius:8px;background:#0b1329}
+#questPanel .req .mark{font-weight:900}
+#questPanel .req.done{opacity:.55}
+#questPanel .empty{font-size:12px;color:#7b8bb9}
+</style>
 </head>
 <body>
 <header id="topbar">
@@ -727,6 +741,17 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 <span class="equipLabel">Tool:</span>
 <img alt="tool" class="equipIcon" id="equipToolIcon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC" style="display:none"/>
 <span class="equipName" id="equipToolName">None</span>
+</div>
+
+  <div class="equipRow">
+<span class="equipLabel">Weapon:</span>
+<img alt="weapon" class="equipIcon" id="equipWeaponIcon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAS0lEQVR4nGNgGOyAkRhFJ07c+Q9jW1io4NXDRKmLRg0cNXBEGIg3GwXYGP3HJbfhyDmseunrQgYGBoaKAA0MV3ZsuIFTH9VdOAIBAFG4DBzfayLgAAAAAElFTkSuQmCC" style="display:none"/>
+<span class="equipName" id="equipWeaponName">None</span>
+</div>
+<div class="equipRow">
+<span class="equipLabel">Armor:</span>
+<img alt="armor" class="equipIcon" id="equipArmorIcon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC" style="display:none"/>
+<span class="equipName" id="equipArmorName">None</span>
 </div>
 </div>
 </div>
@@ -1035,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </aside>
 <aside aria-label="Quests" class="sidebar right" id="sbQuests">
 <header class="sbHead"><h2>Quest Log</h2><button class="sbClose" data-close="sbQuests">Close</button></header>
-<div id="questBox_sb"></div>
+<div id="questPanel"></div>
 </aside>
 <aside aria-label="Enclosures" class="sidebar left" id="sbCare">
 <header class="sbHead"><h2>Enclosures</h2><button class="sbClose" data-close="sbCare">Close</button></header>
@@ -1978,6 +2003,30 @@ function collectAnimal(s){
   // Add to companions and discovered species
   companions.push(nm); autoSaveSoon(1500);  syncInventoryUI(); 
   discovered.add(base);
+// === Quest progress hook: update quest when catching a required species ===
+try{
+  if (window.quest && Array.isArray(window.quest.need) && !window.quest.complete){
+    const __bn = (typeof window.baseName === 'function') ? window.baseName(base) : String(base);
+    const __needLower = window.quest.need.map(n => String(n).toLowerCase());
+    if (__needLower.includes(__bn.toLowerCase())){
+      if (typeof window.updateQuestProgress === 'function'){
+        window.updateQuestProgress(__bn);
+      } else {
+        window.quest.delivered = window.quest.delivered || [];
+        if (!window.quest.delivered.includes(__bn)) window.quest.delivered.push(__bn);
+        if (window.quest.need.every(n => window.quest.delivered.includes(n))) window.quest.complete = true;
+        try { window.dispatchEvent(new CustomEvent('wp:quest:changed', { detail: { reason: 'progress', item: __bn } })); } catch(_){}
+      }
+      const __remaining = window.quest.need.filter(nm => !(window.quest.delivered||[]).includes(nm));
+      if (__remaining.length){
+        try{ toast('Quest: Still need '+__remaining.join(' & ')); }catch(_){}
+      } else if (window.quest.complete){
+        try{ toast('Quest objectives complete! Return to the quest-giver.'); }catch(_){}
+      }
+    }
+  }
+}catch(_){}
+
   window.discovered = discovered; try{ updateJournal && updateJournal(); }catch(_){}
 
   // Award XP and show level‑up toast
@@ -4514,9 +4563,31 @@ function __mapTargetToDoorBiome(t){
     overlay.setAttribute('aria-hidden','false');
 
     okBtn.onclick = ()=>{
-      if(typeof onAccept==='function') onAccept();
-      overlay.style.display='none';
-    };
+  // Build quest object from dialog requirement
+  const raw = (txtEl && txtEl.textContent) ? txtEl.textContent : '';
+  const need = (raw.match(/bring\s+(.+)/i)?.[1] || 'rabbit and fox')
+    .split(/(?:,|\band\b)/i)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  // Initialize global quest state
+  window.quest = {
+    id: 'gatekeeper_quest',
+    name: 'Gatekeeper Request',
+    desc: raw.replace(/^Gatekeeper:\s*/i,'').trim() || 'Collect the requested animals.',
+    need: need.length ? need : ['rabbit','fox'],
+    delivered: Array.isArray((window.quest||{}).delivered) ? window.quest.delivered : [],
+    complete: false
+  };
+
+  // Emit quest change so Quest panel refreshes
+  try { window.dispatchEvent(new CustomEvent('wp:quest:changed', { detail: { reason: 'accepted' } })); } catch(_){}
+
+  // Feedback + close
+  try { if (window.toast) window.toast('Quest accepted'); } catch(_){}
+  overlay.style.display = 'none';
+  overlay.setAttribute('aria-hidden','true');
+};
       const have=getCoins();
       if(have>=cost){
         setCoins(have-cost);
@@ -12734,6 +12805,200 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 <!-- ===== /WP v63 PATCH ===== -->
+
+<script>
+(function(){
+  'use strict';
+
+  function safe(id){ return document.getElementById(id); }
+  function esc(s){ return String(s||'').replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[m])); }
+
+  // Polished renderer reading your game's quest state
+  function renderQuestPanel(){
+    var panel = safe('questPanel');
+    if(!panel){ return; }
+    var q = (typeof window.quest !== 'undefined' && window.quest) ? window.quest : null;
+    if(!q){ panel.innerHTML = '<div class="empty">No active quest.</div>'; return; }
+
+    var name = q.name || q.title || 'Quest';
+    var desc = q.desc || q.description || '';
+    var need = Array.isArray(q.need) ? q.need : (Array.isArray(q.requirements)? q.requirements : []);
+    var delivered = Array.isArray(q.delivered) ? q.delivered : (Array.isArray(q.doneItems)? q.doneItems : []);
+    var complete = !!q.complete || (need.length && need.every(function(n){ return delivered.indexOf(n)!==-1; }));
+
+    var html = '';
+    html += '<div class="questHeader">'
+         +  '  <div class="title">'+esc(name)+'</div>'
+         +  '  <div class="status'+(complete?' done':'')+'">'+(complete?'Completed ✓':'In Progress')+'</div>'
+         +  '</div>';
+    if(desc) html += '<div class="questDesc">'+esc(desc)+'</div>';
+    if(need.length){
+      html += '<div class="reqList">';
+      for (var i=0;i<need.length;i++){
+        var item = need[i];
+        var done = delivered.indexOf(item)!==-1;
+        html += '<div class="req'+(done?' done':'')+'">'
+             +  '  <div class="mark">'+(done?'✓':'—')+'</div>'
+             +  '  <div class="text">'+esc(item)+'</div>'
+             +  '</div>';
+      }
+      html += '</div>';
+    } else {
+      html += '<div class="empty">No requirements.</div>';
+    }
+    panel.innerHTML = html;
+  }
+
+  // Override legacy sync (if it exists) to call our renderer
+  try {
+    window.syncQuestUI = function(){ try{ renderQuestPanel(); }catch(e){} };
+  } catch(_){}
+
+  // Auto-refresh hooks
+  try{
+    var evs = ['wp:quest:changed','wp:inventory','wp:journal','wp:scene'];
+    evs.forEach(function(ev){ window.addEventListener(ev, function(){ renderQuestPanel(); }); });
+  }catch(_){}
+
+  // Ensure the toggle button works even if earlier binding failed
+  function ensureQuestToggle(){
+    try{
+      var btn = safe('toggleQuests'), sb = safe('sbQuests');
+      if(btn && sb){
+        btn.onclick = function(){
+          try{
+            if (sb.classList && typeof closeSidebar==='function' && typeof openSidebar==='function'){
+              if (sb.classList.contains('open')) closeSidebar(sb, btn);
+              else openSidebar(sb, btn);
+            } else {
+              // Fallback toggle if helpers are missing
+              sb.classList.toggle('open');
+            }
+          }catch(e){}
+        };
+      }
+    } catch(_){}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){
+      try{ renderQuestPanel(); }catch(_){}
+      ensureQuestToggle();
+    });
+  } else {
+    try{ renderQuestPanel(); }catch(_){}
+    ensureQuestToggle();
+  }
+})();
+</script>
+
+
+<!-- Quest UI auto-detect (safe append) -->
+<script>
+(function(){
+  'use strict';
+  function byId(id){ return document.getElementById(id); }
+  function esc(s){ return String(s||'').replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[m])); }
+
+  function detectQuest(){
+    try{
+      if (window.quest) return window.quest;
+      if (window.activeQuest) return window.activeQuest;
+      if (window.gameState && window.gameState.quest) return window.gameState.quest;
+      if (window.quests){
+        if (Array.isArray(window.quests) && window.quests.length) return window.quests[0];
+        return window.quests;
+      }
+    }catch(_){}
+    return null;
+  }
+
+  function pick(obj, keys, fallback){
+    for (var i=0;i<keys.length;i++){ if (obj && obj[keys[i]] != null) return obj[keys[i]]; }
+    return fallback;
+  }
+
+  function renderQuestPanelSafe(){
+    var pane = byId('questPanel');
+    if (!pane) return;
+    var q = detectQuest();
+    if (!q){ pane.innerHTML = '<div class="empty">No active quest.</div>'; return; }
+
+    var title = pick(q, ['title','name','id'], 'Quest');
+    var desc  = pick(q, ['desc','description','text'], '');
+    var need  = pick(q, ['need','requirements','req'], []);
+    if (typeof need==='string') need = [need];
+    if (!Array.isArray(need)) need = [];
+    var delivered = pick(q, ['delivered','done','progress','completed'], []);
+    if (typeof delivered==='string') delivered = [delivered];
+    if (!Array.isArray(delivered)) delivered = [];
+    var complete = !!q.complete || (need.length && need.every(function(n){ return delivered.indexOf(n)!==-1; }));
+
+    var html = '';
+    html += '<div class="questHeader">'
+         +    '<div class="title">'+esc(title)+'</div>'
+         +    '<div class="status'+(complete?' done':'')+'">'+(complete?'Completed ✓':'In Progress')+'</div>'
+         +  '</div>';
+    if (desc) html += '<div class="questDesc">'+esc(desc)+'</div>';
+    if (need.length){
+      html += '<div class="reqList">';
+      for (var i=0;i<need.length;i++){
+        var item = need[i];
+        var done = delivered.indexOf(item)!==-1;
+        html += '<div class="req'+(done?' done':'')+'">'
+             +    '<div class="mark">'+(done?'✓':'—')+'</div>'
+             +    '<div class="text">'+esc(item)+'</div>'
+             +  '</div>';
+      }
+      html += '</div>';
+    } else {
+      html += '<div class="empty">No requirements.</div>';
+    }
+    pane.innerHTML = html;
+  }
+
+  // Hook without overriding existing functions
+  var __wpQuestUIHooked__ = false;
+  function hook(){
+    if (__wpQuestUIHooked__) return;
+    __wpQuestUIHooked__ = true;
+    ['wp:quest:changed','wp:inventory','wp:journal','wp:scene'].forEach(function(ev){
+      try{ window.addEventListener(ev, renderQuestPanelSafe); }catch(_){}
+    });
+    // gentle fallback
+    try{ setInterval(renderQuestPanelSafe, 1000); }catch(_){}
+    // first draw
+    renderQuestPanelSafe();
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', hook);
+  } else {
+    hook();
+  }
+})();
+</script>
+
+<script>
+// === Quest helper: global progress updater ===
+(function(){
+  if (!window.updateQuestProgress){
+    window.updateQuestProgress = function(itemName){
+      try{
+        if (!window.quest) return;
+        const item = (itemName||'').trim();
+        if (!item) return;
+        if (!Array.isArray(window.quest.delivered)) window.quest.delivered = [];
+        if (window.quest.delivered.indexOf(item) === -1) window.quest.delivered.push(item);
+        if (Array.isArray(window.quest.need) && window.quest.need.every(n => window.quest.delivered.indexOf(n) !== -1)){
+          window.quest.complete = true;
+        }
+        try { window.dispatchEvent(new CustomEvent('wp:quest:changed', { detail: { reason: 'progress', item } })); } catch(_){}
+      }catch(_){}
+    };
+  }
+})();
+</script>
 </body>
 </html>
 <script>
