@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0" name="viewport"/>
-<title>Wild Pals — v1.5 (cheat codes &amp; working enhancements)</title>
+<title>Wild Pals — Beta — </title>
 <style>
   :root{
     --bg:#0b1020; --panel:#11182c; --ink:#e9f1ff; --muted:#9fb3d1; --accent:#4da3ff; --headerH:56px;
@@ -688,17 +688,30 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 </style>
 
 <style id="invCatsMinimalCSS">
-#invCategories .invTabs{ display:flex; gap:8px; margin:6px 0; flex-wrap:wrap; }
-#invCategories .invTabs button{ padding:6px 10px; cursor:pointer; border-radius:8px; border:1px solid #28407e; background:#122043; color:#e9f1ff; }
-#invCategories .invTabs button.on{ background:#4da3ff; color:#09142a; }
+#invTabButtons .invTabs{ display:flex; gap:8px; margin:6px 0; flex-wrap:wrap; }
+#invTabButtons .invTabs button{ padding:6px 10px; cursor:pointer; border-radius:8px; border:1px solid #28407e; background:#122043; color:#e9f1ff; }
+#invTabButtons .invTabs button.on{ background:#4da3ff !important; color:#09142a !important; border-color:#6db6ff !important; box-shadow:0 0 0 2px rgba(77,163,255,.25) inset; font-weight:800; transform: translateY(-1px); }
 #invCategories .invCat{ display:none; max-height:260px; overflow:auto; border:1px solid #28407e; padding:6px; }
 #invCategories .invCat.active{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px; }
+
+/* Inventory section layout tweaks */
+#sbInventory .panel { padding-bottom: 0; }
+#sbInventory hr { margin: 10px 0 12px; border-color: #2b3e6f; }
+#invCategories { margin-top: 6px; }
+#invCategories .invCat { max-height: 48vh; } /* bigger scrolling area */
+
+/* Split layout: buttons above hr, panes below */
+#invTabButtons { margin-top: 6px; }
+#invCategories .invCat { max-height: 48vh; }
+
+/* Hide legacy inventory grid; we use tab panes instead */
+#inventoryGrid_sb { display: none !important; }
 </style>
 
 </head>
 <body>
 <header id="topbar">
-<h1>Wild Pals <small>— v1.5</small></h1>
+<h1>Wild Pals <small>— Beta</small></h1>
 </header><div id="hudUnderTitle">
 <div id="hpPanel">
 <div id="hpBarOuter"><div id="hpBarInner"></div></div>
@@ -993,22 +1006,27 @@ document.addEventListener('DOMContentLoaded', function(){
 <select id="petSelect_sb"></select>
 <button id="setActive_sb">Set Active</button>
 <span class="chip">Coins: <span id="coinsLabelInv">0</span></span>
-</div><div id="invCategories">
-<div class="invTabs">
+</div>
+<hr/>
+<div id="invTabButtons"><div class="invTabs">
 <button data-cat="tools">Tools</button>
 <button data-cat="weapons">Weapons</button>
 <button data-cat="consumables">Consumables</button>
 <button data-cat="materials">Materials</button>
-</div>
+<button data-cat="creatures">Creatures</button>
+</div></div>
+<hr/>
+<div id="invActiveLabel" class="note" style="margin:4px 0 8px;opacity:.9"></div>
+<div id="invCategories">
 <div class="invCat" id="invCat_tools"></div>
 <div class="invCat" id="invCat_weapons"></div>
 <div class="invCat" id="invCat_consumables"></div>
 <div class="invCat" id="invCat_materials"></div>
+<div class="invCat" id="invCat_creatures"></div>
 </div><div id="invCards_sb" style="display:none"></div>
 <div id="inventoryGrid_sb">
 
 </div>
-<hr/>
 </div>
 </aside>
 <aside aria-label="Journal" class="sidebar right" id="sbJournal">
@@ -1196,6 +1214,8 @@ const animals=[
   {name:'Phoenix',kind:'air',tag:'FLIGHT',ability:'Fly across mountains.',rarity:5,home:'legendary'},
   {name:'Dragon',kind:'land',tag:'FLIGHT',ability:'Fly across mountains.',rarity:5,home:'legendary'}
 ];
+window.animals = animals;
+
 
 function info(n){ const bn=baseName(n); return animals.find(a=>a.name===bn); }
 function tag(){ return info(activePetName)?.tag||null; }
@@ -1267,6 +1287,7 @@ function reseedCurrentScenePreservePos(){
 let scene='meadow', mapW=120, mapH=100;
 let map=new Uint8Array(mapW*mapH), fog=new Uint8Array(mapW*mapH);
 let player={x:12,y:12}, keys={}, wildSpawns=[], companions=[], activePetName=null, pingAnimalsTimer=0, lastDir={x:1,y:0};
+window.companions = companions; // ensure global array is accessible via window for UI
 let timeMin=360, weather=WEATHER.CLEAR, weatherTimer=0, coins=0;
 let housePos={x:10,y:10};
 let portals={back:null,forward:null};
@@ -1274,6 +1295,7 @@ let npcs=[]; // array of {x,y,type:'main'|'trade'|'vendor', data?}
 let enclosures={ water:[], land:[], air:[] }, decor={water:0, land:0, air:0};
 let slotPos={water:[], land:[], air:[]};
 let discovered=new Set();
+window.discovered = discovered;
 let rngRare=0.03;
 
 // ===== Cheat state and temporary effects =====
@@ -1956,6 +1978,8 @@ function collectAnimal(s){
   // Add to companions and discovered species
   companions.push(nm); autoSaveSoon(1500);  syncInventoryUI(); 
   discovered.add(base);
+  window.discovered = discovered; try{ updateJournal && updateJournal(); }catch(_){}
+
   // Award XP and show level‑up toast
   const prevLvl = companionLevel(base);
   companionXP[base] = (companionXP[base]||0) + 1;
@@ -2257,7 +2281,7 @@ function goPrevScene(){
 /* ===== UI sync ===== */
 function syncInventoryUI(){
   const counts={}; for(const n of companions){ const bn=baseName(n); counts[bn]=(counts[bn]||0)+1; }
-  const grid=document.getElementById('inventoryGrid_sb'); grid.innerHTML='';
+  const grid=(document.getElementById('invCat_creatures')||document.getElementById('inventoryGrid_sb')); grid.innerHTML='';
   Object.keys(counts).sort().forEach(n=>{
     const a=info(n)||{}; const div=document.createElement('div'); div.className='card';
     div.innerHTML=`<b>${n}</b><div class="note">${(a.kind||'').toUpperCase()} — ${a.ability||''}</div><div class="note">Owned: ${counts[n]}</div>`;
@@ -2273,20 +2297,32 @@ function syncInventoryUI(){
   updateJournal(); syncQuestUI();
   // Update shop button states when inventory or coins change
   if(typeof updateShopButtons === 'function'){ updateShopButtons(); }
+  try{ if(typeof renderInventory==='function') renderInventory(); }catch(_){}
 }
 document.getElementById('setActive_sb').addEventListener('click', ()=>{ activePetName=(document.getElementById('petSelect_sb').value)||null; syncInventoryUI(); });
 function updateJournal(){
-  const species=[...new Set(animals.map(a=>a.name))];
+  const grid = document.getElementById('journalGrid_sb');
+  if(!grid) return;
+  const species=[...new Set((window.animals||[]).map(a=>a.name))].sort();
   setBoth('discTotal','discTotal2', String(species.length));
-  setBoth('discCount','discCount2', String(discovered.size));
-  const grid=document.getElementById('journalGrid_sb'); grid.innerHTML='';
+  setBoth('discCount','discCount2', String((window.discovered||new Set()).size));
+  grid.innerHTML='';
   species.forEach(n=>{
-    const card=document.createElement('div'); card.className='dex'+(discovered.has(n)?'':' locked');
-    const cv=document.createElement('canvas'); cv.width=48; cv.height=48; const ctx=cv.getContext('2d'); drawAnimalIcon(ctx, n, 16,16, 1.5); card.appendChild(cv);
-    const nm=document.createElement('div'); nm.className='name'; nm.textContent=discovered.has(n)?n:'???'; card.appendChild(nm);
+    const card=document.createElement('div');
+    card.className='dex' + ((window.discovered&&window.discovered.has(n))?'':' locked');
+    const cv=document.createElement('canvas'); cv.width=48; cv.height=48;
+    const ctx=cv.getContext('2d');
+    try{ drawAnimalSprite(ctx, baseName(n), 4,4, 48/12-0.1); }catch(_){}
+    card.appendChild(cv);
+    const nm=document.createElement('div'); nm.className='name'; nm.textContent=(window.discovered&&window.discovered.has(n))?n:'???';
+    card.appendChild(nm);
+    const abil=document.createElement('div'); abil.className='note'; 
+    const a = info(n)||{}; abil.textContent = (window.discovered && window.discovered.has(n) ? (a.ability||'') : '—');
+    card.appendChild(abil);
     grid.appendChild(card);
   });
 }
+
 function syncQuestUI(){
   setBoth('sceneLabel','sceneLabel2', scene.charAt(0).toUpperCase()+scene.slice(1));
   const html = `<b>${quest.name||''}</b><br>${quest.desc||quest.description||''}<br><br>` +
@@ -2955,7 +2991,8 @@ function doReset(){
   enclosures={water:[],land:[],air:[]};
   decor={water:0,land:0,air:0};
   discovered=new Set();
-  coins=0;
+  window.discovered = discovered;
+coins=0;
   timeMin=360;
   weather=WEATHER.CLEAR;
   weatherTimer=0;
@@ -2996,7 +3033,7 @@ function maybeHideScrim(){
     scrim.classList.remove('open');
   }
 }
-toggleInventory.onclick=()=> sbInventory.classList.contains('open') ? closeSidebar(sbInventory,toggleInventory) : openSidebar(sbInventory,toggleInventory);
+toggleInventory.onclick=()=> sbInventory.classList.contains('open') ? closeSidebar(sbInventory,toggleInventory) : openSidebar(sbInventory,toggleInventory); try{bindInventoryTabs(); renderInventory();}catch(_e){};
 toggleJournal.onclick =()=> sbJournal.classList.contains('open')  ? closeSidebar(sbJournal,toggleJournal)   : openSidebar(sbJournal,toggleJournal);
 toggleQuests.onclick  =()=> sbQuests.classList.contains('open')   ? closeSidebar(sbQuests,toggleQuests)    : openSidebar(sbQuests,toggleQuests);
 toggleCare.onclick    =()=> sbCare.classList.contains('open')     ? closeSidebar(sbCare,toggleCare)        : openSidebar(sbCare,toggleCare);
@@ -5097,84 +5134,49 @@ function grant(item){
     journal.prepend(tabBar);
     renderJournal('All');
   }
-  function renderJournal(tab){
-    const list=document.getElementById('journalList');
-    if(!list) return;
-    list.innerHTML='';
-    const animals=window.allAnimals||[];
-    const byBiome=(window.animalsByBiome)||{};
-    const biome=tab.toLowerCase();
-    let arr=(tab==='All'?animals:(byBiome[biome]||[]));
-    let total=arr.length, disc=0;
-    arr.forEach(an=>{
-      const known = window.discoveredAnimals && window.discoveredAnimals.includes(an.name);
-      if(known) disc++;
-      const row=document.createElement('div');
-      row.style.display='flex'; row.style.alignItems='center'; row.style.marginBottom='4px';
-      const img=document.createElement('img');
-      img.src=an.sprite;
-      img.style.width='32px'; img.style.height='32px';
-      if(!known){ img.style.opacity='0.3'; img.style.filter='grayscale(100%)'; }
-      const name=document.createElement('span');
-      name.textContent= known ? an.name : '???';
-      name.style.marginLeft='8px';
-      row.appendChild(img); row.appendChild(name);
-      list.appendChild(row);
-    });
-    // Counter
-    const counter=document.getElementById('journalCounter')||document.createElement('div');
-    counter.id='journalCounter';
-    counter.textContent='Discovered '+disc+' / '+total;
-    if(!counter.parentNode) list.prepend(counter); else counter.textContent='Discovered '+disc+' / '+total;
-  }
-  window.renderJournal=renderJournal;
+  function renderJournal(){
+  const j = document.getElementById('journal');
+  if(!j) return;
+  j.innerHTML='';
+  const list = document.createElement('div');
+  list.className = 'petList';
+  (window.animals||[]).forEach(an => {
+    const entry = document.createElement('div');
+    entry.className = 'petEntry';
+    entry.setAttribute('data-name', an.name);
+    // sprite (match HUD): 32x32 canvas using drawAnimalSprite
+    const cv = document.createElement('canvas');
+    cv.width = 32; cv.height = 32; cv.className='petCanvas';
+    const ctx = cv.getContext('2d');
+    try{ drawAnimalSprite(ctx, baseName(an.name), 0,0, 32/12); }catch(_){}
+    entry.appendChild(cv);
+    // name
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = an.name;
+    entry.appendChild(label);
+    // ability
+    const a = info(an.name) || {};
+    const abil = document.createElement('div');
+    abil.className = 'ability';
+    abil.textContent = a.ability || '';
+    entry.appendChild(abil);
+    list.appendChild(entry);
+  });
+  j.appendChild(list);
+}catch(e){}
+    entry.appendChild(canvas);
 
-  // Wait for DOM
-  window.addEventListener('load', initJournalTabs);
+    var label=document.createElement('div'); label.className='label';
+    label.textContent=an.name;
+    entry.appendChild(label);
 
-  // ---- Mini-game Abort & Controls patch ----
-  function unifyMiniGameControls(){
-    // override hideOverlay to reset state
-    const oldHide = window.hideOverlay;
-    window.hideOverlay = function(){
-      if(oldHide) oldHide();
-      window.inMiniGame=false;
-    };
+    var abil=document.createElement('div'); abil.className='ability';
+    abil.textContent=(window.petData && window.petData[key] && window.petData[key].ability) || an.ability || '—';
+    entry.appendChild(abil);
 
-    // unify abort logic in overlays
-    document.addEventListener('click', function(e){
-      if(e.target && e.target.classList.contains('pill') && e.target.textContent==='Abort'){
-        toastSafe('Mini-game aborted');
-        window.inMiniGame=false;
-      }
-    });
-
-    // unify keydown for click spam and minigames
-    window.addEventListener('keydown', function(e){
-      if(!window.inMiniGame) return;
-      if(e.key==='Escape'){
-        toastSafe('Mini-game aborted');
-        window.inMiniGame=false;
-        try{ hideOverlay(); }catch(_){}
-      }
-      if(window.inMiniGameType==='clickspam' && (e.key==='Enter' || e.key==='a')){
-        if(typeof window.clickSpamIncrement==='function') window.clickSpamIncrement();
-      }
-      if(window.inMiniGameType==='patternmemory'){
-        let map={'ArrowUp':'▲','ArrowDown':'▼','ArrowLeft':'◀','ArrowRight':'▶'};
-        if(map[e.key]){
-          const btn=document.querySelector('#pmBtns [data-sym="'+map[e.key]+'"]');
-          if(btn) btn.click();
-        }
-      }
-      if(window.inMiniGameType==='timingbar' && (e.key==='Enter' || e.key==='a')){
-        const btn=document.getElementById('tbTap'); if(btn) btn.click();
-      }
-    });
-  }
-  unifyMiniGameControls();
-
-  log('V16.6 loaded: unified controls, journal tabs with counters & greyed undiscovered.');
+    j.appendChild(entry);
+  });
 })();
 
 </script>
@@ -8260,7 +8262,12 @@ window.cheatDefs = (typeof cheatDefs!=='undefined') ? cheatDefs : (window.cheatD
     var root = document.getElementById(rootId);
     if(!root) return;
     root.innerHTML = '';
-    inventory[cat].forEach(function(item){
+    var items = inventory[cat]||[];
+    if(!items.length){
+      var empty = document.createElement('div'); empty.className='note'; empty.textContent='No items in this category yet'; root.appendChild(empty);
+      return;
+    }
+    items.forEach(function(item){
       var row = document.createElement('div'); row.className='invItem';
       var img = document.createElement('img'); img.src=item.icon; row.appendChild(img);
       var meta = document.createElement('div'); meta.className='meta';
@@ -8305,71 +8312,53 @@ window.cheatDefs = (typeof cheatDefs!=='undefined') ? cheatDefs : (window.cheatD
       root.appendChild(row);
     });
   }
-  function renderInventory(){
-    renderInvCat('tools', 'invCat_tools');
-    renderInvCat('weapons', 'invCat_weapons');
-    renderInvCat('consumables', 'invCat_consumables');
-    renderInvCat('materials', 'invCat_materials');
-    updateEquipHUD();
+  // Render creatures tab (caught companions grouped by species)
+  function renderInvCreatures(rootId){
+  var root=document.getElementById(rootId||'invCat_creatures');
+  if(!root) return; root.innerHTML='';
+  var names=Array.isArray(window.creatures)?window.creatures.slice():[];
+  if(!names.length){
+    var empty=document.createElement('div'); empty.className='note';
+    empty.textContent='No creatures caught yet'; root.appendChild(empty); return;
   }
+  var counts={}; names.forEach(function(n){ var k=baseName(n); counts[k]=(counts[k]||0)+1; });
+  Object.keys(counts).sort().forEach(function(species){
+    var row=document.createElement('div'); row.className='invItem';
+    var left=document.createElement('div'); left.className='left';
 
-  // Tab switching inside Inventory
-  (function(){
-    var wrap = document.getElementById('invCategories');
-    if(!wrap) return;
-    var btns = wrap.querySelectorAll('.invTabs button');
-    var cats = ['tools','weapons','consumables','materials'];
-    function activate(cat){
-      cats.forEach(function(c){ 
-        var pane = document.getElementById('invCat_'+c);
-        if(pane) pane.classList.toggle('active', c===cat);
-      });
-    }
-    btns.forEach(function(b){ b.addEventListener('click', function(){ activate(b.getAttribute('data-cat')); }); });
-    activate('materials'); // default
-  })();
+    // Normalize key: strip numeric suffixes, lowercase
+    var key = baseName(species).replace(/_\d+$/, "").toLowerCase();
 
-  // ===== Crafting recipes =====
-  var recipes = [
-    { id:'axe_wood',     name:'Axe',      icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC',     req:{ Wood:5, Stone:2 }, out:{ cat:'tools', name:'Axe', qty:1 },       cost:0 },
-    { id:'pick_wood',    name:'Pickaxe',  icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAQUlEQVR4nGNgGAWUAkZiFFUEaPyHsTs23MCrh4lSF9HcQAznnzhx5z82hfiAhYUK3Jwh6GVsYHjF8qiBg9DAwQ8A3wwMGs2yQecAAAAASUVORK5CYII=', req:{ Wood:5, Stone:4 }, out:{ cat:'tools', name:'Pickaxe', qty:1 },   cost:0 },
-    { id:'net_basic',    name:'Net',      icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAYElEQVR4nGNgGAWDDjBiE6wI0PjPwMDAkNKzhShDVFRU4OYwUcVZSIAoA1VUVBhhrkBnk2UgKYCFGEV37tz5T4gNA6Nexg5I8TLVXYg3pzAwMDB0bLiBVQ0uMDA5ZXgBADSZLq3JyYx3AAAAAElFTkSuQmCC',     req:{ Fiber:6, Wood:2 }, out:{ cat:'tools', name:'Net', qty:1 },       cost:4 },
-    { id:'sword_wood',   name:'Sword',    icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAS0lEQVR4nGNgGOyAkRhFJ07c+Q9jW1io4NXDRKmLRg0cNXBEGIg3GwXYGP3HJbfhyDmseunrQgYGBoaKAA0MV3ZsuIFTH9VdOAIBAFG4DBzfayLgAAAAAElFTkSuQmCC',   req:{ Wood:6, Fiber:3 }, out:{ cat:'weapons', name:'Sword', qty:1 },   cost:6 },
-    { id:'bow_simple',   name:'Bow',      icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAf0lEQVR4nGNgGOyAEV3g2bNn/6WkpODiTaEa/2HsutU3MNSjAxZcEsgGkQKwGkiqqwgaSI5BWEFTqMb/Z8+ekeVVGGCi2BW4DCQ3EnAaSC0wkg2kSrpjoIELMcCzZ8/+U5KEcLqwKVSDLINxFl/YDCMmnHG6sG71DUZqRRRFAABnZS+BKhf2ZgAAAABJRU5ErkJggg==',     req:{ Wood:8, Fiber:5 }, out:{ cat:'weapons', name:'Bow', qty:1 },     cost:8 },
-    { id:'potion_small', name:'Potion',   icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAVUlEQVR4nGNgGAWUAkZCCrZsOfEfXczHxwKnPiZKXURzA/F6+cSJOxjehQELCxWCwUW0gfgsGvxhyEJIwSUbGwzvfcOjfvB7mf5h+K1nAbXtHAUEAACHAhRQ/DI76QAAAABJRU5ErkJggg==',  req:{ Herb:3, Water:1 }, out:{ cat:'consumables', name:'Potion', qty:1, use:'heal:25' }, cost:6 },
-    { id:'elixir_full',  name:'Elixir',   icon:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAWklEQVR4nGNgGAWUAkZCCk6cePYfXczCQgqnPiZKXUS0gSee/cdwGTHyeL184sQdnIZaWKgQDC6iDcRnEdXDkIWQApse3K7BBugXy8PXQIKR0mNDbStHASEAACeoGbJ7iv0MAAAAAElFTkSuQmCC',  req:{ Herb:5, Berry:3 }, out:{ cat:'consumables', name:'Elixir', qty:1, use:'fullhp' }, cost:12 }
-  ];
+    // Sprite canvas using drawPet
+    var c=document.createElement('canvas'); c.width=28; c.height=28; c.className='petSprite';
+    var ctx=c.getContext('2d'); ctx.clearRect(0,0,28,28);
+    try{ drawPet(ctx, key, 14,14); }catch(e){}
+    left.appendChild(c);
 
-  
+    var meta=document.createElement('div'); meta.className='meta';
+    var nm=document.createElement('div'); nm.className='name';
+    nm.textContent=species+' × '+counts[species];
+    var ab=document.createElement('div'); ab.className='ability';
+    try{ ab.textContent=(window.petData && window.petData[key] && window.petData[key].ability) || '—'; }
+    catch(e){ ab.textContent='—'; }
+    meta.appendChild(nm); meta.appendChild(ab);
+    left.appendChild(meta); row.appendChild(left);
 
-function renderCraft(){
-  var host = document.getElementById('craftGrid') || document.getElementById('craftList');
-  if(!host) return;
-  host.innerHTML='';
-  recipes.forEach(function(r){
-    var row = document.createElement('div'); row.className='invItem';
-    var img = document.createElement('img'); img.src=r.icon; row.appendChild(img);
-    var meta = document.createElement('div'); meta.className='meta';
-    var nm = document.createElement('div'); nm.className='name'; nm.textContent=r.name;
-    var req = document.createElement('div'); req.className='qty';
-    req.textContent = Object.keys(r.req).map(function(k){return r.req[k]+'× '+k;}).join(', ') + (r.cost? ' • '+r.cost+' coins' : '');
-    meta.appendChild(nm); meta.appendChild(req); row.appendChild(meta);
-    var actions = document.createElement('div'); actions.className='actions';
-    var btn = document.createElement('button'); btn.textContent='Craft';
-    btn.addEventListener('click', function(){
-      if(r.cost && !spendCoins(r.cost)) return;
-      var ok = true;
-      Object.keys(r.req).forEach(function(k){ 
-        if(!inventory[k] || inventory[k] < r.req[k]) ok=false;
-      });
-      if(!ok){ toast('Missing materials'); if(r.cost) addCoins(r.cost); return; }
-      Object.keys(r.req).forEach(function(k){ removeFromInventory(k, r.req[k]); });
-      addToInventory(r.out.name, r.out.qty);
-      updateInventoryUI();
-      toast('Crafted '+r.name+'!');
-    });
-    actions.appendChild(btn); row.appendChild(actions);
-    host.appendChild(row);
+    var acts=document.createElement('div'); acts.className='actions';
+    var btn=document.createElement('button'); btn.className='pill'; btn.textContent='Set Active';
+    btn.onclick=function(){
+      var sel=document.querySelector('#sbInventory select, #inventory select');
+      if(sel){
+        for(var i=0;i<sel.options.length;i++){
+          if(baseName(sel.options[i].textContent)===baseName(species)){
+            sel.selectedIndex=i; sel.dispatchEvent(new Event('change',{bubbles:true}));
+            break;
+          }
+        }
+      }
+    };
+    acts.appendChild(btn); row.appendChild(acts);
+    root.appendChild(row);
   });
 }
               ).join(', ') + (r.cost? ' • '+r.cost+' coins' : '');
@@ -8758,50 +8747,54 @@ function renderCraft(){
 
   // --- Inventory + Craft sidebars ---
   function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
-  function renderInventory(){
-    let panel = document.getElementById('wp-inv');
-    if(!panel){
-      panel = el('div',null); panel.id='wp-inv';
-      panel.innerHTML = '<button id="wp-panel-close">Close</button><h3 style="margin:0 0 6px 0">Inventory</h3><div class="wp-grid" id="wp-inv-grid"></div>';
-      document.body.appendChild(panel);
-      panel.querySelector('#wp-panel-close').onclick = ()=>{ panel.style.display='none'; document.getElementById('wp-scrim').style.display='none'; };
-    }
-    const grid = document.getElementById('wp-inv-grid'); grid.innerHTML='';
-    Object.values(state.inv).forEach(it=>{
-      const row = el('div','wp-item');
-      row.innerHTML = f`<img src="${it.sprite}"/><div style="flex:1"><div class="wp-name">${it.name}</div><div class="wp-qty">x${it.qty}</div></div><div class="btns"></div>`;
-      const btns = $('.btns', row);
-      if(it.type==='usable'){
-        const b = el('button',null,'Use'); b.onclick=()=>{
-          if(it.qty<=0) return toast('None left.'); 
-          if(it.effect && it.effect.hp){ state.hp = clamp(state.hp + it.effect.hp, 0, state.maxHp); hpAPI.renderHP(); }
-          it.qty--; toast(`Used ${it.name}.`); renderInventory();
-        }; btns.appendChild(b);
-      }else if(it.type==='equip'){
-        const slot = it.slot; const isEq = state.equipped[slot]===it.id && it.qty>0;
-        const b = el('button',null, isEq?'Unequip':'Equip'); b.onclick=()=>{
-          if(isEq){ state.equipped[slot]=null; }else{ if(it.qty<=0) return toast('You do not own this.'); state.equipped[slot]=it.id; }
-          renderInventory(); eqAPI && eqAPI.render && eqAPI.render();
-        }; btns.appendChild(b);
+  // Render creatures tab (caught companions grouped by species)
+  function renderInvCreatures(rootId){
+  var root=document.getElementById(rootId||'invCat_creatures');
+  if(!root) return; root.innerHTML='';
+  var names=Array.isArray(window.creatures)?window.creatures.slice():[];
+  if(!names.length){
+    var empty=document.createElement('div'); empty.className='note';
+    empty.textContent='No creatures caught yet'; root.appendChild(empty); return;
+  }
+  var counts={}; names.forEach(function(n){ var k=baseName(n); counts[k]=(counts[k]||0)+1; });
+  Object.keys(counts).sort().forEach(function(species){
+    var row=document.createElement('div'); row.className='invItem';
+    var left=document.createElement('div'); left.className='left';
+
+    // Normalize key: strip numeric suffixes, lowercase
+    var key = baseName(species).replace(/_\d+$/, "").toLowerCase();
+
+    // Sprite canvas using drawPet
+    var c=document.createElement('canvas'); c.width=28; c.height=28; c.className='petSprite';
+    var ctx=c.getContext('2d'); ctx.clearRect(0,0,28,28);
+    try{ drawPet(ctx, key, 14,14); }catch(e){}
+    left.appendChild(c);
+
+    var meta=document.createElement('div'); meta.className='meta';
+    var nm=document.createElement('div'); nm.className='name';
+    nm.textContent=species+' × '+counts[species];
+    var ab=document.createElement('div'); ab.className='ability';
+    try{ ab.textContent=(window.petData && window.petData[key] && window.petData[key].ability) || '—'; }
+    catch(e){ ab.textContent='—'; }
+    meta.appendChild(nm); meta.appendChild(ab);
+    left.appendChild(meta); row.appendChild(left);
+
+    var acts=document.createElement('div'); acts.className='actions';
+    var btn=document.createElement('button'); btn.className='pill'; btn.textContent='Set Active';
+    btn.onclick=function(){
+      var sel=document.querySelector('#sbInventory select, #inventory select');
+      if(sel){
+        for(var i=0;i<sel.options.length;i++){
+          if(baseName(sel.options[i].textContent)===baseName(species)){
+            sel.selectedIndex=i; sel.dispatchEvent(new Event('change',{bubbles:true}));
+            break;
+          }
+        }
       }
-      grid.appendChild(row);
-    });
-  }
-  function openInventory(){ renderInventory(); showScrim(true); $('#wp-inv').style.display='block'; }
-  function ensureInvToggle(){
-    // try find existing Inventory button by text
-    const btn = Array.from(document.querySelectorAll('button, a')).find(b=>/inventory/i.test(b.textContent));
-    if(btn && !btn._wpBound){ btn._wpBound=true; btn.addEventListener('click', (e)=>{ e.preventDefault(); openInventory(); }); }
-  }
-
-
-// --- Craft Panel creation + open ---
-function ensureCraftPanel(){
-  if (document.getElementById('wp-craft')) return;
-  const panel = document.createElement('div'); panel.id='wp-craft';
-  panel.innerHTML = '<button id="wp-craft-close">Close</button><h3 style="margin:0 0 8px 0">Crafting</h3><div class="wp-grid" id="craftGrid"></div>';
-  document.body.appendChild(panel);
-  panel.querySelector('#wp-craft-close').onclick = ()=>{ panel.style.display='none'; var s=document.getElementById('wp-scrim'); if(s) s.style.display='none'; };
+    };
+    acts.appendChild(btn); row.appendChild(acts);
+    root.appendChild(row);
+  });
 }
 // [openCraft removed for consolidation]
 
@@ -9138,7 +9131,10 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function init(){
-    ensureCraftPanel();
+    try{ window.animals = window.animals || animals || window.animals; }catch(_){}
+try{ updateJournal && updateJournal(); }catch(_){}
+try{ updateJournal && updateJournal(); }catch(_){}
+ensureCraftPanel();
     bindCraftButton();
   }
 
@@ -11712,6 +11708,1032 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
+
+<script>
+(function(){
+  // Ensure inventory panes render when the sidebar is shown
+  var btn = document.getElementById('toggleInventory');
+  function ensureInv(){
+    try{ if(typeof renderInventory==='function') renderInventory(); }catch(_){}
+    // Re-run activator tick to apply .active class after contents exist
+    setTimeout(function(){
+      var wrap = document.getElementById('invTabButtons');
+      if(!wrap) return;
+      var btnOn = wrap.querySelector('.invTabs button.on') || wrap.querySelector('.invTabs button');
+      if(btnOn){ btnOn.click(); } // simulate to trigger logic
+    }, 0);
+  }
+  if(btn && !btn._wpInvHook){
+    btn._wpInvHook = true;
+    btn.addEventListener('click', ensureInv);
+  }
+  // Also render once on load in case the panel is already open
+  document.addEventListener('DOMContentLoaded', ensureInv);
+})();
+</script>
+
+
+<script>
+// --- Ultra-robust inventory tab wiring & creatures sync ---
+(function(){
+  if (window.__INV_WIRING__) return; window.__INV_WIRING__=true;
+
+  function showInvTab(cat){
+    var cats=['tools','weapons','consumables','materials','creatures'];
+    if(cats.indexOf(cat)===-1) cat='materials';
+    // panes
+    cats.forEach(function(c){
+      var pane = document.getElementById('invCat_'+c);
+      if(pane){ pane.classList.toggle('active', c===cat); }
+    });
+    // buttons
+    var wrap=document.getElementById('invTabButtons');
+    if(wrap){
+      var btns=[].slice.call(wrap.querySelectorAll('.invTabs button'));
+      btns.forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-cat')===cat); });
+    }
+    var lbl=document.getElementById('invActiveLabel');
+    if(lbl){ lbl.textContent = cat.charAt(0).toUpperCase()+cat.slice(1); }
+    try{ if(typeof renderInventory==='function') renderInventory(); }catch(_){}
+    try{ localStorage.setItem('invActiveCat', cat); }catch(_){}
+  }
+
+  // Event delegation: any button with data-cat switches tabs
+  document.addEventListener('click', function(ev){
+    var el = ev.target;
+    if(el && el.matches && el.matches('button[data-cat]')){
+      ev.preventDefault();
+      showInvTab(el.getAttribute('data-cat'));
+    }
+  }, true);
+
+  // When Inventory opens, ensure we render & activate last-selected tab
+  function onOpen(){
+    var cat = (localStorage.getItem('invActiveCat') || 'materials');
+    showInvTab(cat);
+  }
+  var invBtn = document.getElementById('toggleInventory');
+  if(invBtn && !invBtn._invHook){ invBtn._invHook=true; invBtn.addEventListener('click', onOpen); }
+
+  // Patch companions.push so captures immediately refresh the Creatures pane
+  function patchCompanions(){
+    try{
+      var a = (Array.isArray(window.companions) ? window.companions : (typeof companions!=='undefined' ? companions : null));
+      if(!Array.isArray(a)) return;
+      if(a._patched) return;
+      var origPush = a.push;
+      a.push = function(){
+        var r = origPush.apply(a, arguments);
+        // After a capture, refresh inventory and flip to creatures once so user can see it
+        showInvTab('creatures');
+        return r;
+      };
+      a._patched = true;
+    }catch(_){}
+  }
+
+  // Try immediately and keep trying a few times in case game boots slowly
+  patchCompanions();
+  var tries=0; var t = setInterval(function(){ tries++; patchCompanions(); if(tries>10) clearInterval(t); }, 500);
+
+  // Also refresh panes whenever we run syncInventoryUI (if present)
+  try{
+    var sIU = window.syncInventoryUI;
+    if(typeof sIU === 'function' && !sIU._invWrapped){
+      window.syncInventoryUI = function(){ try{ return sIU.apply(this, arguments); } finally { showInvTab(localStorage.getItem('invActiveCat')||'materials'); } };
+      window.syncInventoryUI._invWrapped = true;
+    }
+  }catch(_){}
+
+  // First-time activation (if the Inventory is already open)
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(function(){ showInvTab(localStorage.getItem('invActiveCat')||'materials'); }, 0);
+  });
+})();
+</script>
+
+
+<!-- v55: ensure inventory tabs render + optional seed -->
+<script>
+(function(){
+  function ensureInventoryUI(){
+    try { if (typeof bindInventoryTabs === 'function') bindInventoryTabs(); } catch(_){}
+    try { if (typeof renderInventory   === 'function') renderInventory();   } catch(_){}
+    var cat = (localStorage.getItem('invActiveCat') || 'materials');
+    var btn = document.querySelector('#invTabButtons .invTabs button[data-cat="'+cat+'"]')
+          || document.querySelector('#invTabButtons .invTabs button.on')
+          || document.querySelector('#invTabButtons .invTabs button');
+    if (btn && !btn.classList.contains('on')) { btn.click(); }
+  }
+
+  // Run when the page is ready
+  document.addEventListener('DOMContentLoaded', ensureInventoryUI);
+
+  // Also run every time the Inventory sidebar is opened
+  var invBtn = document.getElementById('toggleInventory');
+  if (invBtn && !invBtn._wired) {
+    invBtn._wired = true;
+    invBtn.addEventListener('click', ensureInventoryUI);
+  }
+
+  // Optional: seed a few starter items once so you can see a list immediately
+  function seedOnce(){
+    try {
+      if (!window.inventory) window.inventory = {tools:[], weapons:[], consumables:[], materials:[], creatures:[]};
+      var seeded = localStorage.getItem('wp_v55_seeded');
+      if (seeded) return;
+      // Tiny placeholder icons; swap for your sprites.
+      var icoW='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC';
+      var icoS='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAQUlEQVR4nGNgGAWUAkZiFFUEaPyHsTs23MCrh4lSF9HcQAznnzhx5z82hfiAhYUK3Jwh6GVsYHjF8qiBg9DAwQ8A3wwMGs2yQecAAAAASUVORK5CYII=';
+      var icoH='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAYElEQVR4nGNgGAWDDjBiE6wI0PjPwMDAkNKzhShDVFRU4OYwUcVZSIAoA1VUVBhhrkBnk2UgKYCFGEV37tz5T4gNA6Nexg5I8TLVXYg3pzAwMDB0bLiBVQ0uMDA5ZXgBADSZLq3JyYx3AAAAAElFTkSuQmCC';
+      // If invAdd helper exists, use it; otherwise push directly.
+      if (typeof invAdd === 'function') {
+        invAdd('materials','Wood',12, icoW);
+        invAdd('materials','Stone',8,  icoS);
+        invAdd('materials','Herb',6,   icoH);
+      } else {
+        window.inventory.materials.push({name:'Wood', qty:12, icon:icoW});
+        window.inventory.materials.push({name:'Stone', qty:8,  icon:icoS});
+        window.inventory.materials.push({name:'Herb', qty:6,   icon:icoH});
+      }
+      localStorage.setItem('wp_v55_seeded','1');
+    } catch(_){}
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    seedOnce();
+    // Re-render after seeding
+    setTimeout(ensureInventoryUI, 50);
+  });
+})();
+</script>
+
+<!-- v56: robust inventory renderer (redefines broken functions) -->
+<script>
+(function(){
+  // Ensure a global inventory structure exists
+  window.inventory = window.inventory || {tools:[], weapons:[], consumables:[], materials:[], creatures:[]};
+
+  // Helpers: add/remove items by name
+  window.invAdd = function(cat, name, qty, icon, extra){
+    if(!window.inventory[cat]) window.inventory[cat] = [];
+    var arr = window.inventory[cat];
+    var found = arr.find(it => it.name === name);
+    if(found){ found.qty += (qty||1); return found; }
+    var obj = Object.assign({name:name, qty:qty||1, icon:icon||"", use:null}, extra||{});
+    arr.push(obj);
+    return obj;
+  };
+  window.invRemove = function(cat, name, qty){
+    var arr = window.inventory[cat] || [];
+    var i = arr.findIndex(it => it.name === name);
+    if(i>=0){
+      arr[i].qty -= (qty||1);
+      if(arr[i].qty <= 0) arr.splice(i,1);
+    }
+  };
+
+  function el(tag, cls, html){ var n = document.createElement(tag); if(cls) n.className = cls; if(html!=null) n.innerHTML = html; return n; }
+
+  // ---- Pane renderers ----
+  function renderInvCat(cat, rootId){
+    var root = document.getElementById(rootId);
+    if(!root) return;
+    root.innerHTML = "";
+    var items = (window.inventory[cat]||[]).slice();
+    if(!items.length){
+      root.appendChild(el("div","note","No items in this category yet"));
+      return;
+    }
+    items.forEach(function(item){
+      var row = el("div","invItem");
+      var img = el("img"); if(item.icon) img.src = item.icon; img.alt = item.name; row.appendChild(img);
+      var meta = el("div","meta");
+      meta.appendChild(el("div","name", item.name));
+      meta.appendChild(el("div","qty", "x"+(item.qty||1)));
+      row.appendChild(meta);
+      var actions = el("div","actions");
+      var btn = el("button","pill");
+      if(cat === "weapons" || cat === "tools"){
+        btn.textContent = (item.equipped ? "Unequip" : "Equip");
+        btn.addEventListener("click", function(){
+          // simple toggle flag
+          (window.inventory[cat]||[]).forEach(it => it.equipped = (it===item ? !it.equipped : false));
+          renderInventory(); // refresh list
+        });
+      } else if (cat === "consumables"){
+        btn.textContent = "Use";
+        btn.addEventListener("click", function(){
+          window.invRemove("consumables", item.name, 1);
+          renderInventory();
+        });
+      } else if (cat === "materials"){
+        btn.textContent = "Sell";
+        btn.addEventListener("click", function(){
+          window.invRemove("materials", item.name, 1);
+          renderInventory();
+        });
+      } else {
+        btn.textContent = "OK";
+      }
+      actions.appendChild(btn);
+      row.appendChild(actions);
+      root.appendChild(row);
+    });
+  }
+
+  function renderInvCreatures(rootId){
+  var root=document.getElementById(rootId||'invCat_creatures');
+  if(!root) return; root.innerHTML='';
+  var names=Array.isArray(window.creatures)?window.creatures.slice():[];
+  if(!names.length){
+    var empty=document.createElement('div'); empty.className='note';
+    empty.textContent='No creatures caught yet'; root.appendChild(empty); return;
+  }
+  var counts={}; names.forEach(function(n){ var k=baseName(n); counts[k]=(counts[k]||0)+1; });
+  Object.keys(counts).sort().forEach(function(species){
+    var row=document.createElement('div'); row.className='invItem';
+    var left=document.createElement('div'); left.className='left';
+
+    // Normalize key: strip numeric suffixes, lowercase
+    var key = baseName(species).replace(/_\d+$/, "").toLowerCase();
+
+    // Sprite canvas using drawPet
+    var c=document.createElement('canvas'); c.width=28; c.height=28; c.className='petSprite';
+    var ctx=c.getContext('2d'); ctx.clearRect(0,0,28,28);
+    try{ drawPet(ctx, key, 14,14); }catch(e){}
+    left.appendChild(c);
+
+    var meta=document.createElement('div'); meta.className='meta';
+    var nm=document.createElement('div'); nm.className='name';
+    nm.textContent=species+' × '+counts[species];
+    var ab=document.createElement('div'); ab.className='ability';
+    try{ ab.textContent=(window.petData && window.petData[key] && window.petData[key].ability) || '—'; }
+    catch(e){ ab.textContent='—'; }
+    meta.appendChild(nm); meta.appendChild(ab);
+    left.appendChild(meta); row.appendChild(left);
+
+    var acts=document.createElement('div'); acts.className='actions';
+    var btn=document.createElement('button'); btn.className='pill'; btn.textContent='Set Active';
+    btn.onclick=function(){
+      var sel=document.querySelector('#sbInventory select, #inventory select');
+      if(sel){
+        for(var i=0;i<sel.options.length;i++){
+          if(baseName(sel.options[i].textContent)===baseName(species)){
+            sel.selectedIndex=i; sel.dispatchEvent(new Event('change',{bubbles:true}));
+            break;
+          }
+        }
+      }
+    };
+    acts.appendChild(btn); row.appendChild(acts);
+    root.appendChild(row);
+  });
+})();
+</script>
+
+<!-- v58: polished Creatures list with sprite, Name×Count, ability, Set Active, alpha sort -->
+<style>
+  /* Creatures row polish */
+  #invCat_creatures .invItem { align-items:center; }
+  #invCat_creatures .invItem canvas.petSprite { width:28px; height:28px; image-rendering: pixelated; border-radius:4px; background:#0b1226; border:1px solid #20345f; }
+  #invCat_creatures .invItem .meta .name { font-weight:800; }
+  #invCat_creatures .invItem .meta .ability { font-size:11px; color:#9fb3d1; margin-top:2px; }
+  #invCat_creatures .invItem .actions .setActive { padding:4px 8px; }
+</style>
+<script>
+(function(){
+  // Try to resolve an ability string for a given species name
+  function getAbilityFor(species){
+    var s = String(species||"");
+    // Common ability maps used in earlier builds
+    var maps = [ window.petAbilities, window.PET_ABILITIES, window.PAL_ABILITIES, window.ABILITIES ];
+    for (var i=0;i<maps.length;i++){
+      var m = maps[i];
+      if (m && (s in m)) return m[s];
+      if (m && typeof m.get === 'function' && m.get(s)) return m.get(s);
+    }
+    // Sometimes abilities are stored on a species data table
+    var tables = [ window.petDex, window.pokedex, window.speciesData ];
+    for (var j=0;j<tables.length;j++){
+      var t = tables[j];
+      if (t && t[s] && (t[s].ability || t[s].abilities)){
+        if (t[s].ability) return t[s].ability;
+        if (Array.isArray(t[s].abilities) && t[s].abilities.length) return t[s].abilities[0];
+      }
+    }
+    return "—";
+  }
+
+  // Draw a small creature sprite if a renderer exists; otherwise draw initials
+  function makeCreatureSprite(species){
+    var c = document.createElement('canvas');
+    c.className = 'petSprite';
+    c.width = 28; c.height = 28;
+    var ctx = c.getContext('2d');
+    try{
+      if (typeof window.drawPetSprite === 'function'){
+        // drawPetSprite(ctx, species, x, y, scale)
+        window.drawPetSprite(ctx, species, 14, 14, 1);
+        return c;
+      }
+      if (typeof window.drawSpeciesIcon === 'function'){
+        window.drawSpeciesIcon(ctx, species, 14, 14, 1);
+        return c;
+      }
+    }catch(e){}
+    // Fallback: initials
+    ctx.fillStyle = '#182644'; ctx.fillRect(0,0,28,28);
+    ctx.fillStyle = '#4da3ff';
+    ctx.font = 'bold 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    var initials = (species||'?').split(' ').map(s=>s[0]).join('').slice(0,3).toUpperCase();
+    ctx.fillText(initials, 14, 15);
+    return c;
+  }
+
+  function baseNameSafe(name){
+    if(!name) return "";
+    return String(name).replace(/\s*\([^)]*\)/g,"").replace(/\s*#\d+$/,"").trim();
+  }
+
+  // Override creatures renderer with polished list
+  (function installCreaturesRenderer(){
+    var prev = window.renderInventory;
+    window.renderInventory = function(){
+      try{ if (typeof prev === 'function') prev(); }catch(_){}
+      var root = document.getElementById('invCat_creatures');
+      if (!root) return;
+      root.innerHTML = "";
+
+      // Source list from companions (window or lexical)
+      var names = [];
+      if (Array.isArray(window.companions)) names = window.companions.slice();
+      else if (typeof companions!=='undefined' && Array.isArray(companions)) names = companions.slice();
+
+      if (!names.length){
+        var note = document.createElement('div');
+        note.className='note';
+        note.textContent='No creatures caught yet';
+        root.appendChild(note);
+        return;
+      }
+
+      // Aggregate counts by base species
+      var counts = {};
+      names.forEach(function(n){
+        var key = (typeof window.baseName === 'function') ? window.baseName(n) : baseNameSafe(n);
+        counts[key] = (counts[key]||0) + 1;
+      });
+
+      // Sort alphabetically
+      var speciesList = Object.keys(counts).sort(function(a,b){ return a.localeCompare(b); });
+
+      speciesList.forEach(function(species){
+        var row = document.createElement('div');
+        row.className = 'invItem';
+
+        // Sprite (left)
+        row.appendChild(makeCreatureSprite(species));
+
+        // Meta: Name × Count (bold) + Ability (small)
+        var meta = document.createElement('div');
+        meta.className = 'meta';
+        var nm = document.createElement('div'); nm.className='name'; nm.textContent = species + ' × ' + counts[species];
+        var ab = document.createElement('div'); ab.className='ability'; ab.textContent = getAbilityFor(species);
+        meta.appendChild(nm); meta.appendChild(ab);
+        row.appendChild(meta);
+
+        // Actions: Set Active
+        var acts = document.createElement('div');
+        acts.className = 'actions';
+        var btn = document.createElement('button');
+        btn.className = 'pill setActive';
+        btn.textContent = 'Set Active';
+        btn.addEventListener('click', function(){
+          // Prefer existing setter if available
+          if (typeof window.setActivePetByName === 'function') {
+            window.setActivePetByName(species);
+          } else {
+            window.activePetName = species;
+            try { localStorage.setItem('activePetName', species); } catch(_){}
+            // Update simple labels if present
+            var l1 = document.getElementById('activePetName');  if (l1) l1.textContent = species;
+            var l2 = document.getElementById('activePetName2'); if (l2) l2.textContent = species;
+          }
+          // Also sync any dropdown if it exists
+          var sel = document.querySelector('#sbInventory select, #inventory select');
+          if (sel){
+            for (var i=0;i<sel.options.length;i++){
+              if (sel.options[i].textContent.trim() === species){ sel.selectedIndex = i; break; }
+            }
+          }
+        });
+        acts.appendChild(btn);
+        row.appendChild(acts);
+
+        root.appendChild(row);
+      });
+    };
+  })();
+
+  // Re-render on load to apply the new layout immediately
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(function(){ if (typeof window.renderInventory==='function') window.renderInventory(); }, 50);
+  });
+})();
+</script>
+
+<script>
+(function(){
+  // Replace makeCreatureSprite in v58 to use the game's drawAnimalIcon
+  function replaceMakeCreatureSprite(){
+    var scriptTag = document.currentScript; // not used; we redefine global helper below
+  }
+  window.makeCreatureSprite = function(species){
+    var c = document.createElement('canvas');
+    c.className = 'petSprite';
+    c.width = 28; c.height = 28;
+    var ctx = c.getContext('2d');
+    try{
+      // Use the real in-game renderer
+      if (typeof window.drawAnimalIcon === 'function'){
+        // center at (14,14) with scale ~1 (tiles are pixel-art; icons are drawn in logical units)
+        window.drawAnimalIcon(ctx, (typeof baseName==='function'? baseName(species): species), 14, 14, 1);
+        return c;
+      }
+      if (typeof window.drawAnimalSprite === 'function'){
+        window.drawAnimalSprite(ctx, (typeof baseName==='function'? baseName(species): species), 14, 14, 1);
+        return c;
+      }
+    } catch(e){}
+    // Fallback initials (should rarely be used)
+    ctx.fillStyle = '#182644'; ctx.fillRect(0,0,28,28);
+    ctx.fillStyle = '#4da3ff';
+    ctx.font = 'bold 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    var initials = (species||'?').split(' ').map(s=>s[0]).join('').slice(0,3).toUpperCase();
+    ctx.fillText(initials, 14, 15);
+    return c;
+  };
+})();
+</script>
+
+<!-- v60: proper pixel sprites + cleaner row layout + robust Set Active sync -->
+<style>
+  #invCat_creatures .invItem {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; padding:8px 10px;
+  }
+  #invCat_creatures .invItem .left { display:flex; align-items:center; gap:10px; }
+  #invCat_creatures .invItem canvas.petSprite { width:32px; height:32px; image-rendering: pixelated; border-radius:4px; background:#0b1226; border:1px solid #20345f; }
+  #invCat_creatures .invItem .meta .name { font-weight:800; }
+  #invCat_creatures .invItem .meta .ability { font-size:11px; color:#9fb3d1; margin-top:2px; }
+  #invCat_creatures .invItem .actions .setActive { padding:6px 10px; min-width:92px; text-align:center; }
+</style>
+<script>
+(function(){
+  // Override makeCreatureSprite to use the game's drawAnimalIcon with correct origin & scale
+  window.makeCreatureSprite = function(species){
+    var c = document.createElement('canvas');
+    c.className = 'petSprite';
+    c.width = 32; c.height = 32;
+    var ctx = c.getContext('2d');
+    var name = (typeof baseName==='function'? baseName(species): species);
+    try{
+      if (typeof window.drawAnimalIcon === 'function'){
+        // draw starting at (2,2) with scale 2 so the 14x14-ish sprite fits cleanly in 32x32
+        window.drawAnimalIcon(ctx, name, 2, 2, 2);
+        return c;
+      }
+      if (typeof window.drawAnimalSprite === 'function'){
+        window.drawAnimalSprite(ctx, name, 2, 2, 2);
+        return c;
+      }
+    }catch(e){}
+    // emergency fallback
+    ctx.fillStyle = '#182644'; ctx.fillRect(0,0,32,32);
+    ctx.fillStyle = '#4da3ff';
+    ctx.font = 'bold 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    var initials = (name||'?').split(' ').map(s=>s[0]).join('').slice(0,3).toUpperCase();
+    ctx.fillText(initials, 16, 17);
+    return c;
+  };
+
+  // Replace creatures row builder to place sprite+meta on left and button on right; sync dropdown and header
+  (function patchCreaturesList(){
+    var prev = window.renderInventory;
+    window.renderInventory = function(){
+      try{ if (typeof prev==='function') prev(); }catch(_) {}
+      var root = document.getElementById('invCat_creatures'); if (!root) return;
+      root.innerHTML = '';
+
+      var names = [];
+      if (Array.isArray(window.companions)) names = window.companions.slice();
+      else if (typeof companions!=='undefined' && Array.isArray(companions)) names = companions.slice();
+
+      if (!names.length){
+        var note=document.createElement('div'); note.className='note'; note.textContent='No creatures caught yet'; root.appendChild(note); return;
+      }
+
+      function baseNameSafe(s){ return String(s||'').replace(/\s*\([^)]*\)/g,'').replace(/\s*#\d+$/,'').trim(); }
+      var counts = {};
+      names.forEach(function(n){ var k=(typeof baseName==='function'? baseName(n): baseNameSafe(n)); counts[k]=(counts[k]||0)+1; });
+      var list = Object.keys(counts).sort(function(a,b){ return a.localeCompare(b); });
+
+      list.forEach(function(species){
+        var row = document.createElement('div'); row.className='invItem';
+
+        var left = document.createElement('div'); left.className='left';
+        left.appendChild(window.makeCreatureSprite(species));
+
+        var meta = document.createElement('div'); meta.className='meta';
+        var nm = document.createElement('div'); nm.className='name'; nm.textContent=species+' × '+counts[species];
+        var ab = document.createElement('div'); ab.className='ability'; ab.textContent=(typeof getAbilityFor==='function'? getAbilityFor(species): '—');
+        meta.appendChild(nm); meta.appendChild(ab);
+        left.appendChild(meta);
+        row.appendChild(left);
+
+        var acts = document.createElement('div'); acts.className='actions';
+        var btn = document.createElement('button'); btn.className='pill setActive'; btn.textContent='Set Active';
+        btn.addEventListener('click', function(){
+          // Set global active name
+          var chosen = species;
+          if (typeof window.setActivePetByName === 'function') window.setActivePetByName(chosen);
+          else { window.activePetName = chosen; try{ localStorage.setItem('activePetName', chosen);}catch(_){} }
+          // Update header dropdown (if present) and trigger its change
+          var sel = document.querySelector('#sbInventory select, #inventory select');
+          if (sel){
+            for (var i=0;i<sel.options.length;i++){
+              if (sel.options[i].textContent.trim() === chosen){ sel.selectedIndex = i; break; }
+            }
+            sel.dispatchEvent(new Event('change', {bubbles:true}));
+          }
+          // Update visible labels that show active pet name
+          var l1 = document.getElementById('activePetName');  if (l1) l1.textContent = chosen;
+          var l2 = document.getElementById('activePetName2'); if (l2) l2.textContent = chosen;
+        });
+        acts.appendChild(btn);
+        row.appendChild(acts);
+
+        root.appendChild(row);
+      });
+    };
+  })();
+
+  // re-render soon after DOM ready to apply
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(function(){ if (typeof window.renderInventory==='function') window.renderInventory(); }, 80);
+  });
+})();
+</script>
+
+<!-- v61: force use of drawAnimalIcon/drawAnimalSprite (no silent fallback) -->
+<script>
+(function(){
+  window.makeCreatureSprite = function(species){
+    var c = document.createElement('canvas');
+    c.className = 'petSprite';
+    c.width = 32; c.height = 32;
+    var ctx = c.getContext('2d');
+    var name = (typeof baseName==='function'? baseName(species): species);
+    if (typeof window.drawAnimalIcon === 'function'){
+      window.drawAnimalIcon(ctx, name, 2, 2, 2);
+      return c;
+    }
+    if (typeof window.drawAnimalSprite === 'function'){
+      window.drawAnimalSprite(ctx, name, 2, 2, 2);
+      return c;
+    }
+    // fallback only if neither renderer exists
+    ctx.fillStyle = '#182644'; ctx.fillRect(0,0,32,32);
+    ctx.fillStyle = '#4da3ff';
+    ctx.font = 'bold 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    var initials = (name||'?').split(' ').map(function(s){return s[0]}).join('').slice(0,3).toUpperCase();
+    ctx.fillText(initials, 16, 17);
+    return c;
+  };
+})();
+</script>
+
+<!-- v61.1: Creatures tab as scrollable LIST (override grid) -->
+<style>
+  /* Force the creatures category to use list layout, not the grid */
+  #invCat_creatures.active { display: block !important; }
+  #invCat_creatures { max-height: 48vh; overflow: auto; }
+
+  /* Polished row layout */
+  #invCat_creatures .invItem {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 8px 10px; border: 1px solid #20345f; border-radius: 6px;
+    background: linear-gradient(180deg, rgba(17,30,59,.6), rgba(7,14,30,.6));
+  }
+  #invCat_creatures .invItem + .invItem { margin-top: 6px; }
+  #invCat_creatures .left { display:flex; align-items:center; gap:10px; min-width:0; }
+  #invCat_creatures .petSprite { image-rendering: pixelated; }
+  #invCat_creatures .petSprite { width: 28px; height: 28px; background: #0b1226; border:1px solid #20345f; border-radius: 4px; }
+  #invCat_creatures .meta { display:flex; flex-direction:column; min-width:0; }
+  #invCat_creatures .meta .name { font-weight: 800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #invCat_creatures .meta .ability { font-size: .9em; opacity: .85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #invCat_creatures .actions { margin-left: auto; flex: 0 0 auto; }
+  #invCat_creatures .actions .pill { padding: 6px 10px; border-radius: 999px; }
+</style>
+
+<!-- v61.1: Renderer + coin-reset hardening -->
+<script>
+(function(){
+  // --- utility: base name without variants like "(Shiny)" or "#3" ---
+  function bn(s){
+    try{ return (typeof baseName==='function') ? baseName(s) : String(s||'').replace(/\s*\([^)]*\)/g,'').replace(/\s*#\d+$/,'').trim(); }
+    catch(_){ return String(s||''); }
+  }
+  // --- utility: resolve ability text ---
+  function abilityOf(species){
+    try{
+      if (typeof info==='function'){
+        var meta = info(bn(species)) || {};
+        if (meta.ability) return meta.ability;
+      }
+    }catch(_){}
+    if (typeof getAbilityFor==='function') return getAbilityFor(species);
+    return '—';
+  }
+
+  // --- draw small sprite (prefers game's renderer; falls back to initials) ---
+  function spriteCanvas(species){
+    var c = document.createElement('canvas');
+    c.className = 'petSprite';
+    c.width = 28; c.height = 28;
+    var ctx = c.getContext('2d');
+    var name = bn(species);
+    try{
+      if (typeof drawAnimalIcon === 'function') { drawAnimalIcon(ctx, name, 14, 14, 1); return c; }
+      if (typeof drawAnimalSprite === 'function') { drawAnimalSprite(ctx, name, 14, 14, 1); return c; }
+    }catch(_){}
+    // fallback: 1–3 initials on a tile
+    ctx.fillStyle = '#182644'; ctx.fillRect(0,0,28,28);
+    ctx.fillStyle = '#4da3ff';
+    ctx.font = 'bold 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    var initials = (String(name)||'?').split(' ').map(function(s){return s[0]||''}).join('').slice(0,3).toUpperCase();
+    ctx.fillText(initials || '?', 14, 15);
+    return c;
+  }
+
+  // --- polished creatures list renderer ---
+  window.renderInvCreatures = function(rootId){
+    var root = document.getElementById(rootId || 'invCat_creatures');
+    if (!root) return;
+    root.innerHTML = '';
+    var names = Array.isArray(window.companions) ? window.companions.slice() : [];
+    if (!names.length){
+      var empty = document.createElement('div'); empty.className='note'; empty.textContent='No creatures caught yet';
+      root.appendChild(empty); return;
+    }
+    var counts = {};
+    names.forEach(function(n){ var k = bn(n); counts[k] = (counts[k]||0) + 1; });
+    Object.keys(counts).sort(function(a,b){ return a.localeCompare(b); }).forEach(function(species){
+      var row = document.createElement('div'); row.className='invItem';
+
+      var left = document.createElement('div'); left.className='left';
+      left.appendChild(spriteCanvas(species));
+
+      var meta = document.createElement('div'); meta.className='meta';
+      var nm = document.createElement('div'); nm.className='name'; nm.textContent = species + ' × ' + counts[species];
+      var ab = document.createElement('div'); ab.className='ability'; ab.textContent = abilityOf(species);
+      meta.appendChild(nm); meta.appendChild(ab);
+      left.appendChild(meta);
+      row.appendChild(left);
+
+      var acts = document.createElement('div'); acts.className='actions';
+      var btn = document.createElement('button'); btn.className='pill'; btn.textContent='Set Active';
+      btn.onclick = function(){
+        if (typeof setActivePetByName === 'function') setActivePetByName(species);
+        else { window.activePetName = species; try{ localStorage.setItem('activePetName', species);}catch(_){} }
+        var l1 = document.getElementById('activePetName');  if (l1) l1.textContent = species;
+        var l2 = document.getElementById('activePetName2'); if (l2) l2.textContent = species;
+        var sel = document.querySelector('#sbInventory select, #inventory select');
+        if (sel){
+          for (var i=0;i<sel.options.length;i++){
+            if (sel.options[i].textContent.trim() === species){ sel.selectedIndex = i; sel.dispatchEvent(new Event('change', {bubbles:true})); break; }
+          }
+        }
+      };
+      acts.appendChild(btn);
+      row.appendChild(acts);
+
+      root.appendChild(row);
+    });
+  };
+
+  // Ensure our renderer runs after any generic inventory render
+  var _prevRI = window.renderInventory;
+  window.renderInventory = function(){
+    try { if (typeof _prevRI === 'function') _prevRI(); } catch(_){}
+    window.renderInvCreatures('invCat_creatures');
+  };
+
+  // Re-render when the user clicks the "Creatures" tab button
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('#invTabButtons [data-cat="creatures"]');
+    if (btn) setTimeout(function(){ window.renderInvCreatures('invCat_creatures'); }, 0);
+  });
+
+  // --- Coins reset hardening ---
+  function forceCoinZero(){
+    try{ if (typeof setCoins === 'function') setCoins(0); }catch(_){}
+    try{ if (window.player && typeof window.player.coins === 'number') window.player.coins = 0; }catch(_){}
+    try{ if (typeof window.coins === 'number') window.coins = 0; }catch(_){}
+    try{
+      var raw = localStorage.getItem('wp32_state');
+      if (raw){ var s = JSON.parse(raw); s.coins = 0; localStorage.setItem('wp32_state', JSON.stringify(s)); }
+    }catch(_){}
+    try{ (window.syncHUD || function(){})(); }catch(_){}
+  }
+
+  // Wrap doReset() so whatever the game resets, coins always become 0 everywhere
+  (function(){
+    var orig = window.doReset;
+    window.doReset = function(){
+      try{ if (typeof orig === 'function') orig.apply(this, arguments); }catch(_){}
+      forceCoinZero();
+    };
+  })();
+
+  // Make newWorld() a safe alias
+  window.newWorld = function(){ try{ window.doReset(); }catch(_){ forceCoinZero(); } };
+
+  // Also wire common buttons if present
+  ['startReset','newWorld','newWorldBtn','btnNewGame','btnStartNew'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el && !el.__wp_coin_patch){
+      el.addEventListener('click', function(){ try{ window.doReset(); }catch(_){ forceCoinZero(); } });
+      el.__wp_coin_patch = true;
+    }
+  });
+})();
+</script>
+
+<!-- v61.2: Improved creatures list + coin reset on load -->
+<script>
+(function(){
+  // --- utility: get base name without suffixes ---
+  function bn(s){
+    return String(s||'').replace(/\s*\([^)]*\)/g,'').replace(/\s*#\d+$/,'').trim();
+  }
+
+  // --- get ability from animals dataset ---
+  function abilityOf(species){
+    try {
+      if (window.animals && animals[species] && animals[species].ability)
+        return animals[species].ability;
+    } catch(e){}
+    return '—';
+  }
+
+  // --- draw sprite using game functions ---
+  function spriteCanvas(species){
+    var c = document.createElement('canvas');
+    c.className = 'petSprite';
+    c.width = 28; c.height = 28;
+    var ctx = c.getContext('2d');
+    try {
+      if (typeof drawAnimalIcon === 'function') {
+        drawAnimalIcon(ctx, species, 14, 14, 1);
+        return c;
+      }
+      if (typeof drawAnimalSprite === 'function') {
+        drawAnimalSprite(ctx, species, 14, 14, 1);
+        return c;
+      }
+    } catch(e){}
+    ctx.fillStyle = '#182644'; ctx.fillRect(0,0,28,28);
+    ctx.fillStyle = '#4da3ff'; ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText((species[0]||'?').toUpperCase(), 14, 15);
+    return c;
+  }
+
+  // --- creatures list renderer ---
+  window.renderInvCreatures = function(rootId){
+    var root = document.getElementById(rootId || 'invCat_creatures');
+    if (!root) return;
+    root.innerHTML = '';
+    var names = Array.isArray(window.companions) ? window.companions.slice() : [];
+    if (!names.length){
+      var empty = document.createElement('div');
+      empty.className='note';
+      empty.textContent='No creatures caught yet';
+      root.appendChild(empty);
+      return;
+    }
+    var counts = {};
+    names.forEach(function(n){ var k = bn(n); counts[k] = (counts[k]||0) + 1; });
+    Object.keys(counts).sort().forEach(function(species){
+      var row = document.createElement('div'); row.className='invItem';
+      var left = document.createElement('div'); left.className='left';
+      left.appendChild(spriteCanvas(species));
+      var meta = document.createElement('div'); meta.className='meta';
+      var nm = document.createElement('div'); nm.className='name';
+      nm.textContent = species + ' × ' + counts[species];
+      var ab = document.createElement('div'); ab.className='ability';
+      ab.textContent = abilityOf(species);
+      meta.appendChild(nm); meta.appendChild(ab);
+      left.appendChild(meta);
+      row.appendChild(left);
+      var acts = document.createElement('div'); acts.className='actions';
+      var btn = document.createElement('button'); btn.className='pill';
+      btn.textContent='Set Active';
+      btn.onclick = function(){
+        if (typeof setActivePetByName === 'function') setActivePetByName(species);
+        else { window.activePetName = species; try{ localStorage.setItem('activePetName', species);}catch(_){}};
+        var l1 = document.getElementById('activePetName');  if (l1) l1.textContent = species;
+        var l2 = document.getElementById('activePetName2'); if (l2) l2.textContent = species;
+      };
+      acts.appendChild(btn);
+      row.appendChild(acts);
+      root.appendChild(row);
+    });
+  };
+
+  // override renderInventory
+  var _prevRI = window.renderInventory;
+  window.renderInventory = function(){
+    try { if (typeof _prevRI === 'function') _prevRI(); } catch(e){}
+    window.renderInvCreatures('invCat_creatures');
+  };
+
+  // coin reset function
+  function forceCoinZero(){
+    try{ if (typeof setCoins === 'function') setCoins(0); }catch(_){}
+    try{ if (window.player && typeof window.player.coins === 'number') window.player.coins = 0; }catch(_){}
+    try{ if (typeof window.coins === 'number') window.coins = 0; }catch(_){}
+    try{
+      var raw = localStorage.getItem('wp32_state');
+      if (raw){ var s = JSON.parse(raw); s.coins = 0; localStorage.setItem('wp32_state', JSON.stringify(s)); }
+    }catch(_){}
+    try{ (window.syncHUD || function(){})(); }catch(_){}
+  }
+
+  // reset coins on load
+  window.addEventListener('load', forceCoinZero);
+
+  // wrap reset functions
+  (function(){
+    var orig = window.doReset;
+    window.doReset = function(){
+      try{ if (typeof orig === 'function') orig.apply(this, arguments); }catch(_){}
+      forceCoinZero();
+    };
+  })();
+  window.newWorld = function(){ try{ window.doReset(); }catch(_){ forceCoinZero(); } };
+})();
+</script>
+
+<!-- ===== WP v63 PATCH: Creatures list fix (sprites, ability, Set Active, tabs ok) + coin reset ===== -->
+<style>
+  /* Scrollable, single-column list (don't override tab visibility) */
+  #invCat_creatures .invItem{
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 12px; padding: 8px 10px;
+    border: 1px solid #20345f; border-radius: 8px;
+    background: linear-gradient(180deg, rgba(17,30,59,.65), rgba(7,14,30,.65));
+  }
+  #invCat_creatures .invItem + .invItem{ margin-top: 8px; }
+  #invCat_creatures .left{ display:flex; align-items:center; gap:10px; min-width:0; }
+  #invCat_creatures .petSprite{
+    width: 28px; height: 28px;
+    image-rendering: pixelated;
+    background:#0b1226; border:1px solid #20345f; border-radius:6px;
+    flex: 0 0 28px;
+  }
+  #invCat_creatures .meta{ display:flex; flex-direction:column; min-width:0; }
+  #invCat_creatures .meta .name{
+    font-weight:800; color:#e7f0ff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  #invCat_creatures .meta .ability{
+    font-size:.9em; color:#9fb3d1; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  #invCat_creatures .actions{ margin-left:auto; flex:0 0 auto; }
+  #invCat_creatures .actions .pill{ padding:6px 12px; border-radius:999px; }
+
+/* Polished creatures list */
+#invCat_creatures.creatureList{ display:block; max-height: 380px; overflow:auto; padding: 2px 0; }
+.creatureRow{ display:flex; align-items:center; gap:10px; padding:10px; margin:10px 6px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
+.creatureIcon{ flex:0 0 auto; width:28px; height:28px; image-rendering: pixelated; background: rgba(255,255,255,0.04); border-radius:8px; }
+.creatureInfo{ flex:1 1 auto; min-width:0; }
+.creatureName{ font-weight:600; }
+.creatureAbility{ font-size:12px; opacity:0.8; }
+#journal .petEntry{ display:flex; align-items:center; gap:10px; padding:8px; margin:6px 0; border-radius:8px; background:rgba(255,255,255,0.04); }
+#journal .petEntry .petCanvas{ width:32px; height:32px; image-rendering: pixelated; background: rgba(255,255,255,0.06); border-radius:6px; }
+#journal .petEntry .label{ font-weight:600; }
+#journal .petEntry .ability{ font-size:12px; opacity:0.8; }
+</style>
+
+<script>
+(function(){
+  // Normalize name
+  function _bn(s){
+    try{ if (typeof baseName === 'function') return baseName(s); }catch(_){}
+    return String(s||'').replace(/\s*\([^)]*\)/g,'').replace(/\s*#\d+$/,'').trim();
+  }
+
+  // Get ability via info()
+  function _abilityOf(species){
+    var nm = _bn(species);
+    try{
+      if (typeof info === 'function'){
+        var meta = info(nm) || {};
+        if (meta.ability) return meta.ability;
+      }
+    }catch(_){}
+    return '—';
+  }
+
+  // Sprite render
+  function _spriteCanvas(species){
+    var c = document.createElement('canvas');
+    c.className = 'petSprite'; c.width = 28; c.height = 28;
+    var ctx = c.getContext('2d');
+    var nm = _bn(species);
+    try{ if (typeof drawAnimalIcon === 'function'){ drawAnimalIcon(ctx, nm, 14, 14, 1); return c; } }catch(_){}
+    try{ if (typeof drawAnimalSprite === 'function'){ drawAnimalSprite(ctx, nm, 14, 14, 1); return c; } }catch(_){}
+    ctx.fillStyle = '#0b1226'; ctx.fillRect(0,0,28,28);
+    ctx.strokeStyle='#20345f'; ctx.strokeRect(0,0,28,28);
+    ctx.fillStyle='#9fb3d1'; ctx.font='bold 14px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText((nm||'?').charAt(0).toUpperCase(), 14, 15);
+    return c;
+  }
+
+  // Render creatures tab
+  function _renderInvCreatures(rootId){
+    var root = document.getElementById(rootId || 'invCat_creatures');
+    if (!root) return;
+    root.innerHTML = '';
+    var names = Array.isArray(window.companions) ? window.companions.slice() : [];
+    if (!names.length){
+      var empty = document.createElement('div');
+      empty.className='note'; empty.textContent='No creatures caught yet';
+      root.appendChild(empty); return;
+    }
+    var counts = {};
+    names.forEach(function(n){ var k=_bn(n); counts[k]=(counts[k]||0)+1; });
+    Object.keys(counts).sort().forEach(function(species){
+      var row=document.createElement('div'); row.className='invItem';
+      var left=document.createElement('div'); left.className='left';
+      left.appendChild(_spriteCanvas(species));
+      var meta=document.createElement('div'); meta.className='meta';
+      var nm=document.createElement('div'); nm.className='name';
+      nm.textContent=species+' × '+counts[species];
+      var ab=document.createElement('div'); ab.className='ability';
+      ab.textContent=_abilityOf(species);
+      meta.appendChild(nm); meta.appendChild(ab);
+      left.appendChild(meta); row.appendChild(left);
+      var acts=document.createElement('div'); acts.className='actions';
+      var btn=document.createElement('button'); btn.className='pill'; btn.textContent='Set Active';
+      btn.onclick=function(){
+        // Update dropdown so game logic runs
+        var sel=document.querySelector('#sbInventory select, #inventory select');
+        if (sel){
+          for (var i=0;i<sel.options.length;i++){
+            if (_bn(sel.options[i].textContent)===_bn(species)){
+              sel.selectedIndex=i;
+              sel.dispatchEvent(new Event('change',{bubbles:true}));
+              break;
+            }
+          }
+        }
+      };
+      acts.appendChild(btn); row.appendChild(acts);
+      root.appendChild(row);
+    });
+  }
+
+  window.renderInvCreatures=_renderInvCreatures;
+  var _prevRI=window.renderInventory;
+  window.renderInventory=function(){
+    try{ if(typeof _prevRI==='function') _prevRI(); }catch(_){}
+    _renderInvCreatures('invCat_creatures');
+  };
+
+  // Coin reset
+  function _forceCoinZero(){
+    try{ if(typeof setCoins==='function') setCoins(0);}catch(_){}
+    try{ if(window.player&&typeof window.player.coins==='number') window.player.coins=0;}catch(_){}
+    try{ if(typeof window.coins==='number') window.coins=0;}catch(_){}
+    try{ var raw=localStorage.getItem('wp32_state'); if(raw){ var s=JSON.parse(raw); s.coins=0; localStorage.setItem('wp32_state',JSON.stringify(s)); } }catch(_){}
+    try{ (window.syncHUD||function(){})(); }catch(_){}
+  }
+  window.addEventListener('load', _forceCoinZero);
+  var _prevReset=window.doReset;
+  window.doReset=function(){ try{ if(typeof _prevReset==='function') _prevReset(); }catch(_){}
+    _forceCoinZero(); };
+  window.newWorld=function(){ try{ window.doReset(); }catch(_){ _forceCoinZero(); } };
+})();
+</script>
+<!-- ===== /WP v63 PATCH ===== -->
 </body>
 </html>
 <script>
@@ -11837,6 +12859,57 @@ document.addEventListener('DOMContentLoaded', function(){
     try{ if (typeof save==='function') save(); }catch(_){}
 
     return res;
+  };
+})();
+
+// --- Override creatures view in inventory to show polished scrollable list with sprite & ability
+(function(){
+  const origSync = syncInventoryUI;
+  window.syncInventoryUI = function(){
+    // call original to keep select dropdown etc. in sync
+    try{ origSync(); }catch(_){}
+    try{
+      const container = document.getElementById('invCat_creatures');
+      if(!container) return;
+      // Build polished list
+      const counts = {};
+      (window.companions||[]).forEach(n=>{
+        const bn = baseName(n);
+        counts[bn] = (counts[bn]||0)+1;
+      });
+      container.innerHTML = '';
+      container.classList.add('creatureList');
+      Object.keys(counts).sort().forEach(n=>{
+        const row = document.createElement('div');
+        row.className = 'creatureRow';
+        // sprite canvas (HUD style)
+        const cv = document.createElement('canvas');
+        cv.width = 28; cv.height = 28; cv.className='creatureIcon';
+        const ctx = cv.getContext('2d');
+        try{ drawAnimalSprite(ctx, baseName(n), 0,0, 28/12); }catch(_){}
+        row.appendChild(cv);
+        // main text
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'creatureInfo';
+        const title = document.createElement('div');
+        title.className = 'creatureName';
+        title.textContent = n + ' × ' + counts[n];
+        infoDiv.appendChild(title);
+        const a = info(n) || {};
+        const abil = document.createElement('div');
+        abil.className = 'creatureAbility';
+        abil.textContent = a.ability || '';
+        infoDiv.appendChild(abil);
+        row.appendChild(infoDiv);
+        // action
+        const btn = document.createElement('button');
+        btn.className = 'small';
+        btn.textContent = 'Set Active';
+        btn.onclick = function(){ activePetName = n; };
+        row.appendChild(btn);
+        container.appendChild(row);
+      });
+    }catch(e){ console.error(e); }
   };
 })();
 </script>
