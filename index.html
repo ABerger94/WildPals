@@ -731,28 +731,29 @@ html.overlayOpen, body.overlayOpen { overflow:hidden !important; }
 <div id="hpBarOuter"><div id="hpBarInner"></div></div>
 <div id="hpText">HP: <span id="hpCurrent">100</span>/<span id="hpMax">100</span></div>
 </div>
-<div id="equipHUD">
-<div class="equipRow">
-<span class="equipLabel">Weapon:</span>
-<img alt="weapon" class="equipIcon" id="equipWeaponIcon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAS0lEQVR4nGNgGOyAkRhFJ07c+Q9jW1io4NXDRKmLRg0cNXBEGIg3GwXYGP3HJbfhyDmseunrQgYGBoaKAA0MV3ZsuIFTH9VdOAIBAFG4DBzfayLgAAAAAElFTkSuQmCC" style="display:none"/>
-<span class="equipName" id="equipWeaponName">None</span>
-</div>
-<div class="equipRow">
-<span class="equipLabel">Tool:</span>
-<img alt="tool" class="equipIcon" id="equipToolIcon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC" style="display:none"/>
-<span class="equipName" id="equipToolName">None</span>
+<div id="equipHUD" style="display:flex; gap:1.5em; align-items:center;">
+  <div class="equipItem">
+    <span class="equipLabel">Weapon:</span>
+    <img alt="weapon" class="equipIcon" id="equipWeaponIcon"
+         style="display:none" />
+    <span class="equipName" id="equipWeaponName">None</span>
+  </div>
+  <div class="equipItem">
+    <span class="equipLabel">Armor:</span>
+    <img alt="armor" class="equipIcon" id="equipArmorIcon"
+         style="display:none" />
+    <span class="equipName" id="equipArmorName">None</span>
+  </div>
+  <div class="equipItem">
+    <span class="equipLabel">Tool:</span>
+    <img alt="tool" class="equipIcon" id="equipToolIcon"
+         style="display:none" />
+    <span class="equipName" id="equipToolName">None</span>
+  </div>
 </div>
 
-  <div class="equipRow">
-<span class="equipLabel">Weapon:</span>
-<img alt="weapon" class="equipIcon" id="equipWeaponIcon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAS0lEQVR4nGNgGOyAkRhFJ07c+Q9jW1io4NXDRKmLRg0cNXBEGIg3GwXYGP3HJbfhyDmseunrQgYGBoaKAA0MV3ZsuIFTH9VdOAIBAFG4DBzfayLgAAAAAElFTkSuQmCC" style="display:none"/>
-<span class="equipName" id="equipWeaponName">None</span>
 </div>
-<div class="equipRow">
-<span class="equipLabel">Armor:</span>
-<img alt="armor" class="equipIcon" id="equipArmorIcon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAP0lEQVR4nGNgGHGAkRhFFQEa/2Hsjg038OphotRFNDcQp/NPnLjzH5ccDFhYqGDoH/xeHoEGjsCEPfgNHIEAANE4DBr8a1kRAAAAAElFTkSuQmCC" style="display:none"/>
-<span class="equipName" id="equipArmorName">None</span>
-</div>
+
 </div>
 </div>
 <div class="wrap">
@@ -12997,6 +12998,107 @@ document.addEventListener('DOMContentLoaded', function(){
       }catch(_){}
     };
   }
+})();
+</script>
+<script>
+/* === WP v75: Auto-activate Gatekeeper quests from dialog/toasts === */
+(function () {
+  if (window.__WP_AUTO_GATE_QUEST__) return;
+  window.__WP_AUTO_GATE_QUEST__ = true;
+
+  function dispatchQuestChanged(reason, extra) {
+    try {
+      window.dispatchEvent(new CustomEvent('wp:quest:changed', { detail: { reason, ...(extra||{}) } }));
+    } catch (_) {}
+  }
+
+  function titleCase(s){
+    return String(s||'').replace(/\b[a-z]/g, c => c.toUpperCase());
+  }
+
+  function parseBringLine(text) {
+    const raw = (text || '').toString().trim();
+    if (!/\bbring\s+/i.test(raw)) return null;
+
+    // pull "rabbit and fox" part; tolerate commas, "and", "&", "/"; stop at 'for <biome>'
+    let itemsPart = (raw.match(/bring\s+(.+?)(?:\s+for\s+[\w-]+)?$/i) || [,''])[1] || '';
+    const items = itemsPart
+      .replace(/\band\b/gi, '&')
+      .split(/(?:,|&|\/)/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(titleCase);
+
+    const biome = (raw.match(/\bfor\s+([\w-]+)/i) || [,''])[1] || '';
+
+    if (!items.length) return null;
+    return { items, biome, desc: raw.replace(/^Gatekeeper:\s*/i,'').trim() || 'Collect the requested animals.' };
+  }
+
+  function setActiveQuestFromText(text, source) {
+    const parsed = parseBringLine(text);
+    if (!parsed) return false;
+
+    const titleSuffix = parsed.biome ? (' – ' + titleCase(parsed.biome)) : '';
+    const prev = window.quest || {};
+
+    const delivered = Array.isArray(prev.delivered)
+      ? prev.delivered.filter(x => parsed.items.includes(x))
+      : [];
+
+    window.quest = {
+      id: 'gatekeeper_quest',
+      title: 'Gatekeeper Request' + titleSuffix,
+      name: 'Gatekeeper Request' + titleSuffix, // backward compat
+      desc: parsed.desc,
+      need: parsed.items,
+      delivered,
+      complete: parsed.items.length && delivered.length === parsed.items.length
+    };
+    dispatchQuestChanged(source || 'auto');
+    return true;
+  }
+
+  // 1) Hook toast so any "Bring ..." toast immediately updates the quest
+  try {
+    const __prevToast = window.toast || function(){ return undefined; };
+    window.toast = function(msg) {
+      try { setActiveQuestFromText(String(msg || ''), 'toast'); } catch (_){}
+      return __prevToast.apply(this, arguments);
+    };
+  } catch (_){}
+
+  // 2) If a Gatekeeper dialog open function exists, wrap it
+  try {
+    const _openNpcDialog = window.openNpcDialog;
+    if (typeof _openNpcDialog === 'function') {
+      window.openNpcDialog = function(requirement) {
+        const ret = _openNpcDialog.apply(this, arguments);
+        try {
+          const line = 'Gatekeeper: ' + (requirement || 'Bring the required animals.');
+          setActiveQuestFromText(line, 'gatekeeper-dialog');
+        } catch (_){}
+        return ret;
+      };
+    }
+  } catch (_){}
+
+  // 3) Safety net: observe mutations for any element that contains a Gatekeeper "Bring ..." line
+  try {
+    const mo = new MutationObserver(muts => {
+      muts.forEach(m => {
+        m.addedNodes.forEach(n => {
+          if (n.nodeType === 1) {
+            const txt = (n.textContent || '').trim();
+            if (/gatekeeper/i.test(txt) && /\bbring\s+/i.test(txt)) {
+              setActiveQuestFromText(txt, 'mutation');
+            }
+          }
+        });
+      });
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+  } catch (_){}
 })();
 </script>
 </body>
