@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>Wild Pals — Shell v1 (Clean GBC/GBA UI)</title>
+<style>
+  :root{
+    --ink:#e9f1ff; --bg:#0b1020;
+    /* GBC palette */
+    --gbc-aqua:#54C9C1; --gbc-aqua-dark:#3CA79F; --gbc-aqua-light:#7EDDD7;
+    --gbc-bezel:#0b0b0b; --gbc-screen:#222; --gbc-shadow:rgba(0,0,0,.45);
+    /* GBA palette */
+    --gba-body1:#5860A3; --gba-body2:#3F447D; --gba-body3:#2B2E57;
+    /* Buttons */
+    --btnA:#6C38FF; --btnB:#FF3B5C; --btnStart:#4a4a4a;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial}
+
+  /* ===== Shared topbar ===== */
+  .topbar{display:flex;align-items:center;justify-content:space-between;
+    font-weight:800;letter-spacing:.08em;margin-bottom:10px;color:#dfe8ff}
+  .topbar .power{display:flex;gap:6px;align-items:center;color:#ddd;font-size:12px}
+  .topbar .led{width:10px;height:10px;border-radius:999px;
+    background:radial-gradient(circle at 30% 30%,#f66,#a11414);
+    box-shadow:0 0 10px #f33,inset 0 0 2px #fff}
+
+  /* ===== GBC Portrait Shell ===== */
+  .gbc-shell{
+    max-width:min(920px,96vw);
+    margin:14px auto;
+    padding:18px 18px 24px;
+    background:linear-gradient(160deg,var(--gbc-aqua-light),var(--gbc-aqua) 40%,var(--gbc-aqua-dark) 100%);
+    border-radius:22px;
+    box-shadow:0 18px 36px var(--gbc-shadow), inset 0 6px 0 rgba(255,255,255,.08), inset 0 -6px 0 rgba(0,0,0,.12);
+    border:2px solid rgba(0,0,0,.2);
+  }
+  .gbc-face{
+    background:linear-gradient(180deg,#1b1b1b,#111);
+    border-radius:16px; padding:16px;
+    box-shadow:inset 0 6px 14px rgba(0,0,0,.55);
+    color:#dfe8ff;
+  }
+  .gb-screen{
+    background:var(--gbc-bezel); border-radius:14px; padding:14px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.05), inset 0 0 24px rgba(0,0,0,.8);
+  }
+  #canvasBox{background:var(--gbc-screen); border:1px solid rgba(255,255,255,.06); border-radius:10px; box-shadow: inset 0 0 24px rgba(0,0,0,.65); overflow:hidden}
+  #game{display:block; width:100%; height:auto; image-rendering:pixelated; background:#20314f}
+  .gb-screen::after{
+    content:""; display:block; width:120px; height:40px; margin:10px 0 0 auto;
+    background:
+      radial-gradient(circle at 6px 6px, rgba(0,0,0,.8) 3px, transparent 4px) 0 0/16px 16px,
+      radial-gradient(circle at 14px 14px, rgba(0,0,0,.8) 3px, transparent 4px) 0 0/16px 16px;
+    opacity:.45; filter:drop-shadow(0 1px 0 rgba(255,255,255,.05)); border-radius:6px;
+  }
+
+  /* Portrait controls */
+  #mobileControls{
+    display:grid;
+    grid-template-columns: 160px 1fr 160px;
+    grid-template-rows: auto auto;
+    gap:12px;
+    background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15));
+    border:1px solid rgba(255,255,255,.06); border-radius:14px;
+    box-shadow: inset 0 8px 22px rgba(0,0,0,.5), 0 10px 22px rgba(0,0,0,.35);
+    padding:16px; margin-top:12px;
+  }
+  .dpad{grid-column:1; grid-row:1 / span 2; width:160px; height:160px; position:relative;
+        background:#0e0e14; border:1px solid #232323; border-radius:16px; box-shadow:inset 0 8px 14px rgba(0,0,0,.6)}
+  .dpad .cross{position:absolute; inset:0; margin:auto; width:120px; height:120px; background:#1a1a1a; border-radius:14px}
+  .dpad .cross::before,.dpad .cross::after{content:""; position:absolute; background:#1a1a1a; border-radius:12px}
+  .dpad .cross::before{left:0; right:0; top:50%; height:40px; transform:translateY(-50%)}
+  .dpad .cross::after{top:0; bottom:0; left:50%; width:40px; transform:translateX(-50%)}
+  .dpad button{position:absolute; width:60px; height:60px; background:#111; border:1px solid #2a2a2a; border-radius:14px; color:#98a4b9; font-weight:900; font-size:18px; touch-action:manipulation}
+  #btnUp{left:50%; top:6px; transform:translateX(-50%)}
+  #btnDown{left:50%; bottom:6px; transform:translateX(-50%)}
+  #btnLeft{left:6px; top:50%; transform:translateY(-50%)}
+  #btnRight{right:6px; top:50%; transform:translateY(-50%)}
+
+  .actCluster{grid-column:3; grid-row:1; width:140px; height:120px; position:relative; margin:auto}
+  .actCluster .btn{position:absolute; width:56px; height:56px; border-radius:999px; border:1px solid #1b2a52; color:#e9f1ff; font-weight:800; font-size:16px; box-shadow:inset 0 8px 18px rgba(0,0,0,.45); touch-action:manipulation}
+  #btnA{background:var(--btnA); right:6px; top:8px}
+  #btnB{background:var(--btnB); left:16px; bottom:6px}
+  .startRow{grid-column:3; grid-row:2; display:flex; justify-content:center; gap:12px; align-items:center}
+  .startRow .tiny{min-width:auto; width:72px; height:32px; border-radius:999px; background:var(--btnStart); border:1px solid #222; color:white; font-weight:800; letter-spacing:.06em; font-size:12px; touch-action:manipulation}
+
+  /* ===== GBA Landscape Shell ===== */
+  .gba-shell{ display:none; }
+  .gba-body{
+    width:min(98vw,1200px);
+    margin:10px auto;
+    padding:18px;
+    border-radius:42px;
+    background:linear-gradient(160deg,var(--gba-body1),var(--gba-body2) 55%,var(--gba-body3));
+    box-shadow: 0 20px 40px rgba(0,0,0,.55), inset 0 12px 22px rgba(255,255,255,.08), inset 0 -14px 28px rgba(0,0,0,.35);
+    border:2px solid rgba(0,0,0,.28);
+  }
+  .gba-topbar{margin-bottom:12px;}
+  .gba-tray{
+    background:rgba(0,0,0,.18);
+    border-radius:28px;
+    padding:14px;
+    box-shadow: inset 0 8px 24px rgba(0,0,0,.45), inset 0 -6px 18px rgba(255,255,255,.05);
+  }
+  #landscapeRow{
+    display:grid;
+    grid-template-columns: 172px 1fr 160px;
+    gap:14px;
+    align-items:center;
+  }
+
+  .land-dpad{ width:172px; height:172px; position:relative; margin:auto;
+              background:#0e0e14; border:1px solid #232323; border-radius:18px; box-shadow:inset 0 8px 14px rgba(0,0,0,.6)}
+  .land-dpad .cross{position:absolute; inset:0; margin:auto; width:128px; height:128px; background:#1a1a1a; border-radius:14px}
+  .land-dpad .cross::before,.land-dpad .cross::after{content:""; position:absolute; background:#1a1a1a; border-radius:12px}
+  .land-dpad .cross::before{left:0; right:0; top:50%; height:42px; transform:translateY(-50%)}
+  .land-dpad .cross::after{top:0; bottom:0; left:50%; width:42px; transform:translateX(-50%)}
+  .land-dpad button{position:absolute; width:68px; height:68px; background:#111; border:1px solid #2a2a2a; border-radius:14px; color:#98a4b9; font-weight:900; font-size:20px; touch-action:manipulation}
+  #lUp{left:50%; top:6px; transform:translateX(-50%)}
+  #lDown{left:50%; bottom:6px; transform:translateX(-50%)}
+  #lLeft{left:6px; top:50%; transform:translateY(-50%)}
+  #lRight{right:6px; top:50%; transform:translateY(-50%)}
+
+  .land-screen-bezel{background:#0f1116;border-radius:18px;padding:12px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.05), inset 0 0 28px rgba(0,0,0,.75);}
+  .land-screen{ background:#141824; border-radius:12px; padding:8px; box-shadow: inset 0 0 24px rgba(0,0,0,.55); }
+  #gameLandscape{display:block; width:100%; height:auto; image-rendering:pixelated; background:#20314f; border:1px solid #2a2a2a; border-radius:8px}
+
+  .land-actions{ display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .land-actions .ab{ position:relative; width:160px; height:132px; }
+  .land-actions .ab .btn{ position:absolute; width:60px; height:60px; border-radius:999px; border:1px solid #1b2a52; color:#e9f1ff; font-weight:800; font-size:16px; box-shadow:inset 0 8px 18px rgba(0,0,0,.45); touch-action:manipulation }
+  #lA{ background:var(--btnA); right:6px; top:6px }
+  #lB{ background:var(--btnB); left:14px; bottom:8px }
+  .land-actions .start{ display:flex; gap:10px; }
+  .land-actions .start .tiny{ min-width:auto; width:72px; height:32px; border-radius:999px; background:var(--btnStart); border:1px solid #222; color:white; font-weight:800; font-size:12px; touch-action:manipulation }
+
+  /* ===== Mode switching ===== */
+  @media (orientation: landscape) and (max-width: 940px){
+    .gbc-shell{ display:none !important; }
+    .gba-shell{ display:block; }
+  }
+  @media (min-width: 941px){
+    .gba-shell{ display:none !important; }
+    #mobileControls{ display:none; }
+  }
+
+  /* Debug overlay */
+  #debug{
+    position:fixed; left:10px; top:10px; z-index:9999;
+    background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12);
+    border-radius:8px; padding:6px 8px; font:12px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    color:#cfe6ff; pointer-events:none; min-width:180px;
+  }
+</style>
+</head>
+<body>
+  <!-- PORTRAIT -->
+  <div class="gbc-shell">
+    <div class="gbc-face">
+      <div class="topbar">
+        <span>WILD&nbsp;PALS</span>
+        <span class="power"><span class="led"></span>POWER</span>
+      </div>
+      <div class="gb-screen">
+        <div id="canvasBox">
+          <canvas id="game" width="960" height="528"></canvas>
+        </div>
+      </div>
+      <div id="mobileControls">
+        <div class="dpad">
+          <div class="cross"></div>
+          <button id="btnUp">▲</button>
+          <button id="btnDown">▼</button>
+          <button id="btnLeft">◀</button>
+          <button id="btnRight">▶</button>
+        </div>
+        <div></div>
+        <div class="actCluster">
+          <button class="btn" id="btnA">A</button>
+          <button class="btn" id="btnB">B</button>
+        </div>
+        <div></div>
+        <div class="startRow">
+          <button class="tiny" id="btnStart">START</button>
+          <button class="tiny" id="btnSelect">SELECT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LANDSCAPE -->
+  <div class="gba-shell">
+    <div class="gba-body">
+      <div class="topbar gba-topbar">
+        <span>WILD&nbsp;PALS</span>
+        <span class="power"><span class="led"></span>POWER</span>
+      </div>
+      <div class="gba-tray">
+        <div id="landscapeRow">
+          <!-- D-pad -->
+          <div class="land-dpad">
+            <div class="cross"></div>
+            <button id="lUp">▲</button>
+            <button id="lDown">▼</button>
+            <button id="lLeft">◀</button>
+            <button id="lRight">▶</button>
+          </div>
+          <!-- Screen -->
+          <div class="land-screen-bezel">
+            <div class="land-screen">
+              <canvas id="gameLandscape" width="960" height="528"></canvas>
+            </div>
+          </div>
+          <!-- Actions -->
+          <div class="land-actions">
+            <div class="ab">
+              <button class="btn" id="lA">A</button>
+              <button class="btn" id="lB">B</button>
+            </div>
+            <div class="start">
+              <button class="tiny" id="lStart">START</button>
+              <button class="tiny" id="lSelect">SELECT</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="debug">booting…</div>
+
+<script>
+/* Wild Pals — Iteration C+ (Meadow + Forest, questline + economy + traversal + portal VFX):
+   A) Forest v1 questline (Ranger): fiber+mushroom, craft fine net, capture 1 forest pal → coins + Wetlands key flag
+   B) Traversal: new BRUSH tile (blocks unless brush_break); new items fiber & mushroom; new recipe net_fine (wood+fiber+berry)
+      New perks that matter now: boar:brush_break, stag:speed+0.15, owl:glide:"long" (groundwork), squirrel:forage bonus
+   C) Weighted forest spawns (boar, stag, owl, squirrel + a couple classics)
+   D) Economy: forest trader (buy/sell); simple sell values for mats; coin sinks (fine net, potions)
+   E) UX: minimap tint per biome; Start menu controls line switches on touch
+   F) Save/Load: persists brush tiles + new items/recipes and fog
+   G) Portals: vivid purple swirl with pulsing glow + cheat alias FORESTOPEN
+*/
+(function(){
+  // ---------- Status / Toast ----------
+  const debugEl = document.getElementById('debug');
+  function status(msg){ if(debugEl) debugEl.textContent = msg; }
+  let toastMsg="", toastUntil=0;
+  function toast(msg, ms=1600){ toastMsg=msg; toastUntil=performance.now()+ms; }
+
+
+// === Patch: Cheats UI registry ===
+const CheatsUI = { idx:0, list:[
+  {code:'CHESTHERE',desc:'Spawn chest here'},
+  {code:'CHESTME',desc:'Spawn chest one tile ahead'},
+  {code:'FORESTOPEN',desc:'Unlock Forest'}, {code:'DESERTOPEN',desc:'Unlock Desert'},
+  {code:'WETLANDSOPEN',desc:'Unlock Wetlands'}, {code:'VOLCANOOPEN',desc:'Unlock Volcano'},
+  {code:'GLACIEROPEN',desc:'Unlock Glacier'}, {code:'MYSTICOPEN',desc:'Unlock Mystic'},
+  {code:'SKYREALMOPEN',desc:'Unlock Sky Realm'}, {code:'UNDERSEAOPEN',desc:'Unlock Undersea'},
+  {code:'MYTHIC',desc:'Spawn mythic pal'}, {code:'LEGENDARY',desc:'Spawn legendary pal'},
+  {code:'RARE',desc:'Spawn rare pal'}, {code:'RICHIE',desc:'+1000 coins'}, {code:'MONEYRAIN',desc:'+5000 coins'},
+  {code:'BUFFME',desc:'Defense buff'}, {code:'ULTRASPEED',desc:'Speed buff'}, {code:'PARTYTIME',desc:'Confetti'},
+  {code:'ALLOPEN',desc:'Unlock main biomes'}, {code:'SECRETSOPEN',desc:'Unlock secret biomes'}
+,
+    {code:'SPRITEHERE', desc:'Spawn a sprite at your position'},
+    {code:'CLEARSPRITE', desc:'Remove any sprite on map'},
+    {code:'CLEARBOSS', desc:'Remove boar mini-boss'}]};
+let CheatsHistory = [];
+
+  // ---------- Canvases / Ctx ----------
+  const cvsP = document.getElementById('game');
+  const cvsL = document.getElementById('gameLandscape');
+  const ctxP = cvsP.getContext('2d'), ctxL = cvsL.getContext('2d');
+  ctxP.imageSmoothingEnabled = false; ctxL.imageSmoothingEnabled = false;
+
+  // ---------- Mode & Input ----------
+  const state = { pressed:new Set(), pressEdge:new Set(), taps:[], mode:'portrait' };
+// === Patch: directional memory + chest/particle arrays ===
+const lastDir = { x:0, y:1 }; // track last facing (default down)
+// use globalThis to avoid TDZ on self-referential typeof checks
+let chests = Array.isArray(globalThis.chests) ? globalThis.chests : [];
+let particles = Array.isArray(globalThis.particles) ? globalThis.particles : [];
+
+
+
+  function activeCanvas(){ return state.mode==='portrait'? cvsP : cvsL; }
+  function activeCtx(){ return state.mode==='portrait'? ctxP : ctxL; }
+  function setModeFromMedia(){
+    const isLandscapeMobile = matchMedia('(orientation: landscape) and (max-width: 940px)').matches;
+    state.mode = isLandscapeMobile ? 'landscape' : 'portrait';
+  }
+  setModeFromMedia(); addEventListener('resize', setModeFromMedia);
+
+  const keyMap = {
+    ArrowUp:'Up', ArrowDown:'Down', ArrowLeft:'Left', ArrowRight:'Right',
+    KeyW:'Up', KeyS:'Down', KeyA:'Left', KeyD:'Right',
+    KeyE:'A', KeyJ:'A',
+    KeyQ:'B', KeyK:'B',
+    Enter:'Start', Escape:'Start',
+    Space:'Select', Tab:'Select',
+    KeyZ:'Use'
+  };
+  addEventListener('keydown', e=>{ const n=keyMap[e.code]; if(n){ e.preventDefault(); if(!state.pressed.has(n)) state.pressEdge.add(n); state.pressed.add(n); pulse(n);} });
+  addEventListener('keyup',   e=>{ const n=keyMap[e.code]; if(n){ e.preventDefault(); state.pressed.delete(n);} });
+
+  function bindBtn(id, name){
+    const el=document.getElementById(id); if(!el) return;
+    const down=(ev)=>{ev.preventDefault(); if(!state.pressed.has(name)) state.pressEdge.add(name); state.pressed.add(name); pulse(name);};
+    const up  =(ev)=>{ev.preventDefault(); state.pressed.delete(name);};
+    el.addEventListener('touchstart',down,{passive:false});
+    el.addEventListener('touchend',up,{passive:false});
+    el.addEventListener('touchcancel',up,{passive:false});
+    el.addEventListener('mousedown',down); el.addEventListener('mouseup',up); el.addEventListener('mouseleave',up);
+  }
+  ['btnUp:Up','btnDown:Down','btnLeft:Left','btnRight:Right','btnA:A','btnB:B','btnStart:Start','btnSelect:Select',
+   'lUp:Up','lDown:Down','lLeft:Left','lRight:Right','lA:A','lB:B','lStart:Start','lSelect:Select']
+   .forEach(p=>{ const [id,n]=p.split(':'); bindBtn(id,n); });
+  function pulse(name){ state.taps.push({name, t: performance.now()}); if(state.taps.length>24) state.taps.shift(); }
+
+  // ---------- RNG ----------
+
+function drawQuickPanel(ctx,w,h){
+  const body = document.getElementById('quickBody') || {innerHTML:''};
+  if (QUICK_TABS && QUICK_TABS[quickTab]==='Cheats'){
+    const rows = CheatsUI.list.map((c,i)=>`<div class="row ${i===CheatsUI.idx?'active':''}"><h4>${c.code}</h4><p>${c.desc}</p></div>`).join('');
+    body.innerHTML = `<div class="cheatsTab">${rows}</div>`;
+  }
+}
+
+
+
+  function mulberry32(seed){ return function(){ let t=seed+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
+  const RNG = {
+    _f: mulberry32(0xC0FFEE),
+    reseed(s){ this._f = mulberry32((s>>>0) || 0xC0FFEE); },
+    f(){ return this._f(); },
+    i(a,b){ return a + ((this.f()*((b+1)-a))|0); },
+    chance(p){ return this.f() < p; }
+  };
+
+  // ---------- Map / Terrain ----------
+  const TILE=32, W=128, H=96; // world tiles
+  const ground = new Uint8Array(W*H), deco = new Uint8Array(W*H);
+  const seen  = new Uint8Array(W*H); // minimap fog-of-war (1=seen)
+  function gi(x,y){ return y*W + x; }
+
+  // ground codes: 0,1,2=grass; 3=path; 4=water; 5=BRUSH (forest blocking)
+  const BRUSH=5;
+  const COLORS={ 0:'#1b4d2b',1:'#2f7a3f',2:'#57a35c',3:'#8a6a44',4:'#3a78b8',5:'#144925' };
+// === Patch: draw chests helper ===
+function drawChests(gb, vx, vy){ { for(const c of chests){ const cx=(c.x - vx)|0, cy=(c.y - vy)|0; gb.fillStyle = c.opened ? '#b79a36' : '#ffd04a'; gb.fillRect(cx, cy, (c.w||TILE-12), (c.h||TILE-12)); gb.strokeStyle='#6a4b00'; gb.strokeRect(cx+0.5, cy+0.5, (c.w||TILE-12)-1, (c.h||TILE-12)-1); } } }
+
+
+  function perlinish(x,y,sx,sy){ return (Math.sin(x*sx)+Math.cos(y*sy)+2)/4; }
+
+  // Meadow gen
+  function regenMeadow(){
+    ground.fill(0); deco.fill(0); seen.fill(0);
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      const k = perlinish(x,y,0.09,0.07);
+      ground[gi(x,y)] = k<0.28?0 : k<0.55?1 : 2;
+    }
+    // path
+    let py=(H*0.55)|0, wigg=0;
+    for(let x=2;x<W-2;x++){
+      wigg+=(RNG.f()-0.5)*0.8; py=Math.max(4,Math.min(H-5, py+(wigg|0)));
+      for(let yy=-1; yy<=1; yy++) ground[gi(x,py+yy)]=3;
+      if(RNG.f()<0.08) ground[gi(x,py+2)]=3;
+    }
+    // ponds + reeds
+    for(let n=0;n<6;n++){
+      const cx=RNG.i(10,W-10), cy=RNG.i(10,H-10), r=RNG.i(3,6);
+      for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
+        if(x*x+y*y<=r*r){ const gx=cx+x, gy=cy+y; if(gx>1&&gy>1&&gx<W-2&&gy<H-2) ground[gi(gx,gy)]=4; }
+      }
+      for(let y=-r-1;y<=r+1;y++) for(let x=-r-1;x<=r+1;x++){
+        const gx=cx+x, gy=cy+y; if(gx<1||gy<1||gx>=W-1||gy>=H-1) continue;
+        if(ground[gi(gx,gy)]!==4){
+          const n4 = (ground[gi(gx+1,gy)]===4)+(ground[gi(gx-1,gy)]===4)+(ground[gi(gx,gy+1)]===4)+(ground[gi(gx,gy-1)]===4);
+          if(n4 && RNG.f()<0.25) deco[gi(gx,gy)]=4; // reeds
+        }
+      }
+    }
+    // scatter (flowers/bush/rock)
+    for(let y=2;y<H-2;y++) for(let x=2;x<W-2;x++){
+      if(ground[gi(x,y)]<=2){
+        const r=RNG.f();
+        deco[gi(x,y)] = r<0.04?1 : r<0.065?2 : r<0.075?3 : deco[gi(x,y)];
+      }
+    }
+  }
+
+  // Forest gen (adds BRUSH)
+  function regenForest(){
+    ground.fill(1); deco.fill(0); seen.fill(0);
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      const k = perlinish(x,y,0.07,0.09);
+      ground[gi(x,y)] = k<0.18?0 : k<0.45?1 : 2;
+      if (RNG.f()<0.02) deco[gi(x,y)] = 2; // bushes (visual)
+      if (RNG.f()<0.015) deco[gi(x,y)] = 5; // tree chunk (visual)
+    }
+    // winding track
+    let py=(H*0.6)|0, wigg=0;
+    for(let x=2;x<W-2;x++){
+      wigg+=(RNG.f()-0.5)*0.6; py=Math.max(5,Math.min(H-6, py+(wigg|0)));
+      for(let yy=-1; yy<=1; yy++) ground[gi(x,py+yy)]=3;
+    }
+    // a few ponds
+    for(let n=0;n<4;n++){
+      const cx=RNG.i(12,W-12), cy=RNG.i(12,H-12), r=RNG.i(3,7);
+      for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
+        if(x*x+y*y<=r*r){ const gx=cx+x, gy=cy+y; if(gx>1&&gy>1&&gx<W-2&&gy<H-2) ground[gi(gx,gy)]=4; }
+      }
+    }
+    // BRUSH patches
+    for(let y=2;y<H-2;y++) for(let x=2;x<W-2;x++){
+      if (ground[gi(x,y)]<=2 && RNG.f()<0.045){
+        for(let yy=-1; yy<=1; yy++) for(let xx=-1; xx<=1; xx++){
+          const gx=x+xx, gy=y+yy; if (gx>1&&gy>1&&gx<W-2&&gy<H-2 && ground[gi(gx,gy)]!==4) ground[gi(gx,gy)]=BRUSH;
+        }
+      }
+    }
+  }
+
+  // ---------- Registries ----------
+  const ITEMS = {
+    wood:{cat:"material"}, stone:{cat:"material"}, berry:{cat:"material"}, herb:{cat:"material"},
+    reed:{cat:"material"}, mushroom:{cat:"material"}, fiber:{cat:"material"},
+    net_basic:{cat:"tool"}, net_fine:{cat:"tool"},
+    pot_heal_s:{cat:"consumable"},
+      axe_basic:{cat:"tool"},
+    relic_feather:{cat:"quest"},
+    boots_desert:{cat:"armor"},
+  };
+  const RECIPES = [
+    {out:"net_basic", needs:[{id:"wood",qty:3},{id:"berry",qty:2}], bench:"work"},
+    {out:"net_fine",  needs:[{id:"wood",qty:4},{id:"fiber",qty:4},{id:"berry",qty:2}], bench:"work"}
+  ,
+    {out:"boots_desert", needs:[{id:"fiber",qty:6},{id:"mushroom",qty:4}], bench:"work", requiresFlag:"q_forest_main_done"}
+  ];
+  const SHOPS = {
+    meadow_village:{ items:[{id:"net_basic",price:30},{id:"pot_heal_s",price:10}] },
+    forest_camp:{   items:[{id:"net_fine",price:60},{id:"pot_heal_s",price:14}]} // coin sinks
+  };
+  // Simple sell values (materials only)
+  const SELL_VALUE = { wood:1, stone:2, berry:1, herb:2, reed:1, mushroom:2, fiber:2 };
+
+  // Pals + passive perks (functional: speed, water_walk, forage_bonus, brush_break; glide is groundwork)
+  const PALS = {
+    // Meadow
+    rabbit:{biome:"meadow", perks:{speed:+0.10, forage_bonus:0.20}},
+    sparrow:{biome:"meadow", perks:{glide:"mini", speed:+0.05}},
+    frog:{biome:"meadow", perks:{water_walk:true}},
+    // Forest
+    boar:{biome:"forest", perks:{brush_break:true}},
+    stag:{biome:"forest", perks:{speed:+0.15}},
+    owl:{biome:"forest",  perks:{glide:"long"}},
+    squirrel:{biome:"forest", perks:{forage_bonus:0.30}},
+    fox:{biome:"forest", perks:{speed:+0.10}},
+    sprite:{biome:"forest", perks:{speed:0.10}},
+    owllet:{biome:"forest", perks:{glide:"short"}},
+};
+  // Spawns
+  
+// === Rarity pools + mythic/legendary helpers ===
+const RARITY_POOLS = {
+  MYTHIC:    ['phoenix','dragon'],
+  LEGENDARY: ['gryphon'],
+  RARE:      ['lynx','eagle']
+};
+// Extend PALS with minimal entries (safe: adds if not present)
+Object.assign(PALS, {
+  phoenix:{biome:"mystic",   perks:{speed:+0.25}},
+  dragon:{ biome:"volcano",  perks:{speed:+0.20}},
+  gryphon:{biome:"glacier",  perks:{speed:+0.18}},
+  lynx:{   biome:"forest",   perks:{speed:+0.12}},
+  eagle:{  biome:"glacier",  perks:{speed:+0.12, glide:"long"}}
+});
+function spawnPalAt(x,y,id){ pals.push({x:x, y:y, w:26,h:26, id}); }
+function spawnRandomPalAt(x,y,rarity){
+  const pool = RARITY_POOLS[rarity] || [];
+  if (!pool.length) return;
+  const id = pool[(Math.random()*pool.length)|0];
+  spawnPalAt(x,y,id);
+}
+const SPAWNS = {
+    meadow:{ pals:[{id:'rabbit',w:50},{id:'sparrow',w:25},{id:'frog',w:25}] },
+    forest:{ pals:[{id:'boar',w:28},{id:'stag',w:22},{id:'owl',w:18},{id:'squirrel',w:20},{id:'fox',w:12},{id:'sprite',w:6},{id:'owllet',w:4}] }
+  };
+  function pickWeighted(list){
+    let sum=0; for(const it of list) sum+=it.w||1;
+    let r=RNG.f()*sum;
+    for(const it of list){ r-=it.w||1; if(r<=0) return it.id; }
+    return list[list.length-1].id;
+  }
+
+  // ---------- Game state ----------
+  const MAX_PARTY=12;
+  const Game = {
+    coins:0, inventory:[], companions:[{id:'rabbit', isActive:true}],
+    equipped:{ tool:null },
+    stats:{hpMax:100,hp:100,stamMax:100,stam:100,atk:5,def:2,crit:0.05,speed:1.0,speedMult:1.0},
+    quests:{}, flags:{}, unlocked:{meadow:true}, discovered:new Set(),
+    settings:{seedEnabled:true,music:false,sfx:true},
+    currentBiome:'meadow'
+  };
+// === Patch: ensure Game.buffs/stats after Game is declared ===
+if (!Game.buffs) Game.buffs = {defUntil:0, speedUntil:0, partyUntil:0};
+if (!Game.stats) Game.stats = {};
+if (Game.stats.speedMult == null) Game.stats.speedMult = 1;
+
+
+  // ---------- Entities & Portals ----------
+  const player = { x:(W*TILE)/2, y:(H*TILE)/2, w:26, h:26, baseSpeed:160 };
+
+function currentSpeed(){ return player.baseSpeed * (1 + ((Game.companions.find(p=>p.isActive && PALS?.[p.id]?.perks?.speed)||0))) * (Game.stats && Game.stats.speedMult ? Game.stats.speedMult : 1); }
+
+
+  const items=[], npcs=[], pals=[];
+  const portals=[]; // {x,y,w,h,to:'forest'|'meadow'}
+// --- Deferred Actions Queue (end-of-frame mutator) ---
+const DefQ = [];
+function deferAction(fn){ try{ DefQ.push(fn); }catch(e){} }
+
+// === Guardian Owl Trial: state + helpers (camp-adjacent pedestal) ===
+const GuardianTrial = {
+  pedestal: { x:null, y:null, w:28, h:28 }, // pixel center + box
+  wisps: [],                                 // {x,y,collected,t0}
+  active:false,
+  timeLeft:0,
+  collected:0,
+};
+
+function resetGuardianTrialForBiome(){
+  GuardianTrial.active = false;
+  GuardianTrial.timeLeft = 0;
+  GuardianTrial.collected = 0;
+  GuardianTrial.wisps.length = 0;
+  // Keep pedestal position decision to seeding
+}
+
+function placeGuardianPedestalNearCamp(){
+  // Forest camp is around x=12..16 tiles along the trackY (≈ H*0.575). Put pedestal nearby but a little east.
+  const trackY = (H*0.575)|0;
+  const tx = 18, ty = trackY - 2; // near camp, slightly to the right
+  GuardianTrial.pedestal.x = tx*TILE + TILE/2;
+  GuardianTrial.pedestal.y = ty*TILE + TILE/2;
+  GuardianTrial.pedestal.w = 28; GuardianTrial.pedestal.h = 28;
+}
+
+function startGuardianTrial(){
+  GuardianTrial.active = true;
+  GuardianTrial.timeLeft = 180000; // 180s (3 minutes)
+  GuardianTrial.collected = 0;
+  GuardianTrial.wisps.length = 0;
+  // spawn 5 wisps spaced around the forest
+  let guard=0;
+  while(GuardianTrial.wisps.length<5 && guard++<1200){
+    const tx = RNG.i(6, W-6), ty = RNG.i(6, H-6);
+    if (tileIsWater && tileIsWater(tx,ty)) continue;
+    const x = tx*TILE + TILE/2, y = ty*TILE + TILE/2;
+    // keep away from pedestal and other wisps
+    const farP = Math.hypot(x-GuardianTrial.pedestal.x, y-GuardianTrial.pedestal.y) > TILE*6;
+    const farW = GuardianTrial.wisps.every(w => Math.hypot(x-w.x, y-w.y) > TILE*6);
+    if (farP && farW) GuardianTrial.wisps.push({x,y,collected:false,t0:performance.now()+Math.random()*800});
+  }
+  toast("Find 5 wisps! (3m)");
+}
+
+function endGuardianTrial(win){
+  GuardianTrial.active = false;
+  GuardianTrial.wisps.length = 0;
+  if (win){
+    Game.flags.owl_trial_pass = true;
+    rebuildPortals();
+    toast("Trial complete!");
+  }else{
+    toast("Trial failed");
+  }
+}
+
+function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (player.y+player.h/2)-py); }
+
+  function tileIsWater(tx,ty){ return ground[gi(tx,ty)]===4; }
+  function tileIsBrush(tx,ty){ return ground[gi(tx,ty)]===BRUSH; }
+
+  // Biome seeding wrappers
+  function seedByBiome(){
+    items.length=0; npcs.length=0; pals.length=0; portals.length=0; chests.length=0; particles.length=0;
+    if (Game.currentBiome==='forest'){ seedForest(); }
+    else { seedMeadow(); }
+    resetGuardianTrialForBiome();
+    if (Game.currentBiome==='forest' && !Game.flags.owl_trial_pass){ placeGuardianPedestalNearCamp(); }
+    rebuildPortals();
+  }
+
+  function seedMeadow(){
+    const px=(player.x/TILE|0), py=(player.y/TILE|0);
+    // starter drops near spawn
+    [{dx:-3,dy:-1,id:'berry'},{dx:2,dy:-2,id:'stone'},{dx:-2,dy:2,id:'wood'},{dx:1,dy:1,id:'wood'}]
+      .forEach(d=> items.push({x:(px+d.dx)*TILE+4, y:(py+d.dy)*TILE+4, w:24,h:24, id:d.id}));
+    // forage
+    for(let i=0;i<90;i++){
+      const tx=RNG.i(4,W-5), ty=RNG.i(4,H-5); if(tileIsWater(tx,ty)) continue;
+      const r=RNG.f(); const id = r<0.36?'berry' : r<0.72?'wood' : 'stone';
+      items.push({x:tx*TILE+4, y:ty*TILE+4, w:24,h:24, id});
+    }
+    // pals
+    const nPals=RNG.i(12,18);
+    for(let i=0;i<nPals;i++){
+      let tx,ty,tries=0;
+      do{ tx=RNG.i(6,W-6); ty=RNG.i(6,H-6); tries++; }while(tileIsWater(tx,ty)&&tries<10);
+      pals.push({x:tx*TILE, y:ty*TILE, w:26,h:26, id:pickWeighted(SPAWNS.meadow.pals)});
+    }
+    // Guarantee a quest-relevant sprite spawn near camp when quest is active and sprite not yet captured
+    if (questState('q_forest_main')==='active' && !Game.flags.captured_sprite){
+      const trackY=(H*0.575)|0;
+      const sx = (15*TILE), sy = (trackY-3)*TILE;
+      pals.push({x:sx, y:sy, w:24, h:24, id:'sprite'});
+    }
+
+    // NPCs
+    npcs.push({x:(px+5)*TILE, y:(py+0)*TILE, w:28,h:28, name:'Elder', role:'elder'});
+    npcs.push({x:(px+3)*TILE, y:(py+2)*TILE, w:28,h:28, name:'Craftsman', role:'workbench'});
+    npcs.push({x:(px-5)*TILE, y:(py-1)*TILE, w:28,h:28, name:'Market', role:'market', shopId:'meadow_village'});
+  }
+
+  
+function seedForest(){
+  // --- Reset any per-biome local caches if needed (global arrays cleared by seedByBiome) ---
+
+  // 1) Scatter forage items (avoid water; fiber more likely near brush)
+  for(let i=0;i<110;i++){
+    let tx=RNG.i(4,W-5), ty=RNG.i(4,H-5);
+    if (tileIsWater(tx,ty)) continue;
+    let id='wood';
+    const nearBrush = (tileIsBrush(tx,ty) || [ [1,0],[-1,0],[0,1],[0,-1] ].some(d=>tileIsBrush(tx+d[0],ty+d[1])));
+    const r=RNG.f();
+    if (nearBrush && r<0.50) id='fiber';
+    else if (r<0.25) id='wood';
+    else if (r<0.55) id='berry';
+    else if (r<0.80) id='mushroom';
+    else id='stone';
+    items.push({x:tx*TILE+4, y:ty*TILE+4, w:24, h:24, id});
+  
+  // Guardian pedestal near camp
+  if (!Game.flags.owl_trial_pass){ placeGuardianPedestalNearCamp(); } else { GuardianTrial.pedestal.x=null; GuardianTrial.pedestal.y=null; }
+}
+  // 2) Place camp NPCs near the track
+  const trackY=(H*0.575)|0;
+  npcs.push({x:(12*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Ranger', role:'ranger'});
+  npcs.push({x:(16*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Trader', role:'market', shopId:'forest_camp'});
+
+  // 3) Regular forest pals (use SPAWNS.forest.pals if present)
+  const table = (SPAWNS && SPAWNS.forest && SPAWNS.forest.pals) ? SPAWNS.forest.pals : [['rabbit', 1]];
+  const nPals = RNG.i(18,26);
+  for(let i=0;i<nPals;i++){
+    let tries=0, tx,ty;
+    do{ tx=RNG.i(6,W-6); ty=RNG.i(6,H-6); tries++; }while(tileIsWater(tx,ty) && tries<20);
+    const id = Array.isArray(table[0]) ? pickWeighted(table) : 'rabbit';
+    pals.push({x:tx*TILE, y:ty*TILE, w:26, h:26, id});
+  }
+
+  // 4) Randomized special spawns (boss boar + sprite)
+  function randSpot(){
+    let tries=0;
+    while(tries++<40){
+      const tx = RNG.i(4, W-4), ty = RNG.i(4, H-4);
+      if (tileIsWater(tx,ty)) continue;
+      return { x: tx*TILE + ((TILE-24)>>1), y: ty*TILE + ((TILE-24)>>1) };
+    }
+    // fallback center-ish
+    return { x:(W*TILE>>1), y:(H*TILE>>1) };
+  }
+
+  // Boar mini-boss: present until defeated (single instance)
+  if (!Game.flags.boar_miniboss_defeated){
+    const exists = pals.some(p=>p.id==='boar' && p.boss);
+    if (!exists){
+      const p = randSpot();
+      pals.push({x:p.x, y:p.y, w:28, h:28, id:'boar', boss:true});
+      Game.flags.boarBossActive = true;
+    }
+  } else {
+    Game.flags.boarBossActive = false;
+  }
+
+  // Sprite: present until captured (single instance)
+  if (!Game.flags.captured_sprite){
+    const existsS = pals.some(p=>p.id==='sprite');
+    if (!existsS){
+      const q = randSpot();
+      pals.push({x:q.x, y:q.y, w:24, h:24, id:'sprite'});
+    }
+  }
+
+  // 5) Guards: ensure single instances after all spawns
+  {
+    let bossFound = false;
+    for (let i=pals.length-1;i>=0;i--){
+      const p = pals[i];
+      if (p.id==='boar' && p.boss){
+        if (bossFound) { pals.splice(i,1); } else bossFound = true;
+      }
+    }
+  }
+  {
+    let spriteFound = false;
+    for (let i=pals.length-1;i>=0;i--){
+      const p = pals[i];
+      if (p.id==='sprite'){
+        if (spriteFound) { pals.splice(i,1); } else spriteFound = true;
+      }
+    }
+  }
+}
+
+
+  function rebuildPortals(){
+    portals.length=0;
+    const trackY=(H*0.575)|0;
+    if (Game.currentBiome==='meadow'){
+      if (Game.flags.bridgeFixed){
+        portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'forest'});
+      }
+    } else if (Game.currentBiome==='forest'){
+      portals.push({x:10*TILE, y:trackY*TILE, w:28, h:28, to:'meadow'});
+      if (Game.flags.owl_trial_pass){ portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'desert'}); Game.unlocked.desert=true; }
+    }
+  }
+
+  // ---------- Quests ----------
+  const QUESTS = {
+    q_meadow_main:{
+      name:"Bridge to the Forest", giver:"elder",
+      objectives:[ {type:"collect",id:"wood",qty:5}, {type:"collect",id:"stone",qty:5}, {type:"craft",id:"net_basic",qty:1}, {type:"capture_any",qty:1} ]
+    },
+    q_forest_main:{
+      name:"Errand of the Woods", giver:"ranger",
+      objectives:[
+        {type:"collect",id:"wood",qty:10},
+        {type:"collect",id:"berry",qty:10},
+        {type:"defeat",id:"boar_miniboss"},
+        {type:"capture",id:"sprite",qty:1}
+      ],
+      reward:{coins:25, grantItem:"axe_basic", flag:"q_forest_main_done"}
+    },
+    q_forest_guardian_owl:{
+      name:"Great Owl Trial", giver:"owl_guardian",
+      objectives:[ {type:"solve",id:"owl_riddle",qty:2, of:3}, {type:"capture",id:"owllet",qty:1} ],
+      reward:{item:"relic_feather", unlock:"desert", flag:"owl_trial_pass"}
+    }
+};
+function questState(id){ return Game.quests[id]||"locked"; }
+  function beginQuest(id){ if(questState(id)==="locked"){ Game.quests[id]="active"; toast("Quest started: "+QUESTS[id].name); } }
+  function questProgress(id){
+    const q=QUESTS[id]; if(!q) return null; const prog=[];
+    for(const o of q.objectives){
+      if(o.type==="collect"){
+        const have=(Game.inventory.find(s=>s.id===o.id)?.qty)||0;
+        prog.push({label:`${o.id} ${have}/${o.qty}`, done:have>=o.qty});
+      } else if(o.type==="craft"){
+        const have=(Game.inventory.find(s=>s.id===o.id)?.qty)||0;
+        prog.push({label:`craft ${o.id} ${have>=o.qty?o.qty:0}/${o.qty}`, done:have>=o.qty});
+      } else if(o.type==="capture_any"){
+        const have=Math.max(0, Game.companions.length-1);
+        prog.push({label:`capture any ${have}/${o.qty}`, done:have>=o.qty});
+      } else if(o.type==="capture"){
+        const have = Game.companions.some(p=>p.id===o.id) ? 1 : 0;
+        const need = o.qty||1;
+        prog.push({label:`capture ${o.id} ${Math.min(have,need)}/${need}`, done:have>=need});
+      } else if(o.type==="defeat"){
+        const doneFlag = !!Game.flags[o.id+"_defeated"];
+        prog.push({label:`defeat ${o.id}`, done:doneFlag});
+      } else if(o.type==="solve"){
+        const n = Game.flags.owl_riddle_count||0;
+        const need = o.qty||2;
+        prog.push({label:`solve riddles ${Math.min(n,need)}/${need}`, done:n>=need});
+      }
+    }
+    const done = prog.every(p=>p.done); return {prog,done};
+  }
+  function tryTurnIn(id){
+    const pr=questProgress(id); if(!pr || !pr.done) return toast("Not ready yet");
+    Game.quests[id]="done";
+    if (id==='q_meadow_main'){
+      Game.coins+=20; Game.unlocked.forest=true; Game.flags.bridgeFixed=true;
+      toast("Quest complete! +20c, Forest unlocked"); rebuildPortals();
+    } else if (id==='q_forest_main'){
+      Game.coins+=25; addItem('axe_basic',1); Game.flags.q_forest_main_done=true;
+      toast("Errand complete! +25c +axe");
+    } else if (id==='q_forest_guardian_owl'){
+      addItem('relic_feather',1); Game.flags.owl_trial_pass=true; Game.unlocked.desert=true;
+      toast("Great Owl Trial complete! Desert unlocked"); rebuildPortals();
+    }
+  }
+
+  // ---------- Inventory / Crafting ----------
+  function findStack(id){ return Game.inventory.find(s=>s.id===id); }
+  function addItem(id, qty=1){
+    if(!ITEMS[id]) return false;
+    const s=findStack(id); if(s) s.qty+=qty; else Game.inventory.push({id,qty});
+    Game.discovered.add(id); return true;
+  }
+  function hasItems(needs){ return needs.every(n=>(findStack(n.id)?.qty||0) >= n.qty); }
+  function spendItems(needs){ for(const n of needs){ const s=findStack(n.id); s.qty-=n.qty; } Game.inventory = Game.inventory.filter(s=>s.qty>0); }
+  function craft(id){ const rec=RECIPES.find(r=>r.out===id); if(!rec) return toast("Recipe missing"); if(!hasItems(rec.needs)) return toast("Need mats"); spendItems(rec.needs); addItem(rec.out,1); toast("Crafted "+rec.out); }
+
+  // ---------- Shop (buy/sell) ----------
+  const ShopUI = { open:false, idx:0, shopId:null, mode:'buy' }; // mode: 'buy' | 'sell'
+  function openShop(shopId){ ShopUI.open=true; ShopUI.idx=0; ShopUI.shopId=shopId; ShopUI.mode='buy'; toast('Market open'); }
+  function closeShop(){ ShopUI.open=false; }
+  function shopItems(){
+    if (ShopUI.mode==='buy'){
+      const shop=SHOPS[ShopUI.shopId]; return shop? shop.items : [];
+    } else {
+      return Game.inventory.filter(s=> SELL_VALUE[s.id]>0).map(s=>({id:s.id, qty:s.qty, price:SELL_VALUE[s.id]}));
+    }
+  }
+  function buySelected(){
+    if (ShopUI.mode!=='buy') return;
+    const shop=SHOPS[ShopUI.shopId]; if(!shop) return;
+    const it=shop.items[ShopUI.idx]; if(!it) return;
+    if(Game.coins < it.price) return toast('Not enough coins');
+    Game.coins -= it.price; addItem(it.id,1); toast('Bought '+it.id);
+  }
+  function sellSelected(){
+    if (ShopUI.mode!=='sell') return;
+    const list = shopItems(); const it=list[ShopUI.idx]; if(!it) return;
+    const price = SELL_VALUE[it.id]||0; if (!price) return toast('Cannot sell');
+    const s=findStack(it.id); if(!s) return; s.qty-=1; if(s.qty<=0){ Game.inventory = Game.inventory.filter(x=>x.qty>0); }
+    Game.coins += price; toast('Sold '+it.id+' +'+price+'c');
+  }
+
+  // ---------- Save / Load / World reset ----------
+  const SAVE_KEY='wildpals_slot1';
+  function saveGame(){
+    try{
+      const GameSave={...Game, discovered:Array.from(Game.discovered)};
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        Game:GameSave, player, items, npcs, pals, portals, chests,
+        ground:Array.from(ground), deco:Array.from(deco), seen:Array.from(seen)
+      }));
+      toast('Saved (Slot 1)');
+    }catch(e){ toast('Save failed'); }
+  }
+  function loadGame(){
+    try{
+      const raw=localStorage.getItem(SAVE_KEY); if(!raw) return toast('No save in Slot 1');
+      const d=JSON.parse(raw);
+      Object.assign(Game, d.Game||{}); Game.discovered=new Set((d.Game?.discovered)||[]);
+      Object.assign(player, d.player||{});
+      items.length=0; npcs.length=0; pals.length=0; portals.length=0; chests.length=0; particles.length=0;
+      items.push(...(d.items||[])); npcs.push(...(d.npcs||[])); pals.push(...(d.pals||[])); portals.push(...(d.portals||[]));
+      if(Array.isArray(d.ground) && d.ground.length===ground.length) ground.set(d.ground); // includes BRUSH
+      if(Array.isArray(d.deco)   && d.deco.length===deco.length)     deco.set(d.deco);
+      if(Array.isArray(d.seen)   && d.seen.length===seen.length)     seen.set(d.seen);
+      toast('Loaded (Slot 1)');
+    }catch(e){ toast('Load failed'); }
+  }
+  function resetPartyToStarter(){ Game.companions=[{id:'rabbit', isActive:true}]; }
+  function newWorld(){
+    try{
+      if (Game.settings.seedEnabled) RNG.reseed(0xC0FFEE); else RNG.reseed((Math.random()*0xFFFFFFFF)>>>0);
+      Game.currentBiome='meadow';
+      regenMeadow();
+      Game.coins=0; Game.inventory.length=0; Game.quests={}; Game.flags={}; Game.unlocked={meadow:true};
+      Game.discovered = new Set();
+      resetPartyToStarter();
+      player.x=(W*TILE)/2; player.y=(H*TILE)/2;
+      seedByBiome();
+      toast('New world created');
+    }catch(e){ toast('New world failed'); console.error(e); }
+  }
+
+  // ---------- Cheats ----------
+  function applyCheat(code){
+  if(!code){
+    // If called without code (e.g., from Start menu), open Quick Panel to Cheats tab
+    if (typeof UI!=='undefined'){ UI.quick = true; }
+    if (typeof quickTab!=='undefined'){ quickTab = QUICK_TABS.indexOf('Cheats') >= 0 ? QUICK_TABS.indexOf('Cheats') : quickTab; }
+    toast('Open Quick Panel → Cheats');
+    return;
+  }
+  switch(code){
+    case 'CHESTHERE': chests.push({x:(player.x|0), y:(player.y|0), w:(TILE-12), h:(TILE-12), opened:false}); break;
+    case 'CHESTME': { const cx=(player.x|0)+(player.w>>1), cy=(player.y|0)+(player.h>>1); const ax=cx+TILE*lastDir.x, ay=cy+TILE*lastDir.y; chests.push({x:(ax-((TILE-12)>>1))|0, y:(ay-((TILE-12)>>1))|0, w:(TILE-12), h:(TILE-12), opened:false}); } break;
+    case 'RICHIE': Game.coins = (Game.coins||0)+1000; break;
+    case 'MONEYRAIN': Game.coins = (Game.coins||0)+5000; break;
+    case 'BUFFME': if (Game.buffs) Game.buffs.defUntil=Date.now()+60000; break;
+    case 'ULTRASPEED':
+      if (Game.buffs) Game.buffs.speedUntil=Date.now()+20000;
+      if (Game.stats) Game.stats.speedMult=2.5;
+      break;
+    case 'PARTYTIME': if (Game.buffs) Game.buffs.partyUntil=Date.now()+20000; break;
+    case 'FORESTOPEN': if (Game.unlocked) Game.unlocked.forest=true; toast('Forest unlocked'); break;
+    case 'DESERTOPEN': if (Game.unlocked) Game.unlocked.desert=true; toast('Desert unlocked'); break;
+    case 'WETLANDSOPEN': if (Game.unlocked) Game.unlocked.wetlands=true; toast('Wetlands unlocked'); break;
+    case 'VOLCANOOPEN': if (Game.unlocked) Game.unlocked.volcano=true; toast('Volcano unlocked'); break;
+    case 'GLACIEROPEN': if (Game.unlocked) Game.unlocked.glacier=true; toast('Glacier unlocked'); break;
+    case 'MYSTICOPEN': if (Game.unlocked) Game.unlocked.mystic=true; toast('Mystic unlocked'); break;
+    case 'SKYREALMOPEN': if (Game.unlocked) Game.unlocked.skyrealm=true; toast('Sky Realm unlocked'); break;
+    case 'UNDERSEAOPEN': if (Game.unlocked) Game.unlocked.undersea=true; toast('Undersea unlocked'); break;
+    case 'MYTHIC': /* stub: spawn mythic pal */ break;
+    case 'LEGENDARY': /* stub: spawn legendary pal */ break;
+    case 'RARE': /* stub: spawn rare pal */ break;
+    case 'ALLOPEN':
+      if (Game.unlocked){
+        Object.assign(Game.unlocked, {meadow:true,forest:true,desert:true,wetlands:true});
+        toast('All main biomes unlocked');
+      }
+       rebuildPortals(); toast('Portals updated'); break;
+    case 'SECRETSOPEN':
+      if (Game.unlocked){
+        Object.assign(Game.unlocked, {volcano:true,glacier:true,mystic:true,skyrealm:true,undersea:true});
+        toast('All secret biomes unlocked');
+      }
+       rebuildPortals(); toast('Portals updated'); break;
+  }
+  if (typeof CheatsHistory!=='undefined'){
+    CheatsHistory.unshift(code);
+    if (CheatsHistory.length>20) CheatsHistory.length=20;
+  }
+  toast('Cheat: '+code);
+}
+    // ---------- UI Panels ----------
+  const UI = { start:false, quick:false, startIdx:0 };
+  const START_ITEMS = ['Resume','Save (Slot 1)','Load (Slot 1)','New World','Settings','Cheats','Close'];
+  const QUICK_TABS=['Inventory','Crafting','Journal','Minimap', 'Cheats']; let quickTab=0, craftIdx=0;
+
+  // Journal stats + perks list
+  function journalStats(){
+    return {
+      biome:Game.currentBiome, coins:Game.coins, stacks:Game.inventory.length,
+      palsOwned:Game.companions.length, discoveredItems:Game.discovered.size,
+      qMain: (Game.currentBiome==='forest')? questState('q_forest_main') : questState('q_meadow_main'),
+      qGuardian: (Game.currentBiome==='forest')? questState('q_forest_guardian_owl') : 'locked'
+    };
+  }
+
+  // ---------- Draw helpers ----------
+  function clamp(v,a,b){ return v<a?a : v>b?b : v; }
+  function dist2(ax,ay,bx,by){ const dx=ax-bx, dy=ay-by; return dx*dx+dy*dy; }
+  function nearest(list, r=64){
+    let best=-1, bd=r*r, cx=player.x+player.w/2, cy=player.y+player.h/2;
+    for(let i=0;i<list.length;i++){ const o=list[i], d=dist2(cx,cy,o.x+o.w/2,o.y+o.h/2); if(d<bd){bd=d; best=i;} }
+    return best;
+  }
+  function rectOutline(ctx,x,y,w,h,fill,stroke){ ctx.fillStyle=fill; ctx.fillRect(x|0,y|0,w,h); ctx.lineWidth=2; ctx.strokeStyle=stroke; ctx.strokeRect((x|0)+0.5,(y|0)+0.5,w,h); }
+
+function drawPal(ctx, p, vx, vy){
+  const x = (p.x - vx)|0, y = (p.y - vy)|0, w=p.w, h=p.h;
+  // Distinct visuals
+  if (p.id==='sprite'){
+    // glow backdrop
+    ctx.save();
+    ctx.globalAlpha = 0.35; ctx.fillStyle = '#a6f6ff'; ctx.fillRect(x-3,y-3,w+6,h+6);
+    ctx.restore();
+    rectOutline(ctx, x, y, w, h, '#a6f6ff', '#126e82'); // aqua with deep outline
+    // twinkle
+    if ((performance.now()%800)<400){
+      ctx.beginPath(); ctx.moveTo(x+w/2, y-4); ctx.lineTo(x+w/2, y+4);
+      ctx.moveTo(x-4, y+h/2); ctx.lineTo(x+4, y+h/2);
+      ctx.strokeStyle='#d8faff'; ctx.lineWidth=1; ctx.stroke();
+    }
+    return;
+  }
+  if (p.id==='boar' && (p.boss || Game.flags.boarBossActive)){
+    rectOutline(ctx, x, y, w, h, '#ff6b6b', '#7a0000'); // vivid red boss
+    // crown
+    ctx.beginPath();
+    const cx=x+w/2, top=y-6;
+    ctx.moveTo(cx-8, top+8); ctx.lineTo(cx-4, top); ctx.lineTo(cx, top+8); ctx.lineTo(cx+4, top); ctx.lineTo(cx+8, top+8);
+    ctx.closePath();
+    ctx.fillStyle='#ffd54a'; ctx.fill();
+    ctx.strokeStyle='#7a6000'; ctx.stroke();
+    return;
+  }
+  // default pal
+  rectOutline(ctx, x, y, w, h, '#b6ffb6','#0c3a0c');
+}
+  function roundRect(ctx,x,y,w,h,r,fill,stroke){
+    const rr=Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+rr,y);
+    ctx.arcTo(x+w,y,x+w,y+h,rr);
+    ctx.arcTo(x+w,y+h,x,y+h,rr);
+    ctx.arcTo(x,y+h,x,y,rr);
+    ctx.arcTo(x,y,x+w,y,rr);
+    if(fill) ctx.fill(); if(stroke) ctx.stroke();
+  }
+  function drawShell(ctx, w, h){
+    ctx.fillStyle='#20314f'; ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+    for(let x=0; x<w; x+=32){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+    for(let y=0; y<h; y+=32){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(0,y); ctx.stroke(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+  }
+
+  // Minimap (tint per biome)
+  function drawMinimap(ctx, x, y, w, h){
+    const pad=8;
+    const iw = w - pad*2, ih = h - pad*2;
+    const sx = Math.max(1, Math.floor(iw / W));
+    const sy = Math.max(1, Math.floor(ih / H));
+    const scale = Math.min(sx, sy);
+    const mw = W*scale, mh = H*scale;
+    const ox = x + (w - mw)/2, oy = y + (h - mh)/2;
+
+    ctx.fillStyle='rgba(0,0,0,0.35)'; roundRect(ctx, x, y, w, h, 8, true, false);
+
+    for(let ty=0; ty<H; ty++){
+      for(let tx=0; tx<W; tx++){
+        ctx.fillStyle = COLORS[ground[gi(tx,ty)]] || '#2f7a3f';
+        ctx.fillRect(ox+tx*scale, oy+ty*scale, scale, scale);
+      }
+    }
+
+    // biome tint
+    ctx.fillStyle = (Game.currentBiome==='forest') ? 'rgba(30,60,30,0.10)' : 'rgba(40,70,40,0.06)';
+    ctx.fillRect(ox, oy, mw, mh);
+
+    // fog overlay
+    ctx.fillStyle='rgba(0,0,0,0.55)';
+    for(let ty=0; ty<H; ty++){
+      for(let tx=0; tx<W; tx++){
+        if(!seen[gi(tx,ty)]) ctx.fillRect(ox+tx*scale, oy+ty*scale, scale, scale);
+      }
+    }
+    // player ping
+    const ptx = (player.x/TILE)|0, pty = (player.y/TILE)|0;
+    ctx.fillStyle='#ffd54a'; ctx.fillRect(ox+ptx*scale, oy+pty*scale, scale, scale);
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.strokeRect(ox-0.5, oy-0.5, mw+1, mh+1);
+  }
+
+  // Hint helper
+  function isTouchDevice(){ return ('ontouchstart' in window) || navigator.maxTouchPoints>0 || navigator.msMaxTouchPoints>0; }
+  function hintText(){ return isTouchDevice() ? 'Hold A: interact  •  Select: SELECT  •  Start: START'
+                                              : 'Hold E/J: interact  •  Select: Space/Tab  •  Start: Enter/Esc'; }
+
+  function drawHint(ctx, px, py){
+    const text = hintText(); ctx.font='12px ui-monospace, monospace';
+    const tw = ctx.measureText(text).width, padX=8, padY=5;
+    const bx = (px|0)-6, by=(py|0)-24, bw=tw+padX*2, bh=18+padY-4;
+    ctx.fillStyle='rgba(0,0,0,0.72)'; roundRect(ctx, bx, by, bw, bh, 6, true, false);
+    ctx.fillStyle='#e9f1ff'; ctx.fillText(text, bx+padX, by+12);
+  }
+
+  // ---------- Portal VFX ----------
+  let animT = 0; // ms from rAF
+  function drawPortal(ctx, pt, vx, vy){
+    const x = pt.x - vx + pt.w/2;
+    const y = pt.y - vy + pt.h/2;
+    const baseR = 16;
+    const t = animT * 0.002; // speed
+    // pulsating glow
+    const pulse = 0.5 + 0.5*Math.sin(t*2.0);
+    const glowR = baseR + 6 + 4*pulse;
+
+    // outer glow
+    const g = ctx.createRadialGradient(x, y, baseR*0.2, x, y, glowR);
+    g.addColorStop(0, 'rgba(185,120,255,0.55)');
+    g.addColorStop(1, 'rgba(185,120,255,0.0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x,y,glowR,0,Math.PI*2); ctx.fill();
+
+    // portal disk
+    ctx.fillStyle='#8238ff';
+    ctx.beginPath(); ctx.arc(x,y, baseR, 0, Math.PI*2); ctx.fill();
+
+    // swirling rings
+    ctx.strokeStyle='#caa8ff'; ctx.lineWidth=2;
+    const ringCount=3;
+    for(let i=0;i<ringCount;i++){
+      const r = baseR - 4*i;
+      const start = t + i*0.8;
+      ctx.beginPath();
+      ctx.arc(x, y, r, start, start + Math.PI*1.2); ctx.stroke();
+    }
+
+    // inner swirl
+    ctx.strokeStyle='#ffffff';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    ctx.arc(x, y, baseR*0.55, t*1.8, t*1.8 + Math.PI*1.4);
+    ctx.stroke();
+  }
+
+  // Quick Panel (+Shop overlay buy/sell)
+  function drawQuickPanel(ctx,w,h){
+    const panelW = Math.max(360, Math.min(520, w - 24));
+const x = Math.max(12, Math.floor((w - panelW) / 2));
+const y = 70, ph = h - 140;
+    ctx.fillStyle='rgba(0,0,0,0.70)'; roundRect(ctx,x,y,panelW,ph,10,true,false);
+
+    // tabs
+    for(let i=0;i<QUICK_TABS.length;i++){
+      ctx.fillStyle = (i===quickTab)? '#ffd54a' : '#cfe6ff';
+      ctx.font='14px ui-monospace, monospace';
+      ctx.fillText(QUICK_TABS[i], x + 12 + i * Math.floor((panelW - 24) / QUICK_TABS.length), y+24);
+    }
+    ctx.fillStyle='#e9f1ff'; ctx.font='12px ui-monospace, monospace';
+    let yy=y+48;
+
+    if(quickTab===0){
+      if(!Game.inventory.length) ctx.fillText('(bag empty)', x+14, yy);
+      for(const s of Game.inventory){ ctx.fillText(`${s.id} ×${s.qty}`, x+14, yy); yy+=18; }
+    } else if(quickTab===1){
+      const list = RECIPES.filter(r=>!r.requiresFlag || Game.flags[r.requiresFlag]); if(craftIdx>=list.length) craftIdx=list.length-1; if(craftIdx<0) craftIdx=0;
+      for(let i=0;i<list.length;i++){
+        const r=list[i], ok=hasItems(r.needs);
+        ctx.fillStyle = (i===craftIdx)? '#ffd54a' : '#e9f1ff';
+        ctx.fillText((i===craftIdx?'> ':'  ')+r.out, x+14, yy); yy+=16;
+        ctx.fillStyle = ok? '#b7ffb7' : '#9ec6ff';
+        ctx.fillText('needs: '+r.needs.map(n=>`${n.id}×${n.qty}`).join(', ') + (ok?'   [A craft]':'   (need mats)'), x+28, yy); yy+=18;
+      }
+    } else if(quickTab===2){
+      const j=journalStats();
+      ctx.fillText('— Journal —', x+14, yy); yy+=18;
+      ctx.fillText(`Biome: ${j.biome}`, x+14, yy); yy+=16;
+      ctx.fillText(`Coins: ${j.coins}`, x+14, yy); yy+=16;
+      ctx.fillText(`Inventory stacks: ${j.stacks}`, x+14, yy); yy+=16;
+      ctx.fillText(`Pals owned: ${j.palsOwned}`, x+14, yy); yy+=16;
+      ctx.fillText(`Discovered items: ${j.discoveredItems}`, x+14, yy); yy+=16;
+      ctx.fillText(`${j.biome==='forest'?'Forest':'Meadow'} Main Quest: ${j.qMain}`, x+14, yy); yy+=16; ctx.fillText(`Guardian Trial: ${j.qGuardian}`, x+14, yy); yy+=16;
+      yy+=8; ctx.fillText('Pals & perks:', x+14, yy); yy+=16;
+      for(const c of Game.companions){
+        const perks=PALS[c.id]?.perks||{};
+        ctx.fillText(`• ${c.id} ${c.isActive?'(active)':''}`, x+14, yy); yy+=16;
+        const line=Object.keys(perks).map(k=>`${k}:${perks[k]===true?'✓':perks[k]}`).join(', ');
+        if(line){ ctx.fillStyle='#9fe8ff'; ctx.fillText('   '+line, x+14, yy); yy+=16; ctx.fillStyle='#e9f1ff'; }
+      }
+    } else if(quickTab===3){
+      const pad=12, mapX=x+pad, mapY=y+40, mapW=panelW-2*pad, mapH=ph-52;
+      drawMinimap(ctx, mapX, mapY, mapW, mapH);
+    }
+// Cheats (4)
+else if (quickTab === 4) {
+  // windowed render around the current index so it "scrolls" without extra state
+  const list = CheatsUI.list;
+  const visible = 8;                  // fits in the panel nicely
+  const start = Math.max(0, Math.min(list.length - visible, CheatsUI.idx - Math.floor(visible / 2)));
+  const end = Math.min(list.length, start + visible);
+
+  // header
+  ctx.fillStyle = '#cfe6ff';
+  ctx.fillText('— Cheats —', x + 14, yy);
+  yy += 18;
+
+  for (let i = start; i < end; i++) {
+    const row = list[i];
+    const hi = (i === CheatsUI.idx);
+    // code line
+    ctx.fillStyle = hi ? '#ffd54a' : '#e9f1ff';
+    ctx.fillText((hi ? '> ' : '  ') + row.code, x + 14, yy);
+    yy += 16;
+    // description line
+    ctx.fillStyle = '#9ec6ff';
+    ctx.fillText('   ' + row.desc, x + 14, yy);
+    yy += 16;
+  }
+
+  yy += 8;
+  ctx.fillStyle = '#9fe8ff';
+  ctx.fillText('Up/Down: select   A: Run   B/Start: close   Left/Right: switch tab', x + 14, yy);
+}
+
+    // Shop overlay (buy/sell tabs)
+    if (ShopUI.open){
+      const sw=340, sh=240, sx=(x+panelW/2 - sw/2)|0, sy=(y+ph/2 - sh/2)|0;
+      ctx.fillStyle='rgba(10,14,24,0.95)'; ctx.fillRect(sx,sy,sw,sh);
+      ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.strokeRect(sx+0.5,sy+0.5,sw,sh);
+      // tabs
+      ctx.font='14px ui-monospace, monospace';
+      ctx.fillStyle= ShopUI.mode==='buy' ? '#ffd54a' : '#9ec6ff'; ctx.fillText('Buy', sx+14, sy+22);
+      ctx.fillStyle= ShopUI.mode==='sell'? '#ffd54a' : '#9ec6ff'; ctx.fillText('Sell', sx+64, sy+22);
+      // list
+      ctx.fillStyle='#cfe6ff'; ctx.font='12px ui-monospace, monospace';
+      const list=shopItems(); let y2=sy+48;
+      if(!list.length){ ctx.fillText(ShopUI.mode==='buy'?'(no stock)':'(nothing to sell)', sx+14, y2); }
+      else{
+        for(let i=0;i<list.length;i++){
+          const it=list[i], hi=i===ShopUI.idx;
+          ctx.fillStyle=hi?'#ffd54a':'#e9f1ff';
+          const label = ShopUI.mode==='buy'
+            ? ((hi?'> ':'  ')+it.id+'  —  '+it.price+'c')
+            : ((hi?'> ':'  ')+it.id+'  —  '+(SELL_VALUE[it.id]||0)+'c  (×'+it.qty+')');
+          ctx.fillText(label, sx+14, y2); y2+=18;
+        }
+        y2+=10; ctx.fillStyle='#9fe8ff';
+        ctx.fillText(ShopUI.mode==='buy' ? 'A: buy   Left/Right: switch tab   B/Start: close'
+                                         : 'A: sell  Left/Right: switch tab   B/Start: close', sx+14, y2);
+      }
+    }
+  }
+// === Guardian Trial visuals ===
+function glowCircle(ctx, cx, cy, r, rgbaStart){
+  const g = ctx.createRadialGradient(cx,cy, r*0.2, cx,cy, r);
+  g.addColorStop(0, rgbaStart);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+}
+function twinkle(ctx, cx, cy, t){
+  const p = (Math.sin(t*4.0)+1)*0.5;
+  ctx.save(); ctx.globalAlpha = 0.6 + 0.4*p; ctx.lineWidth=1.5; ctx.strokeStyle='#a6f6ff';
+  ctx.beginPath();
+  ctx.moveTo(cx-6,cy); ctx.lineTo(cx+6,cy);
+  ctx.moveTo(cx,cy-6); ctx.lineTo(cx,cy+6);
+  ctx.stroke(); ctx.restore();
+}
+function drawGuardianLayer(ctx, vx, vy){
+  try{
+  // Pedestal (only if not passed)
+  if (Game.currentBiome==='forest' && !Game.flags.owl_trial_pass && GuardianTrial.pedestal.x!=null){
+    const cx = GuardianTrial.pedestal.x - vx, cy = GuardianTrial.pedestal.y - vy;
+    ctx.save();
+    glowCircle(ctx, cx, cy, 24, 'rgba(120,200,255,0.45)');
+    ctx.fillStyle='#6e6f78';
+    ctx.fillRect((cx-14)|0,(cy-14)|0,28,28);
+    ctx.strokeStyle='#2b2c33'; ctx.lineWidth=2; ctx.strokeRect((cx-14)+0.5,(cy-14)+0.5,27,27);
+    ctx.restore();
+    // Hint when close
+    if (!GuardianTrial.active && distToPlayer(GuardianTrial.pedestal.x, GuardianTrial.pedestal.y) < 64){
+      ctx.save(); ctx.globalAlpha=0.95; ctx.fillStyle='#dfe8ff'; ctx.font='bold 14px ui-monospace';
+      ctx.fillText('Press A to begin', (cx-54)|0, (cy-22)|0); ctx.restore();
+    }
+    if (state && state.pressEdge && state.pressEdge.has && state.pressEdge.has('A')){
+      try{ state.pressEdge.delete('A'); }catch(_){}
+      window.__AHandledPedestal = true;
+      startGuardianTrial();
+    }
+    
+  }
+  // Wisps
+  if (GuardianTrial.active){
+    const t = performance.now()*0.001;
+    for (const w of GuardianTrial.wisps){
+      const x = w.x - vx, y = w.y - vy;
+      if (w.collected){ glowCircle(ctx, x, y, 12, 'rgba(166,246,255,0.35)'); continue; }
+      glowCircle(ctx, x, y, 16, 'rgba(166,246,255,0.60)');
+      twinkle(ctx, x, y, t + (w.t0||0)*0.001);
+      ctx.save(); ctx.globalAlpha=0.9; ctx.fillStyle='#bff9ff'; ctx.beginPath(); ctx.arc(x,y,3.2,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+  }
+  }catch(e){}
+}
+  // ---------- HUD / World draw ----------
+  function drawWorld(ctx,w,h){
+    const worldW=W*TILE, worldH=H*TILE;
+    const vx = clamp((player.x|0) - (w>>1), 0, Math.max(0, worldW - w));
+    const vy = clamp((player.y|0) - (h>>1), 0, Math.max(0, worldH - h));
+    const tx0=Math.max(0,(vx/TILE|0)-1), ty0=Math.max(0,(vy/TILE|0)-1);
+    const tx1=Math.min(W-1,((vx+w)/TILE|0)+1), ty1=Math.min(H-1,((vy+h)/TILE|0)+1);
+
+    // tiles
+    for(let ty=ty0; ty<=ty1; ty++) for(let tx=tx0; tx<=tx1; tx++){
+      ctx.fillStyle = COLORS[ground[gi(tx,ty)]] || '#2f7a3f';
+      ctx.fillRect(tx*TILE - vx, ty*TILE - vy, TILE, TILE);
+    }
+    // deco
+    for(let ty=ty0; ty<=ty1; ty++) for(let tx=tx0; tx<=tx1; tx++){
+      const d=deco[gi(tx,ty)]; if(!d) continue; const x=tx*TILE-vx, y=ty*TILE-vy;
+      if (d===1){ ctx.fillStyle='#ffd1e6'; ctx.fillRect(x+10,y+10,4,4); ctx.fillStyle='#ffe66d'; ctx.fillRect(x+14,y+14,3,3); } // flowers
+      else if (d===2){ ctx.fillStyle='#1f6a33'; ctx.fillRect(x+6,y+6,20,20); } // bush
+      else if (d===3){ ctx.fillStyle='#a8b1ba'; ctx.fillRect(x+8,y+12,16,12); } // rock
+      else if (d===4){ ctx.fillStyle='#a0c24a'; ctx.fillRect(x+12,y+6,4,16); ctx.fillRect(x+16,y+10,4,16); } // reeds
+      else if (d===5){ ctx.fillStyle='#2e3b17'; ctx.fillRect(x+8,y+8,16,16); } // tree chunk
+    }
+
+    // entities
+    items.forEach(it=> rectOutline(ctx, it.x-vx, it.y-vy, it.w, it.h, '#7eddd7','#0b3b36'));
+    npcs .forEach(n => rectOutline(ctx, n.x-vx, n.y-vy, n.w, n.h, '#e3d180','#3a2f00'));
+    pals.forEach(p => drawPal(ctx, p, vx, vy));
+    portals.forEach(pt=> drawPortal(ctx, pt, vx, vy)); // purple swirl with glow
+
+    // Guardian pedestal + wisps (rendered below player)
+    try{ drawGuardianLayer(ctx, vx, vy); }catch(e){}
+
+    // player
+    const px = player.x - vx, py = player.y - vy;
+    rectOutline(ctx, px, py, player.w, player.h, '#ffd54a', '#3a2a00');
+
+    // hint
+    const nearAny = nearest(items.concat(npcs, pals, portals), 64);
+    if (nearAny !== -1) drawHint(ctx, px, py);
+
+    
+    // draw chests and particles
+    drawChests(ctx, vx, vy);
+    // particles
+    for(const p of particles){ const px=(p.x-vx)|0, py=(p.y-vy)|0; ctx.fillStyle = ['#ffd54a','#7eddd7','#caa8ff','#ff8aa0','#9fe8ff'][(Math.random()*5)|0]; ctx.fillRect(px, py, 3, 3);} 
+
+    // Buff chips
+    const nowB = Date.now();
+    let bx=420, by=56;
+    if (Game.buffs && nowB < Game.buffs.defUntil){ ctx.fillStyle='rgba(43,60,43,0.65)'; ctx.fillRect(bx,by-12,84,16); ctx.fillStyle='#b7ffb7'; ctx.fillText('BUFF: DEF↑', bx+6, by); bx+=96; }
+    if (Game.buffs && nowB < Game.buffs.speedUntil){ ctx.fillStyle='rgba(43,52,72,0.65)'; ctx.fillRect(bx,by-12,104,16); ctx.fillStyle='#9ec6ff'; ctx.fillText('BUFF: SPEED↑', bx+6, by); bx+=116; }
+    if (Game.buffs && nowB < Game.buffs.partyUntil){ ctx.fillStyle='rgba(60,43,58,0.65)'; ctx.fillRect(bx,by-12,116,16); ctx.fillStyle='#ffb7d1'; ctx.fillText('PARTYTIME', bx+6, by); }
+// HUD band
+    const bandX=8, bandY=8, bandW=w-16, bandH=72;
+    ctx.fillStyle='rgba(0,0,0,0.55)'; roundRect(ctx, bandX, bandY, bandW, bandH, 10, true, false);
+    ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.beginPath();
+    ctx.moveTo(150, bandY+12); ctx.lineTo(150, bandY+bandH-12);
+    ctx.moveTo(300, bandY+12); ctx.lineTo(300, bandY+bandH-12);
+    ctx.stroke();
+
+    ctx.fillStyle='#e9f1ff'; ctx.font='12px ui-monospace, monospace';
+    ctx.fillText('Scene: '+Game.currentBiome, 16, 24);
+    ctx.fillText('Pos: '+(player.x|0)+','+(player.y|0), 16, 40);
+    ctx.fillText('Coins: '+Game.coins, 160, 24);
+    ctx.fillText('Bag: '+Game.inventory.length+' stacks', 160, 40);
+
+    // active pal chip
+    const ap = Game.companions.find(p=>p.isActive) || Game.companions[0];
+    if (ap){ ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(260, 12, 140, 20); ctx.fillStyle='#e9f1ff'; ctx.fillText('Pal: '+ap.id, 266, 26); }
+
+    // quest tracker
+    const qid = (Game.currentBiome==='forest')? 'q_forest_main' : 'q_meadow_main';
+    if (questState(qid)!=="locked"){
+      const qpr = questProgress(qid);
+      ctx.fillText('Quest: '+QUESTS[qid].name, 420, 24);
+      let x=420, y=40; for(const seg of qpr.prog){ ctx.fillText(seg.label+(seg.done?' ✓':''), x, y); x+=140; }
+    } else {
+      const tip = (Game.currentBiome==='forest') ? 'Talk to the Ranger to begin the forest quest.' : 'Talk to the Elder to begin the main quest.';
+      ctx.fillText(tip, 420, 24);
+    }
+
+    
+    // Guardian Trial HUD (compact, inside top band)
+    if (Game.currentBiome==='forest' && (!Game.flags.owl_trial_pass || GuardianTrial.active)){
+      const label = 'Wisps ' + GuardianTrial.collected + '/5';
+      const secs = Math.ceil((GuardianTrial.active? Math.max(0, GuardianTrial.timeLeft):0)/1000);
+      const timeTxt = GuardianTrial.active ? (String(Math.floor(secs/60))+':'+String(secs%60).padStart(2,'0')) : '—:—';
+      const chip = label + '  ' + timeTxt;
+      ctx.font='12px ui-monospace, monospace';
+      const tw = ctx.measureText(chip).width;
+      const cw = tw + 16, ch = 18;
+      const cx = w - cw - 16, cy = 14;
+      ctx.fillStyle='rgba(12,18,28,0.65)'; ctx.fillRect(cx, cy, cw, ch);
+      ctx.fillStyle='#a6f6ff'; ctx.fillText(chip, cx+8, cy+13);
+    }
+
+
+    // Toast
+    if (performance.now() < toastUntil){
+      ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(12, h-40, Math.min(600,w-24), 26);
+      ctx.fillStyle='#e9f1ff'; ctx.font='14px ui-monospace, monospace'; ctx.fillText(toastMsg, 20, h-22);
+    }
+
+    // Panels
+    if (UI.quick) drawQuickPanel(ctx,w,h);
+    if (UI.start) drawStartMenu(ctx,w,h);
+  }
+
+  function controlsLine(){
+    return isTouchDevice()
+      ? 'Move: D-Pad  •  Interact: A  •  Pal: B  •  Start: START  •  Select: SELECT'
+      : 'Move: WASD/Arrows  •  Interact: E or J  •  Pal: Q or K  •  Start: Enter/Esc  •  Select: Space/Tab';
+  }
+  function drawStartMenu(ctx,w,h){
+    const mw = Math.min(520, w-120), mh = Math.min(360, h-120);
+    const x = (w-mw)>>1, y = (h-mh)>>1;
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='rgba(12,16,28,0.95)'; ctx.fillRect(x,y,mw,mh);
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.strokeRect(x+0.5,y+0.5,mw,mh);
+    ctx.fillStyle='#e9f1ff'; ctx.font='18px ui-monospace, monospace';
+    ctx.fillText('START MENU', x+18, y+30);
+    ctx.font='13px ui-monospace, monospace';
+    ctx.fillText(controlsLine(), 16, 64);
+    let yy=y+84;
+    for(let i=0;i<START_ITEMS.length;i++){
+      const hi = (i===UI.startIdx);
+      ctx.fillStyle = hi? '#20314f' : 'transparent';
+      ctx.fillRect(x+14, yy-14, mw-28, 22);
+      ctx.fillStyle = hi? '#ffd54a' : '#cfe6ff';
+      ctx.fillText(START_ITEMS[i], x+24, yy);
+      yy+=26;
+    }
+  }
+
+  // ---------- Movement helpers ----------
+  function activePal(){ return Game.companions.find(p=>p.isActive) || Game.companions[0]; }
+  function currentSpeed(){
+    const ap=activePal(); const perk=PALS[ap?.id]?.perks||{};
+    return player.baseSpeed * (1 + (perk.speed||0));
+  }
+
+  // ---------- Loop ----------
+  let last=0, aHoldT=0;
+  function frame(t){
+    window.__AHandledPedestal = false;
+animT = t; // for portal animation
+    const dt = Math.min(0.05,(t-last)/1000||0); last=t;
+
+    // Movement (water + brush checks)
+    if (!UI.start){
+      let ax=0, ay=0; const p=state.pressed;
+      if(p.has('Left')) ax-=1; if(p.has('Right')) ax+=1; if(p.has('Up')) ay-=1; if(p.has('Down')) ay+=1;
+      const sp=currentSpeed();
+
+      const ap=activePal(); const perks=PALS[ap?.id]?.perks||{};
+      const allowWater = !!perks.water_walk;
+      const allowBrush = !!perks.brush_break;
+
+      // try X
+      const nx = clamp(player.x + ax*sp*dt, 2, W*TILE - player.w - 2);
+      const cxX = ((nx + player.w/2)/TILE)|0, cyX = ((player.y + player.h/2)/TILE)|0;
+      const gxX = ground[gi(cxX,cyX)];
+      const canX = (gxX!==4 || allowWater) && (gxX!==BRUSH || allowBrush);
+      if (canX) player.x = nx;
+
+      // try Y
+      const ny = clamp(player.y + ay*sp*dt, 2, H*TILE - player.h - 2);
+      const cxY = ((player.x + player.w/2)/TILE)|0, cyY = ((ny + player.h/2)/TILE)|0;
+      const gxY = ground[gi(cxY,cyY)];
+      const canY = (gxY!==4 || allowWater) && (gxY!==BRUSH || allowBrush);
+      if (canY) player.y = ny;
+    }
+
+    // Guardian Trial update (timer + collection)
+    if (Game.currentBiome==='forest'){
+      if (GuardianTrial.active){
+        GuardianTrial.timeLeft = Math.max(0, GuardianTrial.timeLeft - dt*1000);
+        try{
+// collect wisps within ~24px radius (one per frame)
+        for (let i=0;i<GuardianTrial.wisps.length;i++){
+          const w = GuardianTrial.wisps[i];
+          if (!w.collected && Math.hypot((player.x+player.w/2)-w.x, (player.y+player.h/2)-w.y) <= 24){
+            w.collected = true; GuardianTrial.collected++; toast('Wisp +1');
+            break;
+          }
+        }
+}catch(e){}
+if (GuardianTrial.collected >= 5){ endGuardianTrial(true); }
+        else if (GuardianTrial.timeLeft <= 0){ endGuardianTrial(false); }
+      }
+    }
+
+    // reveal tiles to minimap fog
+    const ptx=(player.x/TILE)|0, pty=(player.y/TILE)|0;
+    for(let ry=-5; ry<=5; ry++){
+      for(let rx=-5; rx<=5; rx++){
+        const tx=ptx+rx, ty=pty+ry;
+// Patch: remember last facing direction
+if (state.pressed.has('Left'))  lastDir.x = -1, lastDir.y = 0;
+if (state.pressed.has('Right')) lastDir.x =  1, lastDir.y = 0;
+if (state.pressed.has('Up'))    lastDir.x =  0, lastDir.y = -1;
+if (state.pressed.has('Down'))  lastDir.x =  0, lastDir.y = 1;
+        if(tx>=0 && ty>=0 && tx<W && ty<H) seen[gi(tx,ty)] = 1;
+      }
+    }
+
+    
+    // Buff timers + speed multiplier
+    if (Game && Game.buffs){
+      if (Date.now() < Game.buffs.speedUntil) Game.stats.speedMult = 2.5; else Game.stats.speedMult = 1.0;
+      const partyOn = Date.now() < Game.buffs.partyUntil;
+      // confetti emit
+      if (partyOn && particles.length<220){
+        const cv = activeCanvas();
+        const vx0 = clamp((player.x|0) - (cv.width>>1), 0, Math.max(0, (W*TILE) - cv.width));
+        const vy0 = clamp((player.y|0) - (cv.height>>1), 0, Math.max(0, (H*TILE) - cv.height));
+        for(let i=0;i<6;i++){
+          const sx = vx0 + (Math.random()*cv.width|0);
+          const sy = vy0 + (Math.random()*18|0);
+          particles.push({x:sx, y:sy, vx:(Math.random()*2-1)*40, vy:(Math.random()*-30), life: 900+((Math.random()*600)|0)});
+        }
+      }
+    }
+    // integrate particles
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];
+      p.life -= dt*1000;
+      p.vy += 50*dt;
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      if (p.life<=0) particles.splice(i,1);
+    }
+// ----- Edge actions -----
+    if (state.pressEdge.has('Start')){ UI.start = !UI.start; if(UI.start){ UI.quick=false; ShopUI.open=false; } toast(UI.start?'Pause — Start Menu':'Resume'); }
+    if (state.pressEdge.has('B') && UI.start){ UI.start=false; }
+
+    if (UI.start){
+      if (state.pressEdge.has('Up'))   UI.startIdx = (UI.startIdx + START_ITEMS.length - 1) % START_ITEMS.length;
+      if (state.pressEdge.has('Down')) UI.startIdx = (UI.startIdx + 1) % START_ITEMS.length;
+      if (state.pressEdge.has('A')){
+        const choice = START_ITEMS[UI.startIdx];
+        if (choice==='Resume' || choice==='Close'){ UI.start=false; }
+        else if (choice==='Save (Slot 1)'){ saveGame(); }
+        else if (choice==='Load (Slot 1)'){ loadGame(); }
+        else if (choice==='New World'){ newWorld(); UI.start=false; }
+        else if (choice==='Settings'){ Game.settings.seedEnabled=!Game.settings.seedEnabled; toast('Seeded RNG: '+(Game.settings.seedEnabled?'ON':'OFF')); }
+        else if (choice==='Cheats'){ UI.start=false;
+UI.quick=true;
+if (typeof QUICK_TABS!=='undefined'){
+  const idx = QUICK_TABS.indexOf('Cheats');
+  quickTab = idx>=0 ? idx : 0;
+} else { quickTab = 0; }
+toast('Cheats menu'); }
+      }
+    } else {
+      if (state.pressEdge.has('Select')){ UI.quick=!UI.quick; if(UI.quick) ShopUI.open=false; toast(UI.quick?'Quick panel':'Close panel'); }
+      if (UI.quick){
+        if (ShopUI.open){
+          const list=shopItems();
+          if (state.pressEdge.has('Left'))  ShopUI.mode = (ShopUI.mode==='buy'?'sell':'buy'), ShopUI.idx=0;
+          if (state.pressEdge.has('Right')) ShopUI.mode = (ShopUI.mode==='buy'?'sell':'buy'), ShopUI.idx=0;
+          if (state.pressEdge.has('Up'))   ShopUI.idx=(ShopUI.idx+(list.length||1)-1)%(list.length||1);
+          if (state.pressEdge.has('Down')) ShopUI.idx=(ShopUI.idx+1)%(list.length||1);
+          if (state.pressEdge.has('A')){ ShopUI.mode==='buy' ? buySelected() : sellSelected(); }
+
+          if (state.pressEdge.has('B') || state.pressEdge.has('Start')){ closeShop(); }
+        } else {
+          if (state.pressEdge.has('Left')) quickTab=(quickTab+QUICK_TABS.length-1)%QUICK_TABS.length;
+          if (state.pressEdge.has('Right')) quickTab=(quickTab+1)%QUICK_TABS.length;
+          // Cheats tab navigation + Run
+          if (QUICK_TABS && QUICK_TABS[quickTab]==='Cheats'){
+            if (state.pressEdge.has('Up'))   CheatsUI.idx = (CheatsUI.idx + CheatsUI.list.length - 1) % CheatsUI.list.length;
+            if (state.pressEdge.has('Down')) CheatsUI.idx = (CheatsUI.idx + 1) % CheatsUI.list.length;
+            if (state.pressEdge.has('A'))    applyCheat(CheatsUI.list[CheatsUI.idx].code);
+          }
+
+          if (quickTab===1){ // Crafting
+            const list = RECIPES.filter(r=>!r.requiresFlag || Game.flags[r.requiresFlag]);
+            if (state.pressEdge.has('Up')) craftIdx = (craftIdx+list.length-1)%(list.length||1);
+            if (state.pressEdge.has('Down')) craftIdx = (craftIdx+1)%(list.length||1);
+            if (state.pressEdge.has('A')){ const r = list[craftIdx]; if (hasItems(r.needs)) craft(r.out); else toast('Need mats'); }
+          }
+        }
+      } else {
+        // cycle active pal
+        if (state.pressEdge.has('B')){
+          const i = Math.max(0, Game.companions.findIndex(p=>p.isActive));
+          if (Game.companions.length){ Game.companions[i].isActive=false; const nxt=(i+1)%Game.companions.length; Game.companions[nxt].isActive=true; toast('Active pal: '+Game.companions[nxt].id); }
+        }
+
+        if (state.pressed.has('A')) aHoldT += dt; else aHoldT = 0;
+        if (state.pressEdge.has('A') || aHoldT>0.20){
+  try{
+  // Guardian Pedestal priority (forest)
+  let __handled = false;
+  if (Game.currentBiome==='forest' && !Game.flags.owl_trial_pass && GuardianTrial.pedestal.x!=null){
+    if (distToPlayer(GuardianTrial.pedestal.x, GuardianTrial.pedestal.y) <= 64){
+      if (!GuardianTrial.active){
+        startGuardianTrial();
+        __handled = true;
+      }
+    }
+  }
+  if (!__handled){
+
+          // nearest portal?
+          let idx = nearest(portals,64);
+          if (idx!==-1){
+            const to = portals[idx].to; travelTo(to);
+          }
+          
+          else if ((idx=nearest(chests,36))!==-1){
+            const c = chests[idx];
+            if (!c.opened){
+              c.opened=true;
+              // loot burst
+              const burst = 2 + (Math.random()*3|0); // 2-4
+              for(let i=0;i<burst;i++){
+                const roll = Math.random();
+                const id = roll<0.2?'coins' : roll<0.55?'wood' : roll<0.8?'berry' : 'mushroom';
+                if (id==='coins') Game.coins = (Game.coins||0) + (10 + (Math.random()*30|0));
+                else addItem(id,1);
+              }
+              // particles burst
+              for(let i=0;i<16;i++){
+                particles.push({x:c.x*TILE+TILE/2, y:c.y*TILE+TILE/2, vx:(Math.random()*2-1)*80, vy:(-40 - Math.random()*60), life:600+((Math.random()*400)|0)});
+              }
+              toast('Chest opened!');
+            } else { toast('Empty chest'); }
+          }
+    else if ((idx=nearest(items,64))!==-1){
+            const gotId = items[idx].id;
+            addItem(gotId,1);
+            // forage bonus from active pal
+            const perk=PALS[activePal()?.id]?.perks||{};
+            if (typeof perk.forage_bonus==='number' && RNG.chance(perk.forage_bonus)) addItem(gotId,1);
+            items.splice(idx,1); toast('Picked up');
+          }
+          else if ((idx=nearest(npcs,64))!==-1){
+            const n=npcs[idx];
+            if (n.role==='elder'){
+              if (questState('q_meadow_main')==='locked') beginQuest('q_meadow_main');
+              else if (questState('q_meadow_main')==='active') tryTurnIn('q_meadow_main');
+              else toast('Elder: "Good work!"');
+            } else if (n.role==='ranger'){
+              if (questState('q_forest_main')==='locked') beginQuest('q_forest_main');
+              else if (questState('q_forest_main')==='active') tryTurnIn('q_forest_main');
+              else toast('Ranger: "Trails are clear. Thanks."');
+            } else if (n.role==='workbench'){ toast('Craft via Select → Crafting'); }
+            else if (n.role==='market'){ UI.quick=true; openShop(n.shopId||'meadow_village'); }
+          }
+          else if ((idx=nearest(pals,64))!==-1){
+  if (Game.companions.length>=MAX_PARTY) toast('Party full');
+  else {
+    const ref = pals[idx];
+    deferAction(function(){
+      try{
+        const i = pals.indexOf(ref);
+        if (i===-1) return;
+        const pid = pals[i].id;
+        pals.splice(i,1);
+        Game.companions.push({id:pid});
+        Game.discovered.add(pid);
+        if (pid==='sprite') Game.flags.captured_sprite=true;
+        if (pid==='owllet') Game.flags.captured_owllet=true;
+        if (pid==='boar' && Game.flags.boarBossActive){ Game.flags.boar_miniboss_defeated=true; Game.flags.boarBossActive=false; toast('Defeated the rampaging boar!'); }
+        toast('Captured '+pid);
+      }catch(e){}
+    });
+  }
+} else maybeToastNoInteract();
+} // end !__handled
+
+  }catch(e){ try{ maybeToastNoInteract(); }catch(_){} }
+}
+
+      }
+    }
+
+    state.pressEdge.clear();
+
+    // Render
+    const ctx = activeCtx(); const w=activeCanvas().width, h=activeCanvas().height;
+    drawShell(ctx,w,h); drawWorld(ctx,w,h);
+
+    
+// Flush deferred actions (apply after render)
+try{ if(DefQ.length){ const q=DefQ.splice(0); for(const fn of q){ try{ fn(); }catch(e){} } } }catch(e){}
+status(['mode: '+state.mode,'biome: '+Game.currentBiome,'pressed: ['+(Array.from(state.pressed).join(', ')||' ')+']','fps~: '+(dt? (1/dt|0):'—')].join('  |  '));
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- Travel ----------
+  function travelTo(targetBiome){
+    if (targetBiome===Game.currentBiome) return;
+    Game.currentBiome = targetBiome;
+    if (targetBiome==='forest'){ regenForest(); }
+    else { regenMeadow(); }
+    // put player near the respective portal landing
+    const trackY=(H*0.575)|0;
+    player.y = trackY*TILE;
+    player.x = (targetBiome==='forest') ? (12*TILE) : ((W-12)*TILE);
+    seedByBiome();
+    toast('Travelled to '+targetBiome);
+  }
+
+  // ---------- Boot ----------
+  RNG.reseed(0xC0FFEE);
+  regenMeadow();
+  seedByBiome();
+  requestAnimationFrame(frame);
+
+  // Expose hooks (debug)
+  window.WildPals = { items, npcs, pals, portals, player, Game, toast, saveGame, loadGame, newWorld, RNG,
+    regenMeadow, regenForest, seedByBiome, travelTo, openShop };
+})();
+
+// Data-only helper to increment owl riddle progress
+function solveOwlRiddle(){ Game.flags.owl_riddle_count = (Game.flags.owl_riddle_count||0)+1; }
+</script>
+
+
+
+<script>
+// Guard to suppress "Nothing to interact with" when A started the Guardian Trial.
+window.__AHandledPedestal = false;
+function maybeToastNoInteract(){ if (!window.__AHandledPedestal) toast('Nothing to interact with'); }
+</script>
+
+</body>
+</html>
