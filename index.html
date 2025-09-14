@@ -574,6 +574,8 @@ function endGuardianTrial(win){
   GuardianTrial.wisps.length = 0;
   if (win){
     Game.flags.owl_trial_pass = true;
+    // Journal: show Great Owl Trial as done
+    try{ Game.quests['q_forest_guardian_owl'] = 'done'; }catch(e){}
     rebuildPortals();
     toast("Trial complete!");
   }else{
@@ -592,7 +594,7 @@ function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (playe
     if (Game.currentBiome==='forest'){ seedForest(); }
     else { seedMeadow(); }
     resetGuardianTrialForBiome();
-    if (Game.currentBiome==='forest' && !Game.flags.owl_trial_pass){ placeGuardianPedestalNearCamp(); }
+    if (Game.currentBiome==='forest' && (!Game.flags.owl_trial_pass || !Game.flags.q_forest_main_done)){ placeGuardianPedestalNearCamp(); }
     rebuildPortals();
   }
 
@@ -645,9 +647,11 @@ function seedForest(){
     else id='stone';
     items.push({x:tx*TILE+4, y:ty*TILE+4, w:24, h:24, id});
   
-  // Guardian pedestal near camp
-  if (!Game.flags.owl_trial_pass){ placeGuardianPedestalNearCamp(); } else { GuardianTrial.pedestal.x=null; GuardianTrial.pedestal.y=null; }
+  
 }
+  // Guardian pedestal near camp (visible until BOTH trial+errand complete)
+  if (!Game.flags.owl_trial_pass || !Game.flags.q_forest_main_done){ placeGuardianPedestalNearCamp(); } else { GuardianTrial.pedestal.x=null; GuardianTrial.pedestal.y=null; }
+
   // 2) Place camp NPCs near the track
   const trackY=(H*0.575)|0;
   npcs.push({x:(12*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Ranger', role:'ranger'});
@@ -729,7 +733,7 @@ function seedForest(){
       }
     } else if (Game.currentBiome==='forest'){
       portals.push({x:10*TILE, y:trackY*TILE, w:28, h:28, to:'meadow'});
-      if (Game.flags.owl_trial_pass){ portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'desert'}); Game.unlocked.desert=true; }
+      if ((Game.flags.owl_trial_pass||Game.flags.owl_trial_passed) && Game.flags.q_forest_main_done===true) { portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'desert'}); Game.unlocked.desert=true; }
     }
   }
 
@@ -792,11 +796,14 @@ function questState(id){ return Game.quests[id]||"locked"; }
       toast("Quest complete! +20c, Forest unlocked"); rebuildPortals();
     } else if (id==='q_forest_main'){
       Game.coins+=25; addItem('axe_basic',1); Game.flags.q_forest_main_done=true;
-      toast("Errand complete! +25c +axe");
+      toast("Errand complete! +25c +axe"); rebuildPortals();
     } else if (id==='q_forest_guardian_owl'){
-      addItem('relic_feather',1); Game.flags.owl_trial_pass=true; Game.unlocked.desert=true;
-      toast("Great Owl Trial complete! Desert unlocked"); rebuildPortals();
-    }
+  addItem('relic_feather',1);
+  Game.flags.owl_trial_pass=true;
+  if ((Game.flags.owl_trial_pass||Game.flags.owl_trial_passed) && Game.flags.q_forest_main_done===true) { Game.unlocked.desert=true; toast("Great Owl Trial complete! Desert unlocked"); }
+  else { toast("Great Owl Trial complete!"); }
+  rebuildPortals();
+}
   }
 
   // ---------- Inventory / Crafting ----------
@@ -1240,7 +1247,7 @@ function twinkle(ctx, cx, cy, t){
 function drawGuardianLayer(ctx, vx, vy){
   try{
   // Pedestal (only if not passed)
-  if (Game.currentBiome==='forest' && !Game.flags.owl_trial_pass && GuardianTrial.pedestal.x!=null){
+  if (Game.currentBiome==='forest' && (!Game.flags.owl_trial_pass || !Game.flags.q_forest_main_done) && GuardianTrial.pedestal.x!=null){
     const cx = GuardianTrial.pedestal.x - vx, cy = GuardianTrial.pedestal.y - vy;
     ctx.save();
     glowCircle(ctx, cx, cy, 24, 'rgba(120,200,255,0.45)');
@@ -1573,7 +1580,7 @@ toast('Cheats menu'); }
   try{
   // Guardian Pedestal priority (forest)
   let __handled = false;
-  if (Game.currentBiome==='forest' && !Game.flags.owl_trial_pass && GuardianTrial.pedestal.x!=null){
+  if (Game.currentBiome==='forest' && (!Game.flags.owl_trial_pass || !Game.flags.q_forest_main_done) && GuardianTrial.pedestal.x!=null){
     if (distToPlayer(GuardianTrial.pedestal.x, GuardianTrial.pedestal.y) <= 64){
       if (!GuardianTrial.active){
         startGuardianTrial();
