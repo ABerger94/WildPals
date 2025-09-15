@@ -84,6 +84,7 @@
   .actCluster .btn{position:absolute; width:56px; height:56px; border-radius:999px; border:1px solid #1b2a52; color:#e9f1ff; font-weight:800; font-size:16px; box-shadow:inset 0 8px 18px rgba(0,0,0,.45); touch-action:manipulation}
   #btnA{background:var(--btnA); right:6px; top:8px}
   #btnB{background:var(--btnB); left:16px; bottom:6px}
+  #btnZ{background:#3ECBA3; right:10px; bottom:6px}
   .startRow{grid-column:3; grid-row:2; display:flex; justify-content:center; gap:12px; align-items:center}
   .startRow .tiny{min-width:auto; width:72px; height:32px; border-radius:999px; background:var(--btnStart); border:1px solid #222; color:white; font-weight:800; letter-spacing:.06em; font-size:12px; touch-action:manipulation}
 
@@ -134,6 +135,7 @@
   .land-actions .ab .btn{ position:absolute; width:60px; height:60px; border-radius:999px; border:1px solid #1b2a52; color:#e9f1ff; font-weight:800; font-size:16px; box-shadow:inset 0 8px 18px rgba(0,0,0,.45); touch-action:manipulation }
   #lA{ background:var(--btnA); right:6px; top:6px }
   #lB{ background:var(--btnB); left:14px; bottom:8px }
+  #lZ{ background:#3ECBA3; right:14px; bottom:8px }
   .land-actions .start{ display:flex; gap:10px; }
   .land-actions .start .tiny{ min-width:auto; width:72px; height:32px; border-radius:999px; background:var(--btnStart); border:1px solid #222; color:white; font-weight:800; font-size:12px; touch-action:manipulation }
 
@@ -181,6 +183,7 @@
         <div class="actCluster">
           <button class="btn" id="btnA">A</button>
           <button class="btn" id="btnB">B</button>
+          <button class="btn" id="btnZ">Z</button>
         </div>
         <div></div>
         <div class="startRow">
@@ -219,6 +222,7 @@
             <div class="ab">
               <button class="btn" id="lA">A</button>
               <button class="btn" id="lB">B</button>
+              <button class="btn" id="lZ">Z</button>
             </div>
             <div class="start">
               <button class="tiny" id="lStart">START</button>
@@ -300,7 +304,7 @@ let particles = Array.isArray(globalThis.particles) ? globalThis.particles : [];
     KeyQ:'B', KeyK:'B',
     Enter:'Start', Escape:'Start',
     Space:'Select', Tab:'Select',
-    KeyZ:'Use'
+    KeyZ:'Z'
   };
   addEventListener('keydown', e=>{ const n=keyMap[e.code]; if(n){ e.preventDefault(); if(!state.pressed.has(n)) state.pressEdge.add(n); state.pressed.add(n); pulse(n);} });
   addEventListener('keyup',   e=>{ const n=keyMap[e.code]; if(n){ e.preventDefault(); state.pressed.delete(n);} });
@@ -314,8 +318,8 @@ let particles = Array.isArray(globalThis.particles) ? globalThis.particles : [];
     el.addEventListener('touchcancel',up,{passive:false});
     el.addEventListener('mousedown',down); el.addEventListener('mouseup',up); el.addEventListener('mouseleave',up);
   }
-  ['btnUp:Up','btnDown:Down','btnLeft:Left','btnRight:Right','btnA:A','btnB:B','btnStart:Start','btnSelect:Select',
-   'lUp:Up','lDown:Down','lLeft:Left','lRight:Right','lA:A','lB:B','lStart:Start','lSelect:Select']
+  ['btnUp:Up','btnDown:Down','btnLeft:Left','btnRight:Right','btnA:A','btnB:B','btnZ:Z','btnStart:Start','btnSelect:Select',
+   'lUp:Up','lDown:Down','lLeft:Left','lRight:Right','lA:A','lB:B','lZ:Z','lStart:Start','lSelect:Select']
    .forEach(p=>{ const [id,n]=p.split(':'); bindBtn(id,n); });
   function pulse(name){ state.taps.push({name, t: performance.now()}); if(state.taps.length>24) state.taps.shift(); }
 
@@ -355,7 +359,21 @@ function drawChests(gb, vx, vy){ { for(const c of chests){ const cx=(c.x - vx)|0
 
   function perlinish(x,y,sx,sy){ return (Math.sin(x*sx)+Math.cos(y*sy)+2)/4; }
 
-  // Meadow gen
+  
+  // === Desert color helpers (visual-only) ===
+  function mixRGB(a,b,t){ const r=(a[0]*(1-t)+b[0]*t)|0, g=(a[1]*(1-t)+b[1]*t)|0, bl=(a[2]*(1-t)+b[2]*t)|0; return 'rgb('+r+','+g+','+bl+')'; }
+  // Base sand: #bdae80
+  const SAND_BASE=[189,174,128], SAND_LIGHT=[230,216,170], SAND_DARK=[158,144,104];
+  function desertTone(tx,ty){
+    // subtle bands like dunes; combine two slow waves
+    const k1 = (Math.sin(tx*0.09)+1)*0.5;
+    const k2 = (Math.cos(ty*0.07)+1)*0.5;
+    const t = 0.25 + 0.5*((k1*0.6 + k2*0.4)); // 0.25..0.75
+    // bias around SAND_BASE
+    const mid = mixRGB(SAND_DARK, SAND_LIGHT, t);
+    return mid;
+  }
+// Meadow gen
   function regenMeadow(){
     ground.fill(0); deco.fill(0); seen.fill(0);
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){
@@ -401,7 +419,26 @@ function drawChests(gb, vx, vy){ { for(const c of chests){ const cx=(c.x - vx)|0
       if (RNG.f()<0.02) deco[gi(x,y)] = 2; // bushes (visual)
       if (RNG.f()<0.015) deco[gi(x,y)] = 5; // tree chunk (visual)
     }
-    // winding track
+    
+  // Desert generation (visual: sand base, sparse cactus/rocks, small oasis)
+  function regenDesert(){
+    ground.fill(0); deco.fill(0); seen.fill(0);
+    // Place 1-2 oases
+    const ponds = 1 + (RNG.f()<0.35?1:0);
+    for(let n=0;n<ponds;n++){
+      const cx=RNG.i(12,W-12), cy=RNG.i(10,H-10), r=RNG.i(4,7);
+      for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
+        if(x*x+y*y<=r*r){ const gx=cx+x, gy=cy+y; if(gx>1&&gy>1&&gx<W-2&&gy<H-2) ground[gi(gx,gy)]=4; }
+      }
+    }
+    // Sparse deco: cactus(10), rock(11), dry shrub(12)
+    for(let y=2;y<H-2;y++) for(let x=2;x<W-2;x++){
+      if (ground[gi(x,y)]===4) continue; // keep water clear
+      const r=RNG.f();
+      deco[gi(x,y)] = (r<0.008)?10 : (r<0.013)?11 : (r<0.018)?12 : 0;
+    }
+  }
+// winding track
     let py=(H*0.6)|0, wigg=0;
     for(let x=2;x<W-2;x++){
       wigg+=(RNG.f()-0.5)*0.6; py=Math.max(5,Math.min(H-6, py+(wigg|0)));
@@ -428,13 +465,15 @@ function drawChests(gb, vx, vy){ { for(const c of chests){ const cx=(c.x - vx)|0
   const ITEMS = {
     wood:{cat:"material"}, stone:{cat:"material"}, berry:{cat:"material"}, herb:{cat:"material"},
     reed:{cat:"material"}, mushroom:{cat:"material"}, fiber:{cat:"material"},
-    net_basic:{cat:"tool"}, net_fine:{cat:"tool"},
+    net_basic:{cat:"tool", chargesMax:3}, net_fine:{cat:"tool"},
     pot_heal_s:{cat:"consumable"},
       axe_basic:{cat:"tool"},
+    weapon_stick:{cat:"weapon", chargesMax:10, dmg:8},
     relic_feather:{cat:"quest"},
     boots_desert:{cat:"armor"},
   };
   const RECIPES = [
+    {out:"weapon_stick", needs:[{id:"wood",qty:3},{id:"fiber",qty:2}], bench:"work"},
     {out:"net_basic", needs:[{id:"wood",qty:3},{id:"berry",qty:2}], bench:"work"},
     {out:"net_fine",  needs:[{id:"wood",qty:4},{id:"fiber",qty:4},{id:"berry",qty:2}], bench:"work"}
   ,
@@ -500,7 +539,7 @@ const SPAWNS = {
   const MAX_PARTY=12;
   const Game = {
     coins:0, inventory:[], companions:[{id:'rabbit', isActive:true}],
-    equipped:{ tool:null },
+    equipped:{ tool:null, weapon:null, armor:null },
     stats:{hpMax:100,hp:100,stamMax:100,stam:100,atk:5,def:2,crit:0.05,speed:1.0,speedMult:1.0},
     quests:{}, flags:{}, unlocked:{meadow:true}, discovered:new Set(),
     settings:{seedEnabled:true,music:false,sfx:true},
@@ -583,15 +622,43 @@ function endGuardianTrial(win){
   }
 }
 
+// === Boar miniboss combat ===
+const BoarBoss = { active:false, hp:60, hpMax:60, state:'idle', t:0, vx:0, vy:0, iframe:0, contactCD:0 };
+function ensureBoarBoss(){
+  if (Game.currentBiome!=='forest'){ BoarBoss.active=false; return; }
+  if (!Game.flags.boar_miniboss_defeated && Game.flags.boarBossActive){
+    BoarBoss.active=true;
+    if (BoarBoss.hp==null || BoarBoss.hp===undefined || BoarBoss.hp>BoarBoss.hpMax) BoarBoss.hp=BoarBoss.hpMax;
+    // keep hp==0 when downed so player can Calm
+  } else { BoarBoss.active=false; }
+}
+function bossCenter(){
+  const i = pals.findIndex(p=>p.id==='boar' && p.boss);
+  if (i===-1) return null;
+  const b = pals[i]; return {i,b, x:b.x + b.w/2, y:b.y + b.h/2};
+}
 function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (player.y+player.h/2)-py); }
 
   function tileIsWater(tx,ty){ return ground[gi(tx,ty)]===4; }
   function tileIsBrush(tx,ty){ return ground[gi(tx,ty)]===BRUSH; }
 
+  function safeCampSpawn(){
+    const trackY=(H*0.575)|0; // camp strip
+    const candidates = [
+      {tx:12, ty:trackY-2}, {tx:13, ty:trackY-2}, {tx:14, ty:trackY-2},
+      {tx:12, ty:trackY-1}, {tx:13, ty:trackY-1}, {tx:14, ty:trackY-1},
+      {tx:12, ty:trackY},   {tx:13, ty:trackY},   {tx:14, ty:trackY}
+    ];
+    for (const c of candidates){ if (c.ty>1 && c.ty<H-1 && !tileIsWater(c.tx,c.ty) && !tileIsBrush(c.tx,c.ty)) return {x:c.tx*TILE, y:c.ty*TILE}; }
+    return {x: (12*TILE), y: ((trackY-2)*TILE)}; // fallback near ranger
+  }
+
+
   // Biome seeding wrappers
   function seedByBiome(){
     items.length=0; npcs.length=0; pals.length=0; portals.length=0; chests.length=0; particles.length=0;
     if (Game.currentBiome==='forest'){ seedForest(); }
+    else if (Game.currentBiome==='desert'){ seedDesert(); }
     else { seedMeadow(); }
     resetGuardianTrialForBiome();
     if (Game.currentBiome==='forest' && (!Game.flags.owl_trial_pass || !Game.flags.q_forest_main_done)){ placeGuardianPedestalNearCamp(); }
@@ -630,6 +697,28 @@ function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (playe
   }
 
   
+
+  function seedDesert(){
+    const px=(player.x/TILE|0), py=(player.y/TILE|0);
+    // starter materials
+    [{dx:2,dy:-1,id:'stone'},{dx:-1,dy:1,id:'wood'}].forEach(d=> items.push({x:(px+d.dx)*TILE+4, y:(py+d.dy)*TILE+4, w:24,h:24, id:d.id}));
+    // scatter
+    for(let i=0;i<60;i++){
+      const tx=RNG.i(4,W-5), ty=RNG.i(4,H-5); if(ground[gi(tx,ty)]===4) continue;
+      const id = (RNG.f()<0.7)?'stone':'wood';
+      items.push({x:tx*TILE+4, y:ty*TILE+4, w:24, h:24, id});
+    }
+    // pals reuse meadow
+    const nPals=RNG.i(10,14);
+    for(let i=0;i<nPals;i++){
+      let tx,ty,tries=0;
+      do{ tx=RNG.i(6,W-6); ty=RNG.i(6,H-6); tries++; }while(ground[gi(tx,ty)]===4 && tries<10);
+      pals.push({x:tx*TILE, y:ty*TILE, w:26, h:26, id:pickWeighted(SPAWNS.meadow.pals)});
+    }
+    // merchant
+    npcs.push({x:(px+3)*TILE, y:(py-1)*TILE, w:28, h:28, name:'Caravaneer', role:'market', shopId:'forest_camp'});
+  }
+
 function seedForest(){
   // --- Reset any per-biome local caches if needed (global arrays cleared by seedByBiome) ---
 
@@ -722,18 +811,22 @@ function seedForest(){
 }
 
 
-  function rebuildPortals(){
-
+  
+function rebuildPortals(){
     portals.length=0;
     const trackY=(H*0.575)|0;
     if (Game.currentBiome==='meadow'){
       if (Game.flags.bridgeFixed){
-        portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'forest'
-});
+        portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'forest'});
       }
     } else if (Game.currentBiome==='forest'){
       portals.push({x:10*TILE, y:trackY*TILE, w:28, h:28, to:'meadow'});
-      if ((Game.flags.owl_trial_pass||Game.flags.owl_trial_passed) && Game.flags.q_forest_main_done===true) { portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'desert'}); Game.unlocked.desert=true; }
+      if ((Game.flags.owl_trial_pass||Game.flags.owl_trial_passed) && Game.flags.q_forest_main_done){
+        portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'desert'});
+        Game.unlocked.desert = true;
+      }
+    } else if (Game.currentBiome==='desert'){
+      portals.push({x:10*TILE, y:trackY*TILE, w:28, h:28, to:'forest'});
     }
   }
 
@@ -837,6 +930,43 @@ function questState(id){ return Game.quests[id]||"locked"; }
   }
 
 // ---------- Shop (buy/sell) ----------
+  function slotForItemId(id){
+    const it = ITEMS[id]; if(!it) return null;
+    if (it.cat==='tool') return 'tool';
+    if (it.cat==='armor') return 'armor';
+    if (it.cat==='weapon') return 'weapon';
+    return null;
+  }
+  function equippedId(slot){ const e=Game.equipped?.[slot]; return e? e.id : null; }
+  function canEquip(id){ return !!slotForItemId(id); }
+  function isEquipped(id){ const s=slotForItemId(id); return s && equippedId(s)===id; }
+  function equipFromInventory(idx){
+    const s = Game.inventory[idx]; if(!s) return toast('No item');
+    const id = s.id; const slot = slotForItemId(id); if (!slot) return toast('Cannot equip');
+    const cur = Game.equipped[slot];
+    // Toggle off if same item equipped
+    if (cur && cur.id===id){
+      if (ITEMS[id]?.chargesMax && cur.usesLeft && cur.usesLeft < (ITEMS[id].chargesMax||0)) return toast('Cannot unequip (partially used)');
+      Game.equipped[slot] = null;
+      const exist=findStack(id); if (exist) exist.qty+=1; else Game.inventory.push({id,qty:1});
+      toast('Unequipped '+id);
+      return;
+    }
+    // If another item in slot, unequip it first (unless partially used tool)
+    if (cur){
+      if (ITEMS[cur.id]?.chargesMax && cur.usesLeft && cur.usesLeft < (ITEMS[cur.id].chargesMax||0)) return toast('Cannot unequip current '+cur.id+' (partially used)');
+      const back=findStack(cur.id); if (back) back.qty+=1; else Game.inventory.push({id:cur.id, qty:1});
+      Game.equipped[slot]=null;
+    }
+    // Equip: consume one from inventory and instantiate charges if applicable
+    if (!s.qty || s.qty<=0) return toast('Out of '+id);
+    s.qty-=1; if (s.qty<=0) Game.inventory = Game.inventory.filter(x=>x.qty>0);
+    const inst = { id };
+    if (ITEMS[id]?.chargesMax) inst.usesLeft = ITEMS[id].chargesMax, inst.usesMax = ITEMS[id].chargesMax;
+    Game.equipped[slot] = inst;
+    toast('Equipped '+id);
+  }
+
   const ShopUI = { open:false, idx:0, shopId:null, mode:'buy' }; // mode: 'buy' | 'sell'
   function openShop(shopId){ ShopUI.open=true; ShopUI.idx=0; ShopUI.shopId=shopId; ShopUI.mode='buy'; toast('Market open'); }
   function closeShop(){ ShopUI.open=false; }
@@ -958,6 +1088,7 @@ function questState(id){ return Game.quests[id]||"locked"; }
 const JournalUI = { idx: 0 };
   const START_ITEMS = ['Resume','Save (Slot 1)','Load (Slot 1)','New World','Settings','Cheats','Close'];
   const QUICK_TABS=['Inventory','Crafting','Journal','Minimap', 'Cheats']; let quickTab=0, craftIdx=0;
+let invIdx=0;
 
   // Journal stats + perks list
   function journalStats(){
@@ -1041,13 +1172,18 @@ function drawPal(ctx, p, vx, vy){
 
     for(let ty=0; ty<H; ty++){
       for(let tx=0; tx<W; tx++){
-        ctx.fillStyle = COLORS[ground[gi(tx,ty)]] || '#2f7a3f';
+        if (Game.currentBiome==='desert'){
+          const g=ground[gi(tx,ty)];
+          ctx.fillStyle = (g===4) ? (COLORS[g]||'#3a78b8') : desertTone(tx,ty);
+        } else {
+          ctx.fillStyle = COLORS[ground[gi(tx,ty)]] || '#2f7a3f';
+        }
         ctx.fillRect(ox+tx*scale, oy+ty*scale, scale, scale);
       }
     }
 
     // biome tint
-    ctx.fillStyle = (Game.currentBiome==='forest') ? 'rgba(30,60,30,0.10)' : 'rgba(40,70,40,0.06)';
+    ctx.fillStyle = (Game.currentBiome==='forest') ? 'rgba(30,60,30,0.10)' : (Game.currentBiome==='desert' ? 'rgba(160,120,40,0.10)' : 'rgba(40,70,40,0.06)');
     ctx.fillRect(ox, oy, mw, mh);
 
     // fog overlay
@@ -1133,8 +1269,22 @@ const y = 70, ph = h - 140;
     let yy=y+48;
 
     if(quickTab===0){
-      if(!Game.inventory.length) ctx.fillText('(bag empty)', x+14, yy);
-      for(const s of Game.inventory){ ctx.fillText(`${s.id} ×${s.qty}`, x+14, yy); yy+=18; }
+      const list = Game.inventory;
+      if(!list.length){ ctx.fillText('(bag empty)', x+14, yy); }
+      else{
+        if(invIdx>=list.length) invIdx=list.length-1; if(invIdx<0) invIdx=0;
+        for(let i=0;i<list.length;i++){
+          const s=list[i], hi=(i===invIdx);
+          const slot=slotForItemId(s.id);
+          const eq = slot? (equippedId(slot)===s.id) : false;
+          ctx.fillStyle = hi? '#ffd54a' : '#e9f1ff';
+          const suffix = eq? '  [E]' : '';
+          ctx.fillText((hi?'> ':'  ')+`${s.id} ×${s.qty}`+suffix, x+14, yy); yy+=18;
+          if (ITEMS[s.id]?.chargesMax){ ctx.fillStyle='#9fe8ff'; ctx.fillText(`   equip: ${s.id} has ${ITEMS[s.id].chargesMax} charges`, x+14, yy); yy+=16; }
+        }
+        yy+=8; ctx.fillStyle='#9fe8ff';
+        ctx.fillText('A: Equip/Unequip  Left/Right: switch tab  B/Start: close', x+14, yy); yy+=16;
+      }
     } else if(quickTab===1){
       const list = RECIPES.filter(r=>!r.requiresFlag || Game.flags[r.requiresFlag]); if(craftIdx>=list.length) craftIdx=list.length-1; if(craftIdx<0) craftIdx=0;
       for(let i=0;i<list.length;i++){
@@ -1154,17 +1304,50 @@ const y = 70, ph = h - 140;
       ctx.fillText(`Discovered items: ${j.discoveredItems}`, x+14, yy); yy+=16;
       ctx.fillText(`${j.biome==='forest'?'Forest':'Meadow'} Main Quest: ${j.qMain}`, x+14, yy); yy+=16; ctx.fillText(`Guardian Trial: ${j.qGuardian}`, x+14, yy); yy+=16;
       yy+=8; ctx.fillText('Pals & perks:', x+14, yy); yy+=16;
-      // pals list with selection
+      // Scrollable pals list
+      const listTop = yy;
+      const listHeight = (y+ph - 24) - listTop; // leave a small bottom margin
+      const rowH = 32; // name + perks
+      if (JournalUI.scrollY == null) JournalUI.scrollY = 0;
+      // Auto-scroll to keep selection visible
+      const selTopPx = JournalUI.idx * rowH - JournalUI.scrollY;
+      const selBotPx = selTopPx + rowH;
+      if (selTopPx < 0) JournalUI.scrollY = Math.max(0, JournalUI.idx*rowH);
+      else if (selBotPx > listHeight) JournalUI.scrollY = Math.min(JournalUI.idx*rowH - (listHeight - rowH), Math.max(0, Game.companions.length*rowH - listHeight));
+
+      // Clip to panel
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x+10, listTop - 14, panelW - 20, listHeight + 20);
+      ctx.clip();
+
+      // Render visible slice
       for(let i=0;i<Game.companions.length;i++){
         const c = Game.companions[i];
-        const hi = (i===JournalUI.idx);
-        ctx.fillStyle = hi? '#ffd54a' : '#e9f1ff';
-        ctx.fillText((hi?'> ':'  ') + '• '+c.id + (c.isActive?' (active)':''), x+14, yy); yy+=16;
-        const perks=PALS[c.id]?.perks||{};
-        const line=Object.keys(perks).map(k=>`${k}:${perks[k]===true?'✓':perks[k]}`).join(', ');
-        if(line){ ctx.fillStyle='#9fe8ff'; ctx.fillText('   '+line, x+14, yy); yy+=16; ctx.fillStyle= hi? '#ffd54a' : '#e9f1ff'; }
+        const lineY = listTop + (i*rowH) - JournalUI.scrollY;
+        if (lineY > listTop-32 && lineY < listTop + listHeight + 16){
+          const hi = (i===JournalUI.idx);
+          ctx.fillStyle = hi? '#ffd54a' : '#e9f1ff';
+          ctx.fillText((hi?'> ':'  ') + '• '+c.id + (c.isActive?' (active)':''), x+14, lineY);
+          const perks=PALS[c.id]?.perks||{};
+          const line=Object.keys(perks).map(k=>`${k}:${perks[k]===true?'✓':perks[k]}`).join(', ');
+          if(line){ ctx.fillStyle='#9fe8ff'; ctx.fillText('   '+line, x+14, lineY+14); }
+        }
       }
-      yy+=8; ctx.fillStyle='#9fe8ff'; ctx.fillText('Up/Down: select    A: Drop selected', x+14, yy); yy+=16;
+      ctx.restore();
+
+      // Slim scrollbar
+      const totalPx = Math.max(1, Game.companions.length*rowH);
+      if (totalPx > listHeight){
+        const trackX = x + panelW - 12, trackY = listTop, trackH = listHeight;
+        ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(trackX, trackY, 2, trackH);
+        const thumbH = Math.max(18, trackH * (listHeight/totalPx));
+        const maxScroll = totalPx - listHeight;
+        const thumbY = trackY + (maxScroll? (JournalUI.scrollY / maxScroll) * (trackH - thumbH) : 0);
+        ctx.fillStyle='#ffd54a'; ctx.fillRect(trackX-1, thumbY, 4, thumbH);
+      }
+
+      yy = listTop + listHeight; yy+=8; ctx.fillStyle='#9fe8ff'; ctx.fillText('Up/Down: select    A: Drop selected', x+14, yy); yy+=16;
     } else if(quickTab===3){
       const pad=12, mapX=x+pad, mapY=y+40, mapW=panelW-2*pad, mapH=ph-52;
       drawMinimap(ctx, mapX, mapY, mapW, mapH);
@@ -1290,7 +1473,12 @@ function drawGuardianLayer(ctx, vx, vy){
 
     // tiles
     for(let ty=ty0; ty<=ty1; ty++) for(let tx=tx0; tx<=tx1; tx++){
-      ctx.fillStyle = COLORS[ground[gi(tx,ty)]] || '#2f7a3f';
+      if (Game.currentBiome==='desert'){
+        const g=ground[gi(tx,ty)];
+        ctx.fillStyle = (g===4) ? (COLORS[g]||'#3a78b8') : desertTone(tx,ty);
+      } else {
+        ctx.fillStyle = COLORS[ground[gi(tx,ty)]] || '#2f7a3f';
+      }
       ctx.fillRect(tx*TILE - vx, ty*TILE - vy, TILE, TILE);
     }
     // deco
@@ -1301,7 +1489,18 @@ function drawGuardianLayer(ctx, vx, vy){
       else if (d===3){ ctx.fillStyle='#a8b1ba'; ctx.fillRect(x+8,y+12,16,12); } // rock
       else if (d===4){ ctx.fillStyle='#a0c24a'; ctx.fillRect(x+12,y+6,4,16); ctx.fillRect(x+16,y+10,4,16); } // reeds
       else if (d===5){ ctx.fillStyle='#2e3b17'; ctx.fillRect(x+8,y+8,16,16); } // tree chunk
-    }
+    
+      else if (Game.currentBiome==='desert' && d===10){ // cactus
+        ctx.fillStyle='#1e8f5e'; ctx.fillRect(x+12,y+6,8,20);
+        ctx.fillRect(x+8,y+12,4,10); ctx.fillRect(x+20,y+12,4,10);
+        ctx.strokeStyle='#0d4f35'; ctx.strokeRect(x+12.5,y+6.5,7,19);
+      } else if (Game.currentBiome==='desert' && d===11){ // rock
+        ctx.fillStyle='#a18a6a'; ctx.fillRect(x+10,y+14,12,10);
+        ctx.fillStyle='#8b765c'; ctx.fillRect(x+6,y+18,8,6);
+      } else if (Game.currentBiome==='desert' && d===12){ // dry shrub
+        ctx.strokeStyle='#b4935b'; ctx.beginPath(); ctx.moveTo(x+10,y+20); ctx.lineTo(x+16,y+12); ctx.lineTo(x+22,y+20); ctx.stroke();
+      }
+}
 
     // entities
     items.forEach(it=> rectOutline(ctx, it.x-vx, it.y-vy, it.w, it.h, '#7eddd7','#0b3b36'));
@@ -1349,6 +1548,62 @@ function drawGuardianLayer(ctx, vx, vy){
     // active pal chip
     const ap = Game.companions.find(p=>p.isActive) || Game.companions[0];
     if (ap){ ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(260, 12, 140, 20); ctx.fillStyle='#e9f1ff'; ctx.fillText('Pal: '+ap.id, 266, 26); }
+    // Player HP bar
+    { const hp=Game.stats.hp||Game.stats.hpMax||100, hpm=Game.stats.hpMax||100; ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(12,56,180,10); ctx.fillStyle='#6cf07a'; ctx.fillRect(12,56, Math.max(0,180*(hp/hpm)),10); ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.strokeRect(12.5,56.5,179,9); }
+
+    // Equipped chips (dynamic width) + Boss HP bar (avoids chips)
+    { 
+      // Build chip data first so we can layout the boss HP with no overlap.
+      let ex = 410, ey = 44;
+      const chips = [];
+      if (Game.equipped){
+        if (Game.equipped.tool){
+          const t = Game.equipped.tool;
+          chips.push(['Tool', t.id + (t.usesLeft!=null? ` (${t.usesLeft}/${t.usesMax||t.usesLeft})` : '')]);
+        }
+        if (Game.equipped.armor){
+          chips.push(['Armor', Game.equipped.armor.id]);
+        }
+        if (Game.equipped.weapon){
+          const t = Game.equipped.weapon;
+          chips.push(['Weapon', t.id + (t.usesLeft!=null? ` (${t.usesLeft}/${t.usesMax||t.usesLeft})` : '')]);
+        }
+      }
+      ctx.font='12px ui-monospace, monospace';
+      const chipRects = [];
+      for (const [k,v] of chips){
+        const label = `${k}: ${v}`;
+        const tw = Math.ceil(ctx.measureText(label).width);
+        const cw = tw + 14; // 7px pad left/right
+        chipRects.push({x:ex, y:ey, w:cw, h:20, label});
+        ex += cw + 10; // gap
+      }
+      const chipsRight = chipRects.length ? (chipRects[chipRects.length-1].x + chipRects[chipRects.length-1].w) : 410;
+
+      // Boss HP bar (right-aligned at y=52) — shrink/move left to avoid chips
+      if (typeof BoarBoss!=='undefined' && BoarBoss.active){
+        const desiredW = 240;
+        let bx = Math.max((w - 12 - desiredW)|0, (chipsRight + 8)|0);
+        let bwMax = Math.max(0, (w - 12) - bx);
+        const ratio = Math.max(0, Math.min(1, BoarBoss.hp/BoarBoss.hpMax));
+        // background
+        ctx.fillStyle='rgba(0,0,0,0.5)';
+        ctx.fillRect(bx, 52, bwMax, 12);
+        // fill
+        ctx.fillStyle='#ff7b7b';
+        ctx.fillRect(bx, 52, Math.max(0, bwMax*ratio), 12);
+        // label centered over bar
+        ctx.fillStyle='#e9f1ff';
+        const labelX = bx + (bwMax>>1) - 18;
+        ctx.fillText('Boar', labelX|0, 50);
+      }
+
+      // Draw chips after computing layout
+      for (const r of chipRects){
+        ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.fillStyle='#e9f1ff'; ctx.fillText(r.label, r.x+6, r.y+14);
+      }
+    }
 
     // quest tracker
     const qid = (Game.currentBiome==='forest')? 'q_forest_main' : 'q_meadow_main';
@@ -1376,6 +1631,12 @@ function drawGuardianLayer(ctx, vx, vy){
       ctx.fillStyle='#a6f6ff'; ctx.fillText(chip, cx+8, cy+13);
     }
 
+
+    // Calm prompt over boar when downed
+    if (typeof BoarBoss!=='undefined' && BoarBoss.active && BoarBoss.hp<=0){
+      const bc = (function(){ const i=pals.findIndex(p=>p.id==='boar' && p.boss); if(i===-1) return null; const b=pals[i]; return {x:b.x+b.w/2 - vx, y:b.y - vy - 18}; })();
+      if (bc){ ctx.save(); ctx.globalAlpha=0.95; ctx.fillStyle='#dfe8ff'; ctx.font='bold 14px ui-monospace'; ctx.fillText('Press A to calm', (bc.x-52)|0, (bc.y|0)); ctx.restore(); }
+    }
 
     // Toast
     if (performance.now() < toastUntil){
@@ -1472,6 +1733,56 @@ if (GuardianTrial.collected >= 5){ endGuardianTrial(true); }
       }
     }
 
+    // --- Boar boss combat update ---
+    ensureBoarBoss();
+    if (BoarBoss.active){
+      const bc = bossCenter();
+      if (bc){
+        const b = bc.b;
+        // timers
+        BoarBoss.t += dt; if (BoarBoss.iframe>0) BoarBoss.iframe -= dt; if (BoarBoss.contactCD>0) BoarBoss.contactCD -= dt;
+        // vector to player
+        const dx = (player.x+player.w/2) - (b.x+b.w/2);
+        const dy = (player.y+player.h/2) - (b.y+b.h/2);
+        const d = Math.hypot(dx,dy)||1;
+        // simple state machine
+        if (BoarBoss.state==='idle'){ if (BoarBoss.t>1.0){ BoarBoss.t=0; BoarBoss.state='tele'; } }
+        else if (BoarBoss.state==='tele'){ if (BoarBoss.t>0.6){ BoarBoss.t=0; BoarBoss.state='charge'; BoarBoss.vx=(dx/d)*240; BoarBoss.vy=(dy/d)*240; } }
+        else if (BoarBoss.state==='charge'){ b.x += BoarBoss.vx*dt; b.y += BoarBoss.vy*dt; if (BoarBoss.t>0.45){ BoarBoss.t=0; BoarBoss.state='idle'; BoarBoss.vx=BoarBoss.vy=0; } }
+        // clamp within world
+        b.x = clamp(b.x, 2, W*TILE - b.w - 2); b.y = clamp(b.y, 2, H*TILE - b.h - 2);
+        // Z attack (player)
+        if (state.pressEdge.has('Z')){
+          const pr=36;
+          if (Math.hypot(dx,dy) <= pr){
+            let dmg=4;
+            const wInst = Game.equipped && Game.equipped.weapon;
+            if (wInst && wInst.id==='weapon_stick' && (wInst.usesLeft||0)>0){ dmg=8; wInst.usesLeft-=1; if (wInst.usesLeft<=0){ Game.equipped.weapon=null; toast('Stick broke'); } }
+            if (BoarBoss.iframe<=0){ BoarBoss.hp=Math.max(0, BoarBoss.hp - dmg); BoarBoss.iframe=0.6; toast('Hit -'+dmg); }
+          }
+        }
+        // Boss hits player on contact during charge
+        if (BoarBoss.state==='charge' && Math.hypot(dx,dy) < 20 && BoarBoss.contactCD<=0){
+          const m=Game.stats.hpMax||100; Game.stats.hp=Math.max(0,(Game.stats.hp||m)-20); BoarBoss.contactCD=0.8;
+          if (Game.stats.hp<=0){
+            toast('You were knocked out!'); Game.stats.hp = Game.stats.hpMax||100;
+            BoarBoss.hp = BoarBoss.hpMax; BoarBoss.state='idle'; BoarBoss.t=0; BoarBoss.vx=BoarBoss.vy=0; BoarBoss.iframe=0;
+            const sp = safeCampSpawn(); player.x = sp.x; player.y = sp.y;
+          }
+        }
+        // Calm (A) when boss HP zero
+        if (BoarBoss.hp<=0){
+          if (state.pressEdge.has('A')){
+            // befriend
+            const idx = pals.findIndex(p=>p.id==='boar' && p.boss);
+            if (idx!==-1) pals.splice(idx,1);
+            Game.flags.boar_miniboss_defeated=true; Game.flags.boarBossActive=false; BoarBoss.active=false;
+            Game.companions.push({id:'boar'}); Game.discovered.add('boar'); toast('Boar joined your party!');
+          }
+        }
+      }
+    }
+
     // reveal tiles to minimap fog
     const ptx=(player.x/TILE)|0, pty=(player.y/TILE)|0;
     for(let ry=-5; ry<=5; ry++){
@@ -1546,7 +1857,7 @@ toast('Cheats menu'); }
 
           if (state.pressEdge.has('B') || state.pressEdge.has('Start')){ closeShop(); }
         } else {
-          if (state.pressEdge.has('Left')) quickTab=(quickTab+QUICK_TABS.length-1)%QUICK_TABS.length;
+          if (state.pressEdge.has('Left')) quickTab=(quickTab+QUICK_TABS.length-1)%QUICK_TABS.length; if (quickTab===0 && Game.inventory.length) invIdx = Math.min(invIdx, Game.inventory.length-1);
           if (state.pressEdge.has('Right')) quickTab=(quickTab+1)%QUICK_TABS.length;
           // Cheats tab navigation + Run
           if (QUICK_TABS && QUICK_TABS[quickTab]==='Cheats'){
@@ -1561,6 +1872,23 @@ toast('Cheats menu'); }
             if (state.pressEdge.has('Up'))   JournalUI.idx = (JournalUI.idx + L - 1) % (L||1);
             if (state.pressEdge.has('Down')) JournalUI.idx = (JournalUI.idx + 1) % (L||1);
             if (state.pressEdge.has('A')) dropPalAt(JournalUI.idx);
+          } else if (quickTab===0){
+            // Inventory scrolling + equip/unequip
+            const L = Game.inventory.length||0;
+            if (state.pressEdge.has('Up'))   invIdx = (invIdx + L - 1) % (L||1);
+            if (state.pressEdge.has('Down')) invIdx = (invIdx + 1) % (L||1);
+            if (state.pressEdge.has('A')){
+              const s=Game.inventory[invIdx];
+              if (s && ITEMS[s.id]?.cat==='consumable'){
+                if (s.id==='pot_heal_s'){
+                  const m=Game.stats.hpMax||100; Game.stats.hp=Math.min(m,(Game.stats.hp||m)+15);
+                  s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); }
+                  toast('Healed +15');
+                } else { toast('Used '+s.id); s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); } }
+              } else {
+                equipFromInventory(invIdx);
+              }
+            }
           } else if (quickTab===1){ // Crafting
             const list = RECIPES.filter(r=>!r.requiresFlag || Game.flags[r.requiresFlag]);
             if (state.pressEdge.has('Up')) craftIdx = (craftIdx+list.length-1)%(list.length||1);
@@ -1636,10 +1964,26 @@ toast('Cheats menu'); }
             } else if (n.role==='workbench'){ toast('Craft via Select → Crafting'); }
             else if (n.role==='market'){ UI.quick=true; openShop(n.shopId||'meadow_village'); }
           }
-          else if ((idx=nearest(pals,64))!==-1){
+          
+else if ((function(){
+  let range = 64;
+  let e = Game.equipped && Game.equipped.tool;
+  if (e && e.id==='net_basic' && (e.usesLeft||0)>0){ range = 96; }
+  const i = nearest(pals, range);
+  if (i===-1) return false;
+  // Disallow extended range for boar boss
+  const target = pals[i];
+  const cx = player.x+player.w/2, cy=player.y+player.h/2;
+  const d = Math.hypot((target.x+target.w/2)-cx, (target.y+target.h/2)-cy);
+  if (target.id==='boar' && target.boss && d>64) return false;
+  if (target.id==='boar' && target.boss && typeof BoarBoss!=='undefined' && BoarBoss.active && BoarBoss.hp>0) return false;
+  idx = i; return true;
+})()){
   if (Game.companions.length>=MAX_PARTY) toast('Party full');
   else {
     const ref = pals[idx];
+    const isBoss = !!(ref.id==='boar' && ref.boss);
+    const useNet = (Game.equipped && Game.equipped.tool && Game.equipped.tool.id==='net_basic' && (Game.equipped.tool.usesLeft||0)>0 && !isBoss);
     deferAction(function(){
       try{
         const i = pals.indexOf(ref);
@@ -1651,11 +1995,19 @@ toast('Cheats menu'); }
         if (pid==='sprite') Game.flags.captured_sprite=true;
         if (pid==='owllet') Game.flags.captured_owllet=true;
         if (pid==='boar' && Game.flags.boarBossActive){ Game.flags.boar_miniboss_defeated=true; Game.flags.boarBossActive=false; toast('Defeated the rampaging boar!'); }
+        if (useNet){
+          let tool = Game.equipped.tool;
+          if (tool && tool.usesLeft!=null){
+            tool.usesLeft -= 1;
+            if (tool.usesLeft<=0){ Game.equipped.tool = null; toast('Net broke'); }
+          }
+        }
         toast('Captured '+pid);
-      }catch(e){}
+      }catch(e){};
     });
   }
 } else maybeToastNoInteract();
+
 } // end !__handled
 
   }catch(e){ try{ maybeToastNoInteract(); }catch(_){} }
@@ -1678,11 +2030,7 @@ status(['mode: '+state.mode,'biome: '+Game.currentBiome,'pressed: ['+(Array.from
   }
 
   // ---------- Travel ----------
-  function travelTo(targetBiome){
-    if (targetBiome===Game.currentBiome) return;
-    Game.currentBiome = targetBiome;
-    if (targetBiome==='forest'){ regenForest(); }
-    else { regenMeadow(); }
+  function travelTo(targetBiome){ if (targetBiome===Game.currentBiome) return; Game.currentBiome = targetBiome; if (targetBiome==='forest'){ regenForest(); } else if (targetBiome==='desert'){ regenDesert(); } else { regenMeadow(); }
     // put player near the respective portal landing
     const trackY=(H*0.575)|0;
     player.y = trackY*TILE;
