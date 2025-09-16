@@ -84,7 +84,7 @@
   .actCluster .btn{position:absolute; width:56px; height:56px; border-radius:999px; border:1px solid #1b2a52; color:#e9f1ff; font-weight:800; font-size:16px; box-shadow:inset 0 8px 18px rgba(0,0,0,.45); touch-action:manipulation}
   #btnA{background:var(--btnA); right:6px; top:8px}
   #btnB{background:var(--btnB); left:16px; bottom:6px}
-  #btnZ{background:#3ECBA3; right:10px; bottom:6px}
+  #btnZ{background:#3ECBA3; right:10px; bottom:6px; width:46px; height:46px; font-size:14px}
   .startRow{grid-column:3; grid-row:2; display:flex; justify-content:center; gap:12px; align-items:center}
   .startRow .tiny{min-width:auto; width:72px; height:32px; border-radius:999px; background:var(--btnStart); border:1px solid #222; color:white; font-weight:800; letter-spacing:.06em; font-size:12px; touch-action:manipulation}
 
@@ -135,7 +135,7 @@
   .land-actions .ab .btn{ position:absolute; width:60px; height:60px; border-radius:999px; border:1px solid #1b2a52; color:#e9f1ff; font-weight:800; font-size:16px; box-shadow:inset 0 8px 18px rgba(0,0,0,.45); touch-action:manipulation }
   #lA{ background:var(--btnA); right:6px; top:6px }
   #lB{ background:var(--btnB); left:14px; bottom:8px }
-  #lZ{ background:#3ECBA3; right:14px; bottom:8px }
+  #lZ{background:#3ECBA3; right:14px; bottom:8px; width:50px; height:50px; font-size:14px}
   .land-actions .start{ display:flex; gap:10px; }
   .land-actions .start .tiny{ min-width:auto; width:72px; height:32px; border-radius:999px; background:var(--btnStart); border:1px solid #222; color:white; font-weight:800; font-size:12px; touch-action:manipulation }
 
@@ -540,29 +540,41 @@ function interactNearby(){
     }
 
     // Landmarks first
-for (let i=0;i<arr.length;i++){
+for (let i=0; i < arr.length; i++) {
   const L = arr[i];
-  if (Math.abs(L.tx-ptx)<=1 && Math.abs(L.ty-pty)<=1){
-    if (L.type==='scout'){
-      if (!L.activated){ L.activated=true; toast('Scout post activated!'); return true; }
-      if (Game.flags.desert_caravan_pass){ if (_fastTravelFrom(L)) return true; }
+  if (Math.abs(L.tx-ptx) <= 1 && Math.abs(L.ty-pty) <= 1) {
+    if (L.type === 'scout') {
+      if (!L.activated) { L.activated = true; toast('Scout post activated!'); return true; }
+      if (Game.flags.desert_caravan_pass) { if (_fastTravelFrom(L)) return true; }
       toast('A marked post.'); return true;
     }
-    if (L.type==='shrine_wind'){ _startWindTrial(); return true; }
-    if (L.type==='shrine_sun'){
-      if (!Game.flags.desert_shrine_sun_done){ _startSunTrial(); return true; }
+    if (L.type === 'shrine_wind') {
+      if (!Game.flags.desert_shrine_wind_done) { _startWindTrial(); return true; }
+      toast('Wind Shrine - completed.'); return true;
+    }
+    if (L.type === 'shrine_sun') {
+      if (!Game.flags.desert_shrine_sun_done) { _startSunTrial(); return true; }
       toast('Sun Shrine — completed.'); return true;
     }
-    if (L.type==='shrine_sand'){
-      if (!Game.flags.desert_shrine_sand_done){ Game.flags.desert_shrine_sand_done=true; _checkShrineSet(); toast('Sand Shrine complete!'); return true; }
+    if (L.type === 'shrine_sand') {
+      if (!Game.flags.desert_shrine_sand_done) { _startSandTrial(); return true; }
       toast('Sand Shrine — completed.'); return true;
     }
-    if (L.type==='vault'){
-      const all = Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done;
-      if (all){
-        if (!Game.flags.desert_vault_opened){ Game.flags.desert_vault_opened=true; _addItem('relic_feather',1); toast('Sand Vault opened! (Relic Feather)'); }
-        else toast('Vault cleared.');
-      } else toast('A sealed vault… three sigils are dark.');
+    if (L.type === 'vault') {
+      const all = Game.flags.desert_shrine_wind_done &&
+                  Game.flags.desert_shrine_sun_done &&
+                  Game.flags.desert_shrine_sand_done;
+      if (all) {
+        if (!Game.flags.desert_vault_opened) {
+          Game.flags.desert_vault_opened = true;
+          _addItem('relic_feather', 1);
+          toast('Sand Vault opened! (Relic Feather)');
+        } else {
+          toast('Vault cleared.');
+        }
+      } else {
+        toast('A sealed vault… three sigils are dark.');
+      }
       return true;
     }
   }
@@ -652,10 +664,10 @@ function _startWindTrial(){
     gustDirIndex:0,
     gustDirs:[[1,0],[0,1],[-1,0],[0,-1]],            // E,S,W,N
     gustTick:0,
-    msg:'Wind Trial — Stage 2',
+    msg:'Wind Trial',
     note:'D-Pad to move. B/Select: close.'
   };
-  if (typeof toast==='function') toast('Wind Trial — Stage 2 (hard)');
+  if (typeof toast==='function') toast('Wind Trial');
 }
 // Launch the Sun Trial overlay using the same single overlay pipeline
 function _startSunTrial(){
@@ -663,7 +675,7 @@ function _startSunTrial(){
   __trial = {
     type:'sun',
     t:0,
-    msg:'Sun Trial — Stage 2',
+    msg:'Sun Trial',
     note:'←/→ select • A/↑ rotate • B/Select close',
     // 7x5 puzzle grid
     gw:7, gh:5, cell:28,
@@ -698,8 +710,14 @@ function _startSunTrial(){
       m.r = (m.r^1); // toggle '/' <-> '\'
     }
   } catch(_){}
-if (typeof toast==='function') toast('Sun Trial — Stage 2');
+if (typeof toast==='function') toast('Sun Trial');
 }
+// === Sand Shrine Trial — Stage 1 (overlay stub; close with B or Select) ===
+function _startSandTrial(){
+  __trial = { type:'sand', t:0, msg:'Sand Trial — Stage 1', note:'Press B or Select to close' };
+  if (typeof toast==='function') toast('Sand Trial — Stage 1');
+}
+
 
 
 
@@ -707,6 +725,13 @@ if (typeof toast==='function') toast('Sun Trial — Stage 2');
   
 
 function _updateTrial(dt, state){
+  if (__trial && __trial.type === 'sand'){
+    __trial.t += (dt||0);
+    const peSand = (state && state.pressEdge && typeof state.pressEdge.has==='function') ? state.pressEdge : null;
+    if (peSand && (peSand.has('B') || peSand.has('Select'))){ __trial = null; return; }
+    return;
+  }
+
 
   if (!__trial) return;
   // Branch by type to avoid altering Wind's logic or frame plumbing
@@ -893,7 +918,7 @@ return;
   // Victory check
   if (allBlocksOnGoals()){
     if (typeof Game!=='undefined' && Game.flags){ Game.flags.desert_shrine_wind_done = true; }
-    if (typeof toast==='function') toast('Wind Shrine complete!');
+    if (typeof toast==='function') toast('Wind Shrine - completed.');
     __trial = null;
   }
 
@@ -905,6 +930,21 @@ return;
   
 
 function _drawTrial(ctx){
+  if (__trial && __trial.type === 'sand'){
+    var ui = ctx;
+    if (ui && typeof ui.setTransform==='function') ui.setTransform(1,0,0,1,0,0);
+    var cw = (ui && ui.canvas && ui.canvas.width) ? ui.canvas.width : 960;
+    var ch = (ui && ui.canvas && ui.canvas.height) ? ui.canvas.height : 528;
+    ui.save(); ui.globalAlpha = 0.60; ui.fillStyle = '#000'; ui.fillRect(0,0,cw,ch); ui.restore();
+    var W=480, H=160, px=(cw-W)/2, py=(ch-H)/2;
+    ui.fillStyle = 'rgba(46,36,18,.94)'; ui.fillRect(px,py,W,H);
+    ui.strokeStyle = 'rgba(255,230,160,.85)'; ui.lineWidth = 2; ui.strokeRect(px+1,py+1,W-2,H-2);
+    ui.font = '16px ui-monospace'; ui.fillStyle = '#ffe9b8';
+    ui.fillText(__trial.msg || 'Sand Trial — Stage 1', px+16, py+28);
+    ui.fillText(__trial.note || 'Press B or Select to close', px+16, py+52);
+    return;
+  }
+
 
   if (!__trial) return;
   if (__trial.type === 'sun'){
