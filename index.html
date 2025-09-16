@@ -581,53 +581,219 @@ function interactNearby(){
   // === Wind Shrine Trial — Stage 1 (overlay only; close with B or Select) ===
   let __trial = null;
 
-  function _startWindTrial(){
-    __trial = { type:'wind', t:0, msg:'Wind Trial (stage 1)', note:'Press B or Select to close' };
-    if (typeof toast==='function') toast('Wind Trial (stage 1)');
+  
+
+function _startWindTrial(){
+  // Stage 2 (hard): rotating gust shove + 3 blocks + 3 goals
+  __trial = {
+    type:'wind',
+    t:0,
+    gw:7, gh:5, cell:28,
+    px:1, py:2,
+    blocks:[{x:3,y:2},{x:5,y:1},{x:2,y:1}],           // three blocks
+    goals: [{x:5,y:3},{x:6,y:2},{x:2,y:3}],           // three goals
+    gustOff: 1.4,   // calm
+    gustOn:  2.0,   // gust
+    gustActive:false,
+    preWarn:false,
+    gustDirIndex:0,
+    gustDirs:[[1,0],[0,1],[-1,0],[0,-1]],            // E,S,W,N
+    gustTick:0,
+    msg:'Wind Trial — Stage 2',
+    note:'D-Pad to move. B/Select: close.'
+  };
+  if (typeof toast==='function') toast('Wind Trial — Stage 2 (hard)');
+}
+
+
+
+  
+
+function _updateTrial(dt, state){
+  if (!__trial) return;
+  __trial.t += (dt||0);
+
+  // Gust phase
+  var off = __trial.gustOff||0, on = __trial.gustOn||0;
+  var per = (off+on)>0 ? (off+on) : 1;
+  var phase = __trial.t % per;
+  var wasActive = __trial.gustActive;
+  __trial.gustActive = phase >= off;
+  __trial.preWarn    = (!__trial.gustActive) && (phase >= Math.max(0, off - 0.35));
+
+  function cellFree(x,y){
+    if (x<0||x>=__trial.gw||y<0||y>=__trial.gh) return false;
+    for (var i=0;i<__trial.blocks.length;i++){ var b=__trial.blocks[i]; if (b.x===x && b.y===y) return false; }
+    return true;
+  }
+  function allBlocksOnGoals(){
+    var ok = 0;
+    for (var g=0; g<__trial.goals.length; g++){
+      var gx = __trial.goals[g].x, gy = __trial.goals[g].y, hit=false;
+      for (var b=0; b<__trial.blocks.length; b++){ var bl=__trial.blocks[b]; if (bl.x===gx && bl.y===gy){ hit=true; break; } }
+      if (hit) ok++;
+    }
+    return ok === __trial.goals.length;
   }
 
-  function _updateTrial(dt, state){
-    if (!__trial) return;
-    __trial.t += dt;
-    const pe = state && state.pressEdge;
-    if (pe && (pe.has('B') || pe.has('Select'))){
-      __trial = null;
+  // rotate wind and shove once on gust start
+  if (!wasActive && __trial.gustActive){
+    __trial.gustDirIndex = (__trial.gustDirIndex + 1) % __trial.gustDirs.length;
+    var d0 = __trial.gustDirs[__trial.gustDirIndex];
+    var sx = __trial.px + d0[0], sy = __trial.py + d0[1];
+    if (cellFree(sx,sy)){ __trial.px = sx; __trial.py = sy; }
+    __trial.gustTick = 0;
+  }
+
+  // continuous shove every ~0.45s during gust
+  if (__trial.gustActive){
+    __trial.gustTick += (dt||0);
+    if (__trial.gustTick >= 0.45){
+      __trial.gustTick = 0;
+      var d = __trial.gustDirs[__trial.gustDirIndex];
+      var tx = __trial.px + d[0], ty = __trial.py + d[1];
+      if (cellFree(tx,ty)){ __trial.px = tx; __trial.py = ty; }
     }
   }
 
-  // REPLACE your _drawTrial with this
+  // input
+  var pe = (state && state.pressEdge && typeof state.pressEdge.has==='function') ? state.pressEdge : null;
+  if (!pe) return;
+
+  // Close overlay
+  if (pe.has('B') || pe.has('Select')){ __trial = null; return; }
+
+  // No manual movement during gust
+  if (__trial.gustActive) return;
+
+  // Movement
+  var dx=0, dy=0;
+  if (pe.has('Left')) dx=-1; else if (pe.has('Right')) dx=1;
+  else if (pe.has('Up')) dy=-1; else if (pe.has('Down')) dy=1;
+  if (!(dx||dy)) return;
+
+  var nx = __trial.px + dx, ny = __trial.py + dy;
+  if (nx<0 || nx>=__trial.gw || ny<0 || ny>=__trial.gh) return;
+
+  var bi=-1;
+  for (var i=0;i<__trial.blocks.length;i++){ var bb=__trial.blocks[i]; if (bb.x===nx && bb.y===ny){ bi=i; break; } }
+
+  if (bi===-1){
+    __trial.px = nx; __trial.py = ny;
+  }else{
+    var bx2 = nx + dx, by2 = ny + dy;
+    if (bx2<0 || bx2>=__trial.gw || by2<0 || by2>=__trial.gh) return;
+    var occ=false;
+    for (var j=0;j<__trial.blocks.length;j++){ var bc=__trial.blocks[j]; if (bc.x===bx2 && bc.y===by2){ occ=true; break; } }
+    if (!occ){
+      __trial.blocks[bi].x = bx2; __trial.blocks[bi].y = by2;
+      __trial.px = nx; __trial.py = ny;
+    }
+  }
+
+  // Victory check
+  if (allBlocksOnGoals()){
+    if (typeof Game!=='undefined' && Game.flags){ Game.flags.desert_shrine_wind_done = true; }
+    if (typeof toast==='function') toast('Wind Shrine complete!');
+    __trial = null;
+  }
+
+}
+
+
+
+  
+
 function _drawTrial(ctx){
   if (!__trial) return;
+  var ui = ctx;
+  if (ui && typeof ui.setTransform==='function') ui.setTransform(1,0,0,1,0,0);
 
-  // Prefer HUD/UI context if available (same plane as toast/start menus)
-  const ui = (typeof hudCtx !== 'undefined' && hudCtx) ? hudCtx : ctx;
+  var cw = (ui && ui.canvas && ui.canvas.width) ? ui.canvas.width : 960;
+  var ch = (ui && ui.canvas && ui.canvas.height) ? ui.canvas.height : 528;
 
-  // Draw in screen space
-  if (typeof ui.setTransform === 'function') ui.setTransform(1,0,0,1,0,0);
-
-  const cw = ui.canvas.width, ch = ui.canvas.height;
-
-  // Dim backdrop
+  // backdrop
   ui.save();
-  ui.globalAlpha = 0.6;
-  ui.fillStyle = '#000';
-  ui.fillRect(0, 0, cw, ch);
+  ui.globalAlpha = 0.60; ui.fillStyle = '#000'; ui.fillRect(0,0,cw,ch);
   ui.restore();
 
-  // Panel
-  const w = 420, h = 120, x = (cw - w) / 2, y = (ch - h) / 2;
-  ui.fillStyle = 'rgba(20,30,50,.92)';
-  ui.fillRect(x, y, w, h);
-  ui.strokeStyle = 'rgba(255,255,255,.85)';
-  ui.lineWidth = 2;
-  ui.strokeRect(x + 1, y + 1, w - 2, h - 2);
+  // panel
+  var W=480, H=242, px = (cw - W)/2, py = (ch - H)/2;
+  ui.fillStyle = 'rgba(20,30,50,.92)'; ui.fillRect(px, py, W, H);
+  ui.strokeStyle = 'rgba(255,255,255,.85)'; ui.lineWidth = 2; ui.strokeRect(px+1, py+1, W-2, H-2);
 
-  // Text
-  ui.font = '16px ui-monospace';
-  ui.fillStyle = '#dfe8ff';
-  ui.fillText(__trial.msg || 'Wind Trial (stage 1)',  x + 16, y + 36);
-  ui.fillText(__trial.note || 'Press B or Select to close', x + 16, y + 64);
+  // header
+  ui.font = '16px ui-monospace'; ui.fillStyle = '#dfe8ff';
+  ui.fillText(__trial.msg || 'Wind Trial — Stage 2',  px + 16, py + 26);
+  // moved help text left to avoid overlap on small screens
+  ui.fillText(__trial.note || 'D-Pad move. B/Select close.', px + 16, py + 46);
+
+  // chimes moved to top-right to avoid the help line
+  function chime(x,y,s,lit){ ui.fillStyle = lit ? '#bde6ff' : '#6e88a8'; ui.fillRect(x, y, s, 3); ui.fillRect(x+s+2, y, s, 3); ui.fillRect(x+2*s+4, y, s, 3); }
+  var chX = px + W - 120, chY = py + 18;
+  chime(chX,     chY, 18, __trial.preWarn && !__trial.gustActive);
+  chime(chX, chY+ 6, 18, __trial.gustActive);
+
+  // explicit wind label (avoids arrow confusion on mobile)
+  var d = __trial.gustDirs[__trial.gustDirIndex] || [1,0];
+  var windLabel = (d[0]===1?'E': d[0]===-1?'W': d[1]===1?'S':'N');
+  ui.font = '14px ui-monospace'; ui.fillStyle = __trial.gustActive ? '#ff9a9a' : '#9acbff';
+  ui.fillText('Wind: ' + windLabel, px + W - 92, py + 44);
+
+  // grid
+  var gCell = __trial.cell, gw = __trial.gw, gh = __trial.gh;
+  var gx = px + 24, gy = py + 70;
+  ui.fillStyle = 'rgba(10,16,26,0.85)'; ui.fillRect(gx-6, gy-6, gw*gCell+12, gh*gCell+12);
+  ui.strokeStyle = 'rgba(255,255,255,0.25)'; ui.strokeRect(gx-6+0.5, gy-6+0.5, gw*gCell+12-1, gh*gCell+12-1);
+
+  for (var yy=0; yy<gh; yy++){
+    for (var xx=0; xx<gw; xx++){
+      var cx = gx + xx*gCell, cy = gy + yy*gCell;
+      ui.fillStyle = 'rgba(32,49,79,0.20)'; ui.fillRect(cx, cy, gCell-2, gCell-2);
+      ui.strokeStyle = 'rgba(255,255,255,0.08)'; ui.strokeRect(cx+0.5, cy+0.5, gCell-3, gCell-3);
+    }
+  }
+
+  // goals (three)
+  for (var k=0; k<__trial.goals.length; k++){
+    var g = __trial.goals[k];
+    var gcx = gx + g.x*gCell, gcy = gy + g.y*gCell;
+    ui.strokeStyle = 'rgba(190,220,255,0.9)'; ui.lineWidth = 2;
+    ui.strokeRect(gcx+4.5, gcy+4.5, gCell-9, gCell-9);
+  }
+
+  // blocks (three)
+  for (var b=0; b<__trial.blocks.length; b++){
+    var bl = __trial.blocks[b];
+    var bcx = gx + bl.x*gCell, bcy = gy + bl.y*gCell;
+    ui.fillStyle = '#9aaad0'; ui.fillRect(bcx+4, bcy+4, gCell-10, gCell-10);
+    ui.strokeStyle = '#3d4f77'; ui.strokeRect(bcx+4.5, bcy+4.5, gCell-10, gCell-10);
+  }
+
+  // player cursor
+  var pcx = gx + __trial.px*gCell, pcy = gy + __trial.py*gCell;
+  ui.fillStyle = '#ffd34a';
+  ui.beginPath();
+  ui.moveTo(pcx + gCell/2, pcy + 4);
+  ui.lineTo(pcx + gCell - 6, pcy + gCell/2);
+  ui.lineTo(pcx + gCell/2, pcy + gCell - 6);
+  ui.lineTo(pcx + 6, pcy + gCell/2);
+  ui.closePath(); ui.fill();
+  ui.strokeStyle = '#7a5a12'; ui.lineWidth = 2; ui.stroke();
+
+  // gust label
+  ui.font = '14px ui-monospace';
+  if (__trial.gustActive){ ui.fillStyle = '#ff8c8c'; ui.fillText('GUST!', px + W - 72, py + 64); }
+  else if (__trial.preWarn){ ui.fillStyle = '#ffd34a'; ui.fillText('…chimes…', px + W - 120, py + 64); }
+
+  // Optional success ribbon if already complete and still visible (rare)
+  if (typeof Game!=='undefined' && Game.flags && Game.flags.desert_shrine_wind_done){
+    ui.font = '14px ui-monospace'; ui.fillStyle = '#bdf5c8';
+    ui.fillText('✓ Completed', px + 16, py + H - 12);
+  }
 }
+
+
 return { interactNearby,  ensureData, seedLandmarks ,
     _trialUpdate:(dt,st)=>_updateTrial(dt,st),
     _trialDraw:(ctx)=>_drawTrial(ctx)
