@@ -237,6 +237,119 @@
   <div id="debug">booting…</div>
 
 <script>
+
+
+// === Ground-blended, individualized icons for Items & Pals ====================
+function R(ctx,x,y,w,h,c){ ctx.fillStyle=c; ctx.fillRect(x|0,y|0,w|0,h|0); }
+function O(ctx,x,y,w,h,c){ ctx.strokeStyle=c; ctx.strokeRect((x|0)+0.5,(y|0)+0.5,(w|0)-1,(h|0)-1); }
+function _rgb(hex){ if(!hex||hex[0]!=='#'||hex.length!==7) return [32,49,79]; return [parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)]; }
+function _mix(hex, k){ const [r,g,b]=_rgb(hex); return 'rgb('+((r*(1-k))|0)+','+((g*(1-k))|0)+','+((b*(1-k))|0)+')'; }
+function _plateColors(tx,ty){
+  try{
+    tx=Math.max(0,Math.min(W-1,tx|0)); ty=Math.max(0,Math.min(H-1,ty|0));
+    const idx = ty*W + tx; const base = (COLORS && COLORS[ground[idx]]) || '#20314f';
+    return { fill:_mix(base, 0.12), edge:_mix(base, 0.22) }; // lighter than before
+  }catch(_){ return {fill:'#2a3a54', edge:'#1e2b42'}; }
+}
+function plate(ctx, x, y){
+  const tx=(x/32)|0, ty=(y/32)|0;
+  let base = '#20314f';
+  try{
+    const idx = Math.max(0,Math.min(H-1,ty))*W + Math.max(0,Math.min(W-1,tx));
+    if (COLORS && ground) base = COLORS[ground[idx]] || base;
+  }catch(_){}
+  const r=parseInt(base.slice(1,3),16), g=parseInt(base.slice(3,5),16), b=parseInt(base.slice(5,7),16);
+  ctx.fillStyle = `rgba(${r},${g},${b},0.05)`; // 5% alpha — blends into biome
+  ctx.fillRect(x+4, y+4, 24, 24);
+}
+// ---- Items ----
+function drawItemIcon(ctx, vx, vy, it){
+  const x=(it.x-vx)|0, y=(it.y-vy)|0, cx=x+4, cy=y+4;
+  plate(ctx, x, y);
+  const id=(it.id||it.type||it.name||'').toLowerCase();
+  if (id==='wood'){ R(ctx,cx+6,cy+14,16,10,'#7b4f2a'); O(ctx,cx+6,cy+14,16,10,'#4e2f18'); R(ctx,cx+8,cy+12,12,3,'#4e2f18'); }
+  else if (id==='stone'){ R(ctx,cx+6,cy+10,18,14,'#9aa3ad'); O(ctx,cx+6,cy+10,18,14,'#5f6974'); R(ctx,cx+12,cy+12,6,3,'#5f6974'); }
+  else if (id==='berry'){ R(ctx,cx+10,cy+12,10,10,'#c93d5b'); O(ctx,cx+10,cy+12,10,10,'#7a1d34'); R(ctx,cx+14,cy+8,4,4,'#3ea55e'); }
+  else if (id==='herb'){ R(ctx,cx+8,cy+10,14,12,'#68c56e'); O(ctx,cx+8,cy+10,14,12,'#2c7d34'); R(ctx,cx+15,cy+8,2,4,'#2c7d34'); }
+  else if (id==='reed'){ R(ctx,cx+8,cy+8,3,18,'#89c06e'); R(ctx,cx+12,cy+6,3,20,'#89c06e'); R(ctx,cx+16,cy+9,3,17,'#89c06e'); R(ctx,cx+8,cy+8,1,18,'#3a7a2c'); }
+  else if (id==='mushroom'){ R(ctx,cx+9,cy+16,10,6,'#e7d2a8'); O(ctx,cx+9,cy+16,10,6,'#7a1d1d'); R(ctx,cx+6,cy+8,16,8,'#d84f4f'); O(ctx,cx+6,cy+8,16,8,'#7a1d1d'); }
+  else if (id==='fiber'){ R(ctx,cx+6,cy+16,16,6,'#d3c2a0'); O(ctx,cx+6,cy+16,16,6,'#8e7a50'); R(ctx,cx+8,cy+12,12,3,'#d3c2a0'); }
+  else if (id==='cactus'){ R(ctx,cx+8,cy+8,12,16,'#3aa66a'); O(ctx,cx+8,cy+8,12,16,'#1c6b42'); R(ctx,cx+4,cy+12,6,10,'#3aa66a'); R(ctx,cx+20,cy+12,6,10,'#3aa66a'); R(ctx,cx+12,cy+6,4,3,'#ffd34a'); }
+  else if (id==='sandstone'){ R(ctx,cx+6,cy+12,18,12,'#c9b386'); O(ctx,cx+6,cy+12,18,12,'#8c7a55'); R(ctx,cx+10,cy+10,10,3,'#8c7a55'); }
+  else if (id==='aloe'){ R(ctx,cx+10,cy+18,4,8,'#256a54'); R(ctx,cx+6,cy+10,8,10,'#6cc4a6'); R(ctx,cx+14,cy+12,8,8,'#6cc4a6'); O(ctx,cx+6,cy+10,16,10,'#256a54'); }
+  else if (id==='net_basic'||id==='net_fine'){ R(ctx,cx+8,cy+8,10,10,'#eaeaea'); O(ctx,cx+8,cy+8,10,10,'#8e7a50'); R(ctx,cx+12,cy+6,3,18,'#d3c2a0'); R(ctx,cx+9,cy+10,8,1,'#8e7a50'); R(ctx,cx+9,cy+12,8,1,'#8e7a50'); R(ctx,cx+9,cy+14,8,1,'#8e7a50'); if(id==='net_fine'){ R(ctx,cx+9,cy+16,8,1,'#c0b090'); } }
+  else if (id==='pot_heal_s'){ R(ctx,cx+8,cy+6,8,2,'#ff6ba0'); R(ctx,cx+8,cy+8,8,10,'#cbe8ff'); R(ctx,cx+8,cy+8,8,1,'#8fb2cc'); R(ctx,cx+8,cy+14,8,4,'#ff6ba0'); }
+  else if (id==='axe_basic'){ R(ctx,cx+15,cy+8,3,16,'#7b4f2a'); R(ctx,cx+8,cy+8,8,6,'#b7c0c8'); O(ctx,cx+8,cy+8,8,6,'#d8dee7'); R(ctx,cx+14,cy+14,4,2,'#4a2a1a'); }
+  else if (id==='weapon_stick'){ R(ctx,cx+8,cy+10,16,4,'#7b4f2a'); O(ctx,cx+8,cy+10,16,4,'#4e2f18'); }
+  else if (id==='boots_desert'){ R(ctx,cx+7,cy+16,9,6,'#6e4b2e'); R(ctx,cx+15,cy+16,9,6,'#6e4b2e'); O(ctx,cx+7,cy+16,9,6,'#3e2a18'); O(ctx,cx+15,cy+16,9,6,'#3e2a18'); }
+  else if (id==='relic_feather'){ R(ctx,cx+8,cy+10,12,10,'#e8e0ff'); O(ctx,cx+8,cy+10,12,10,'#9d86ff'); R(ctx,cx+12,cy+8,2,4,'#9d86ff'); }
+  else if (id.includes('coin')){ R(ctx,cx+6,cy+6,12,12,'#ffd34a'); O(ctx,cx+6,cy+6,12,12,'#b78c24'); R(ctx,cx+10,cy+10,4,4,'#ffffff55'); }
+  else if (id.includes('key')){ R(ctx,cx+5,cy+10,14,4,'#d4b86a'); R(ctx,cx+5,cy+7,6,6,'#d4b86a'); O(ctx,cx+5,cy+10,14,4,'#7c6a36'); R(ctx,cx+6,cy+8,4,4,'#20314f'); R(ctx,cx+16,cy+8,3,2,'#7c6a36'); R(ctx,cx+16,cy+13,3,1,'#7c6a36'); }
+  else if (id.includes('chest')){ R(ctx,cx+6,cy+10,16,10,'#8a5a2f'); O(ctx,cx+6,cy+10,16,10,'#5a3a1f'); R(ctx,cx+13,cy+14,2,4,'#d9c36a'); }
+  else { R(ctx,cx+6,cy+6,16,16,'#70757a'); O(ctx,cx+6,cy+6,16,16,'#4a4d52'); }
+}
+
+// ---- Pals ----
+const PAL_STYLE = {
+  rabbit:{ body:'#e9f1ff', trim:'#7a9ad6', ear:'#ffb7c8' },  sparrow:{ body:'#c9a46a', trim:'#6a4b2a' },
+  frog:{ body:'#77d36a', trim:'#2a7d3d' },                  boar:{ body:'#8a5a3a', trim:'#4e2f1b' },
+  stag:{ body:'#a6784a', trim:'#5a3a1e' },                  owl:{ body:'#bfbba8', trim:'#6b685a', eye:'#2b2b2b' },
+  squirrel:{ body:'#b16e3a', trim:'#6a3a1a' },              fox:{ body:'#ff8c4a', trim:'#7a3d16', ear:'#ffc6a6' },
+  sprite:{ body:'#a86bff', trim:'#532a9e', eye:'#ffffff' }, owllet:{ body:'#d6d2c0', trim:'#6b685a' },
+  scarab:{ body:'#4aa3a3', trim:'#1d6b6b' },                vulture:{ body:'#c0b090', trim:'#6a5850' },
+  fennec:{ body:'#f2c88a', trim:'#8c5a2b', ear:'#ffe6b7' }, phoenix:{ body:'#ff6b6b', trim:'#7a0000' },
+  dragon:{ body:'#66a3ff', trim:'#1b4d9e' },                gryphon:{ body:'#d9c36a', trim:'#7a6a2a' },
+  lynx:{ body:'#c09070', trim:'#6b4a2a' },                  eagle:{ body:'#c9c9c9', trim:'#3a3a3a' }
+};
+function palStyleFor(p){ const k=(p.id||p.type||p.kind||'').toLowerCase(); return PAL_STYLE[k] || { body:'#55c66f', trim:'#2a7d3d' }; }
+
+function drawPalIcon(ctx, vx, vy, p){
+  const x=(p.x-vx)|0, y=(p.y-vy)|0, cx=x+4, cy=y+4, s=palStyleFor(p);
+  plate(ctx, x, y);
+  R(ctx, cx+6, cy+8, 12, 12, s.body);
+  R(ctx, cx+6, cy+8, 12, 1,  s.trim);
+  R(ctx, cx+6, cy+8, 1,  12, s.trim);
+  R(ctx, cx+8, cy+4, 8, 6, s.body);
+  R(ctx, cx+10, cy+6, 2, 2, s.eye || '#000');
+  R(ctx, cx+8, cy+20, 3, 3, s.trim);
+  R(ctx, cx+13, cy+20, 3, 3, s.trim);
+  const id=(p.id||'').toLowerCase();
+  if (id==='rabbit'){ R(ctx,cx+8,cy+1,2,4,s.ear||'#ffdbe6'); R(ctx,cx+14,cy+1,2,4,s.ear||'#ffdbe6'); }
+  if (id==='fox'){ R(ctx,cx+16,cy+12,3,2,s.trim); }
+  if (id==='boar'){ R(ctx,cx+6,cy+12,2,2,s.trim); R(ctx,cx+16,cy+12,2,2,s.trim); }
+  if (id==='stag'){ R(ctx,cx+8,cy+1,2,3,s.trim); R(ctx,cx+12,cy+1,2,3,s.trim); }
+  if (id==='owl'||id==='owllet'){ R(ctx,cx+9,cy+6,2,2,'#000'); R(ctx,cx+13,cy+6,2,2,'#000'); }
+  if (id==='sparrow'||id==='eagle'){ R(ctx,cx+14,cy+6,3,2,s.trim); }
+  if (id==='scarab'){ R(ctx,cx+7,cy+10,10,2,s.trim); }
+  if (id==='sprite'){ R(ctx,cx+7,cy+7,2,3,'#fff'); R(ctx,cx+17,cy+7,2,3,'#fff'); }
+  if (id==='fennec'){ R(ctx,cx+6,cy+2,3,4,s.ear||'#ffe6b7'); R(ctx,cx+17,cy+2,3,4,s.ear||'#ffe6b7'); }
+  if (id==='phoenix'){ R(ctx,cx+16,cy+8,5,3,'#ffd34a'); }
+  if (id==='dragon'){ R(ctx,cx+6,cy+6,3,2,'#1b4d9e'); R(ctx,cx+17,cy+6,3,2,'#1b4d9e'); }
+}
+
+// === NPC renderer (ported from safe file) ===
+function drawNPC(ctx, vx, vy, n){
+
+  try{
+    if(!n) return;
+    const ax = (n.x - vx) | 0, ay = (n.y - vy) | 0;
+    const type = n.type || n.role || n.kind || null;
+    if(type==='market'){
+      if (typeof TILE === 'number') { ctx.fillStyle = '#5a3b7a'; ctx.fillRect(ax, ay, TILE, TILE); }
+      ctx.fillStyle = '#f2d3a0'; ctx.fillRect(ax+8, ay+6, 8, 8);
+      ctx.fillStyle = '#ff8c00'; ctx.fillRect(ax+6, ay+14, 12, 8);
+    } else {
+      ctx.fillStyle='#f2d3a0'; ctx.fillRect(ax+8,ay+6,8,8);
+      ctx.fillStyle='#6a3a1a'; ctx.fillRect(ax+6,ay+14,12,8);
+    }
+    ctx.fillStyle='#000'; ctx.fillRect(ax+11,ay+9,2,2);
+    ctx.fillStyle='#fff'; ctx.font='10px monospace'; ctx.fillText('!', ax+12, ay+4);
+  }catch(e){
+    // Fallback to original rectangle
+    try{ rectOutline(ctx, n.x-vx, n.y-vy, n.w, n.h, '#e3d180','#3a2f00'); }catch(_){}
+  }
+}
+
 /* Wild Pals — Iteration C+ (Meadow + Forest, questline + economy + traversal + portal VFX):
    A) Forest v1 questline (Ranger): fiber+mushroom, craft fine net, capture 1 forest pal → coins + Wetlands key flag
    B) Traversal: new BRUSH tile (blocks unless brush_break); new items fiber & mushroom; new recipe net_fine (wood+fiber+berry)
@@ -253,6 +366,275 @@
   function status(msg){ if(debugEl) debugEl.textContent = msg; }
   let toastMsg="", toastUntil=0;
   function toast(msg, ms=1600){ toastMsg=msg; toastUntil=performance.now()+ms; }
+  // --- Stage 11e: Oasis resource spawner (reeds + herbs, clustered) ---
+  function oasisSpawn(){
+    try{
+      if (typeof W==='undefined' || typeof H==='undefined' || !ground) return;
+      if (!Array.isArray(items)) return;
+      // remove old reed/herb to prevent runaway growth on reseed
+      for (let k=items.length-1;k>=0;k--){
+        const id=(items[k].id||''); if (id==='reed'||id==='herb') items.splice(k,1);
+      }
+      const isWater=(x,y)=> ground[y*W + x]===4;
+      const T = (typeof TILE==='number') ? TILE : 32;
+
+      // collect shoreline and fringe tiles
+      const bank=[], fringe=[];
+      for (let y=2;y<H-2;y++) for (let x=2;x<W-2;x++){
+        if (isWater(x,y)) continue;
+        const n4 = (isWater(x+1,y)?1:0)+(isWater(x-1,y)?1:0)+(isWater(x,y+1)?1:0)+(isWater(x,y-1)?1:0);
+        if (n4>0){ bank.push({x,y}); continue; }
+        // fringe within radius 3
+        let near=false;
+        for (let dy=-3;dy<=3 && !near;dy++) for (let dx=-3;dx<=3 && !near;dx++){
+          const nx=x+dx, ny=y+dy; if (nx<1||ny<1||nx>=W-1||ny>=H-1) continue;
+          if (isWater(nx,ny)) near=true;
+        }
+        if (near) fringe.push({x,y});
+      }
+      if (!bank.length && !fringe.length) return;
+
+      // clustering utility
+      function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=a[i]; a[i]=a[j]; a[j]=t; } }
+      shuffle(bank); shuffle(fringe);
+
+      // Determine counts (boosted)
+      const reedsCount = Math.max(24, Math.floor(bank.length*0.20));   // 20% of bank, min 24
+      const herbsCount = Math.max(14, Math.floor(fringe.length*0.06)); // 6% of fringe, min 14
+
+      // Spawn reeds in clusters
+      for (let i=0;i<reedsCount && i<bank.length;i+=1){
+        const t = bank[i];
+        // spawn a small clump (1 + up to 3 neighbors)
+        const cluster = 1 + ((Math.random()*3)|0);
+        for (let c=0;c<cluster;c++){
+          const dx = (Math.random()<0.5? -1:1) * ((Math.random()*2)|0);
+          const dy = (Math.random()<0.5? -1:1) * ((Math.random()*2)|0);
+          const xx = Math.max(2, Math.min(W-3, t.x+dx));
+          const yy = Math.max(2, Math.min(H-3, t.y+dy));
+          // ensure still near water
+          if (isWater(xx+1,yy)||isWater(xx-1,yy)||isWater(xx,yy+1)||isWater(xx,yy-1)){
+            items.push({id:'reed', x:xx*T + (T>>1), y:yy*T + (T>>1), w:20, h:20});
+          }
+        }
+      }
+
+      // Spawn herbs scattered but denser than before
+      for (let i=0;i<herbsCount && i<fringe.length;i+=1){
+        const t = fringe[i];
+        items.push({id:'herb', x:t.x*T + (T>>1), y:t.y*T + (T>>1), w:20, h:20});
+      }
+    }catch(_){}
+  }
+
+// === Desert module (quick-fix: seedLandmarks only) ===
+const DESERT = (function(){
+  function ensureData(){
+    if (!Game.flags) Game.flags = {};
+    if (!Array.isArray(Game.flags.desert_landmarks)) Game.flags.desert_landmarks = [];
+    return Game.flags.desert_landmarks;
+  }
+  function seedLandmarks(){
+    const a = ensureData();
+    if (a.length) return a;
+    function isWater(tx,ty){
+      try{ return ground[ty*W+tx]===4; }catch(_){ return false; }
+    }
+    function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+    const cand = [
+      {tx: Math.floor(W*0.60), ty: Math.floor(H*0.45), type:'scout'},
+      {tx: Math.floor(W*0.72), ty: Math.floor(H*0.58), type:'scout'},
+      {tx: Math.floor(W*0.48), ty: Math.floor(H*0.66), type:'scout'},
+      {tx: Math.floor(W*0.64), ty: Math.floor(H*0.35), type:'shrine_wind'},
+      {tx: Math.floor(W*0.76), ty: Math.floor(H*0.50), type:'shrine_sun'},
+      {tx: Math.floor(W*0.52), ty: Math.floor(H*0.72), type:'shrine_sand'},
+      {tx: Math.floor(W*0.68), ty: Math.floor(H*0.62), type:'vault'}
+    ];
+    for (let i=0;i<cand.length;i++){
+      let tx=clamp(cand[i].tx,6,W-7), ty=clamp(cand[i].ty,6,H-7);
+      if (isWater(tx,ty)){
+        let found=false;
+        outer: for (let r=1;r<=8;r++){
+          for (let dx=-r;dx<=r;dx++){
+            for (let dy=-r;dy<=r;dy++){
+              const nx=clamp(tx+dx,6,W-7), ny=clamp(ty+dy,6,H-7);
+              if (!isWater(nx,ny)){ tx=nx; ty=ny; found=true; break outer; }
+            }
+          }
+        }
+      }
+      a.push({type:cand[i].type, tx, ty, activated:false});
+    }
+    return a;
+  }
+  
+ // Stage 7: basic interactions near player (1-tile proximity)
+function interactNearby(){
+  if (Game.currentBiome!=='desert') return false;
+  try{
+    const T = (typeof TILE!=='undefined'?TILE:32);
+    const ptx = (player.x/T)|0, pty = (player.y/T)|0;
+    const arr = (Game.flags && Array.isArray(Game.flags.desert_landmarks)) ? Game.flags.desert_landmarks : [];
+
+    function _checkShrineSet(){
+      const done = Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done;
+      if (done && !Game.flags.desert_oasis_guardian_awake){
+        Game.flags.desert_oasis_guardian_awake = true;
+        _addItem('sandstone_key',1);
+        toast('Oasis Guardian awakens! (Key gained + recipe)');
+      }
+    }
+
+    // Landmarks first
+    for (let i=0;i<arr.length;i++){
+      const L = arr[i];
+      if (Math.abs(L.tx-ptx)<=1 && Math.abs(L.ty-pty)<=1){
+        if (L.type==='scout'){
+          if (!L.activated){ L.activated=true; toast('Scout post activated!'); return true; }
+          if (Game.flags.desert_caravan_pass){ if (_fastTravelFrom(L)) return true; }
+          toast('A marked post.'); return true;
+        }
+        if (L.type==='shrine_wind'){ _startWindTrial(); return true; }
+        if (L.type==='shrine_sun'){
+          if (!Game.flags.desert_shrine_sun_done){ Game.flags.desert_shrine_sun_done=true; _checkShrineSet(); toast('Sun Shrine complete!'); return true; }
+          toast('Sun Shrine — completed.'); return true;
+        }
+        if (L.type==='shrine_sand'){
+          if (!Game.flags.desert_shrine_sand_done){ Game.flags.desert_shrine_sand_done=true; _checkShrineSet(); toast('Sand Shrine complete!'); return true; }
+          toast('Sand Shrine — completed.'); return true;
+        }
+        if (L.type==='vault'){
+          const all = Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done;
+          if (all){
+            if (!Game.flags.desert_vault_opened){ Game.flags.desert_vault_opened=true; _addItem('relic_feather',1); toast('Sand Vault opened! (Relic Feather)'); }
+            else toast('Vault cleared.');
+          } else toast('A sealed vault… three sigils are dark.');
+          return true;
+        }
+      }
+    }
+
+    // NPC placeholders (very light — just toast)
+    // Find nearest NPC within ~48px
+    let best=-1, bd=1e9;
+    for (let i=0;i<npcs.length;i++){
+      const n=npcs[i];
+      const dx = (n.x+13)-(player.x+13), dy=(n.y+13)-(player.y+13);
+      const d = Math.hypot(dx,dy);
+      if (d<bd){ bd=d; best=i; }
+    }
+    if (best!==-1 && bd<48){
+      const n=npcs[best];
+      if (n.role==='nomad_chief'){
+        if (!Game.flags.desert_caravan_started){ Game.flags.desert_caravan_started=true; toast('Caravan Circuit started'); return true; }
+        if (!Game.flags.desert_caravan_pass && _postsActive()>=3){ Game.flags.desert_caravan_pass=true; Game.flags.desert_caravan_done=true; toast('Caravan Pass granted!'); return true; }
+        if (Game.flags.desert_caravan_pass){ toast('Chief: fast-travel unlocked at posts.'); return true; }
+        toast('Nomad Chief: prove the route (activate 3 posts).'); return true;
+      }
+      if (n.role==='market'){ toast('Fennec Trader: come back with a Caravan Pass.'); return true; }
+      if (n.role==='workbench'){ toast('Scarab Artisan: crafting soon.'); return true; }
+      if (n.role==='scout'){ toast('Vulture Scout: posts mark safe paths.'); return true; }
+    }
+  }catch(_){}
+  return false;
+}
+
+
+  // Stage 8 helpers: count active posts & fast travel
+  function _postsActive(){
+    const arr = (Game.flags && Array.isArray(Game.flags.desert_landmarks)) ? Game.flags.desert_landmarks : [];
+    let c=0; for (let i=0;i<arr.length;i++){ const L=arr[i]; if (L.type==='scout' && L.activated) c++; }
+    return c;
+  }
+  function _fastTravelFrom(current){
+    const T = (typeof TILE!=='undefined'?TILE:32);
+    const arr = (Game.flags && Array.isArray(Game.flags.desert_landmarks)) ? Game.flags.desert_landmarks : [];
+    const posts = [];
+    for (let i=0;i<arr.length;i++){ const L=arr[i]; if (L.type==='scout' && L.activated) posts.push({i,tx:L.tx,ty:L.ty}); }
+    if (posts.length<2) return false;
+    // pick destination: farthest from current
+    let best=null, bd=-1;
+    for (let k=0;k<posts.length;k++){
+      const p=posts[k];
+      if (p.tx===current.tx && p.ty===current.ty) continue;
+      const d = Math.hypot(p.tx-current.tx, p.ty-current.ty);
+      if (d>bd){ bd=d; best=p; }
+    }
+    if (!best) return false;
+    player.x = best.tx*T + (T>>1);
+    player.y = best.ty*T + (T>>1);
+    toast('Fast-traveled');
+    return true;
+  }
+
+  function _addItem(id, qty){
+    try{
+      qty = qty||1;
+      if (!Array.isArray(Game.inventory)) Game.inventory=[];
+      // merge into stacks if possible
+      let s = Game.inventory.find(x=>x.id===id);
+      if (s){ s.qty=(s.qty||1)+qty; } else { Game.inventory.push({id, qty}); }
+      return true;
+    }catch(_){ return false; }
+  }
+
+  // === Wind Shrine Trial — Stage 1 (overlay only; close with B or Select) ===
+  let __trial = null;
+
+  function _startWindTrial(){
+    __trial = { type:'wind', t:0, msg:'Wind Trial (stage 1)', note:'Press B or Select to close' };
+    if (typeof toast==='function') toast('Wind Trial (stage 1)');
+  }
+
+  function _updateTrial(dt, state){
+    if (!__trial) return;
+    __trial.t += dt;
+    const pe = state && state.pressEdge;
+    if (pe && (pe.has('B') || pe.has('Select'))){
+      __trial = null;
+    }
+  }
+
+  // REPLACE your _drawTrial with this
+function _drawTrial(ctx){
+  if (!__trial) return;
+
+  // Prefer HUD/UI context if available (same plane as toast/start menus)
+  const ui = (typeof hudCtx !== 'undefined' && hudCtx) ? hudCtx : ctx;
+
+  // Draw in screen space
+  if (typeof ui.setTransform === 'function') ui.setTransform(1,0,0,1,0,0);
+
+  const cw = ui.canvas.width, ch = ui.canvas.height;
+
+  // Dim backdrop
+  ui.save();
+  ui.globalAlpha = 0.6;
+  ui.fillStyle = '#000';
+  ui.fillRect(0, 0, cw, ch);
+  ui.restore();
+
+  // Panel
+  const w = 420, h = 120, x = (cw - w) / 2, y = (ch - h) / 2;
+  ui.fillStyle = 'rgba(20,30,50,.92)';
+  ui.fillRect(x, y, w, h);
+  ui.strokeStyle = 'rgba(255,255,255,.85)';
+  ui.lineWidth = 2;
+  ui.strokeRect(x + 1, y + 1, w - 2, h - 2);
+
+  // Text
+  ui.font = '16px ui-monospace';
+  ui.fillStyle = '#dfe8ff';
+  ui.fillText(__trial.msg || 'Wind Trial (stage 1)',  x + 16, y + 36);
+  ui.fillText(__trial.note || 'Press B or Select to close', x + 16, y + 64);
+}
+return { interactNearby,  ensureData, seedLandmarks ,
+    _trialUpdate:(dt,st)=>_updateTrial(dt,st),
+    _trialDraw:(ctx)=>_drawTrial(ctx)
+  };
+})();
+// === end Desert module ===
+
 
 
 // === Patch: Cheats UI registry ===
@@ -411,58 +793,85 @@ function drawChests(gb, vx, vy){ { for(const c of chests){ const cx=(c.x - vx)|0
   }
 
   // Forest gen (adds BRUSH)
-  function regenForest(){
-    ground.fill(1); deco.fill(0); seen.fill(0);
-    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-      const k = perlinish(x,y,0.07,0.09);
-      ground[gi(x,y)] = k<0.18?0 : k<0.45?1 : 2;
-      if (RNG.f()<0.02) deco[gi(x,y)] = 2; // bushes (visual)
-      if (RNG.f()<0.015) deco[gi(x,y)] = 5; // tree chunk (visual)
-    }
-    
-  // Desert generation (visual: sand base, sparse cactus/rocks, small oasis)
-  function regenDesert(){
-    ground.fill(0); deco.fill(0); seen.fill(0);
-    // Place 1-2 oases
-    const ponds = 1 + (RNG.f()<0.35?1:0);
-    for(let n=0;n<ponds;n++){
-      const cx=RNG.i(12,W-12), cy=RNG.i(10,H-10), r=RNG.i(4,7);
-      for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
-        if(x*x+y*y<=r*r){ const gx=cx+x, gy=cy+y; if(gx>1&&gy>1&&gx<W-2&&gy<H-2) ground[gi(gx,gy)]=4; }
-      }
-    }
-    // Sparse deco: cactus(10), rock(11), dry shrub(12)
-    for(let y=2;y<H-2;y++) for(let x=2;x<W-2;x++){
-      if (ground[gi(x,y)]===4) continue; // keep water clear
-      const r=RNG.f();
-      deco[gi(x,y)] = (r<0.008)?10 : (r<0.013)?11 : (r<0.018)?12 : 0;
+  
+function regenMeadow(){
+  ground.fill(0); deco.fill(0); seen.fill(0);
+  // gentle grass bands
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const k = perlinish(x,y,0.09,0.07);
+    ground[gi(x,y)] = k<0.28?0 : k<0.55?1 : 2;
+  }
+  // path
+  let py=(H*0.55)|0, w=0;
+  for(let x=2;x<W-2;x++){
+    w+=(RNG.f()-0.5)*0.8; py=Math.max(4,Math.min(H-5, py+(w|0)));
+    for(let yy=-1; yy<=1; yy++) ground[gi(x,py+yy)]=3;
+  }
+  // ponds
+  for(let n=0;n<5;n++){
+    const cx=RNG.i(10,W-10), cy=RNG.i(10,H-10), r=RNG.i(3,6);
+    for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
+      if(x*x+y*y<=r*r){ const gx=cx+x, gy=cy+y; if(gx>1&&gy>1&&gx<W-2&&gy<H-2) ground[gi(gx,gy)]=4; }
     }
   }
-// winding track
-    let py=(H*0.6)|0, wigg=0;
-    for(let x=2;x<W-2;x++){
-      wigg+=(RNG.f()-0.5)*0.6; py=Math.max(5,Math.min(H-6, py+(wigg|0)));
-      for(let yy=-1; yy<=1; yy++) ground[gi(x,py+yy)]=3;
+}
+
+function regenForest(){
+  ground.fill(1); deco.fill(0); seen.fill(0);
+  // mix of grass tones
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const k = perlinish(x,y,0.07,0.09);
+    ground[gi(x,y)] = k<0.18?0 : k<0.45?1 : 2;
+    if (RNG.f()<0.02) deco[gi(x,y)] = 2; // bushes (visual)
+    if (RNG.f()<0.015) deco[gi(x,y)] = 5; // tree chunk (visual)
+  }
+  // path
+  let py=(H*0.60)|0, w=0;
+  for(let x=2;x<W-2;x++){
+    w+=(RNG.f()-0.5)*0.6; py=Math.max(5,Math.min(H-6, py+(w|0)));
+    for(let yy=-1; yy<=1; yy++) ground[gi(x,py+yy)]=3;
+  }
+  // small ponds
+  for(let n=0;n<4;n++){
+    const cx=RNG.i(12,W-12), cy=RNG.i(12,H-12), r=RNG.i(3,7);
+    for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
+      if(x*x+y*y<=r*r){ const gx=cx+x, gy=cy+y; if(gx>1&&gy>1&&gx<W-2&&gy<H-2) ground[gi(gx,gy)]=4; }
     }
-    // a few ponds
-    for(let n=0;n<4;n++){
-      const cx=RNG.i(12,W-12), cy=RNG.i(12,H-12), r=RNG.i(3,7);
-      for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
-        if(x*x+y*y<=r*r){ const gx=cx+x, gy=cy+y; if(gx>1&&gy>1&&gx<W-2&&gy<H-2) ground[gi(gx,gy)]=4; }
+  }
+  // BRUSH patches
+  for(let y=2;y<H-2;y++) for(let x=2;x<W-2;x++){
+    if (ground[gi(x,y)]<=2 && RNG.f()<0.045){
+      for(let yy=-1; yy<=1; yy++) for(let xx=-1; xx<=1; xx++){
+        const gx=x+xx, gy=y+yy; if (gx>1&&gy>1&&gx<W-2&&gy<H-2 && ground[gi(gx,gy)]!==4) ground[gi(gx,gy)]=BRUSH;
       }
     }
-    // BRUSH patches
-    for(let y=2;y<H-2;y++) for(let x=2;x<W-2;x++){
-      if (ground[gi(x,y)]<=2 && RNG.f()<0.045){
-        for(let yy=-1; yy<=1; yy++) for(let xx=-1; xx<=1; xx++){
-          const gx=x+xx, gy=y+yy; if (gx>1&&gy>1&&gx<W-2&&gy<H-2 && ground[gi(gx,gy)]!==4) ground[gi(gx,gy)]=BRUSH;
-        }
-      }
+  }
+}
+
+function regenDesert(){
+  ground.fill(0); deco.fill(0); seen.fill(0);
+  // Place 1-2 oases
+  const ponds = 1 + (RNG.f()<0.35?1:0);
+  for(let n=0;n<ponds;n++){
+    const cx=RNG.i(12,W-12), cy=RNG.i(10,H-10), r=RNG.i(4,7);
+    for(let y=-r;y<=r;y++) for(let x=-r;x<=r;x++){
+      if(x*x+y*y<=r*r){ const gx=cx+x, gy=cy+y; if(gx>1&&gy>1&&gx<W-2&&gy<H-2) ground[gi(gx,gy)]=4; }
     }
+  }
+  // Sparse deco: cactus(10), rock(11), dry shrub(12)
+  for(let y=2;y<H-2;y++) for(let x=2;x<W-2;x++){
+    if (ground[gi(x,y)]===4) continue; // keep water clear
+    const r=RNG.f();
+    deco[gi(x,y)] = (r<0.008)?10 : (r<0.013)?11 : (r<0.018)?12 : 0;
   }
 
+  // ensure oasis mats exist
+  oasisSpawn();
+}
+
+
   // ---------- Registries ----------
-  const ITEMS = {
+  const ITEMS = { cactus:{cat:"material"}, sandstone:{cat:"material"}, aloe:{cat:"material"},
     wood:{cat:"material"}, stone:{cat:"material"}, berry:{cat:"material"}, herb:{cat:"material"},
     reed:{cat:"material"}, mushroom:{cat:"material"}, fiber:{cat:"material"},
     net_basic:{cat:"tool", chargesMax:3}, net_fine:{cat:"tool"},
@@ -470,21 +879,27 @@ function drawChests(gb, vx, vy){ { for(const c of chests){ const cx=(c.x - vx)|0
       axe_basic:{cat:"tool"},
     weapon_stick:{cat:"weapon", chargesMax:10, dmg:8},
     relic_feather:{cat:"quest"},
-    boots_desert:{cat:"armor"},
-  };
+    boots_desert:{cat:"armor"}
+,
+    sandstone_key:{cat:"quest"}
+,
+    pot_heal_s_plus:{cat:"consumable"}
+};
   const RECIPES = [
     {out:"weapon_stick", needs:[{id:"wood",qty:3},{id:"fiber",qty:2}], bench:"work"},
     {out:"net_basic", needs:[{id:"wood",qty:3},{id:"berry",qty:2}], bench:"work"},
     {out:"net_fine",  needs:[{id:"wood",qty:4},{id:"fiber",qty:4},{id:"berry",qty:2}], bench:"work"}
   ,
-    {out:"boots_desert", needs:[{id:"fiber",qty:6},{id:"mushroom",qty:4}], bench:"work", requiresFlag:"q_forest_main_done"}
-  ];
+    {out:"boots_desert", needs:[{id:"fiber",qty:6, biome:"desert"},{id:"mushroom",qty:4}], bench:"work", requiresFlag:"q_forest_main_done"}
+  ,
+    {out:"pot_heal_s_plus", needs:[{id:"aloe",qty:2, biome:"desert"},{id:"reed",qty:2},{id:"herb",qty:1}], bench:"work", requiresFlag:"desert_oasis_guardian_awake"}
+];
   const SHOPS = {
     meadow_village:{ items:[{id:"net_basic",price:30},{id:"pot_heal_s",price:10}] },
     forest_camp:{   items:[{id:"net_fine",price:60},{id:"pot_heal_s",price:14}]} // coin sinks
   };
   // Simple sell values (materials only)
-  const SELL_VALUE = { wood:1, stone:2, berry:1, herb:2, reed:1, mushroom:2, fiber:2 };
+  const SELL_VALUE = { wood:1, stone:2, berry:1, herb:2, reed:1, mushroom:2, fiber:2, cactus:2, sandstone:2, aloe:3 };
 
   // Pals + passive perks (functional: speed, water_walk, forage_bonus, brush_break; glide is groundwork)
   const PALS = {
@@ -500,6 +915,9 @@ function drawChests(gb, vx, vy){ { for(const c of chests){ const cx=(c.x - vx)|0
     fox:{biome:"forest", perks:{speed:+0.10}},
     sprite:{biome:"forest", perks:{speed:0.10}},
     owllet:{biome:"forest", perks:{glide:"short"}},
+    scarab:{biome:"desert", perks:{speed:+0.08}},
+    vulture:{biome:"desert", perks:{glide:"mini"}},
+    fennec:{biome:"desert", perks:{speed:+0.10}}
 };
   // Spawns
   
@@ -525,8 +943,9 @@ function spawnRandomPalAt(x,y,rarity){
   spawnPalAt(x,y,id);
 }
 const SPAWNS = {
-    meadow:{ pals:[{id:'rabbit',w:50},{id:'sparrow',w:25},{id:'frog',w:25}] },
-    forest:{ pals:[{id:'boar',w:28},{id:'stag',w:22},{id:'owl',w:18},{id:'squirrel',w:20},{id:'fox',w:12},{id:'sprite',w:6},{id:'owllet',w:4}] }
+    meadow:{ pals:[{id:'rabbit',w:30},{id:'sparrow',w:22},{id:'frog',w:22},{id:'squirrel',w:14},{id:'fox',w:12}] },
+    forest:{ pals:[{id:'boar',w:28},{id:'stag',w:22},{id:'owl',w:18},{id:'squirrel',w:20},{id:'fox',w:12},{id:'sprite',w:6},{id:'owllet',w:4}] },
+    desert:{ pals:[{id:'scarab',w:40},{id:'vulture',w:28},{id:'fennec',w:22}] }
   };
   function pickWeighted(list){
     let sum=0; for(const it of list) sum+=it.w||1;
@@ -536,7 +955,7 @@ const SPAWNS = {
   }
 
   // ---------- Game state ----------
-  const MAX_PARTY=12;
+  const MAX_PARTY=25;
   const Game = {
     coins:0, inventory:[], companions:[{id:'rabbit', isActive:true}],
     equipped:{ tool:null, weapon:null, armor:null },
@@ -569,7 +988,7 @@ const GuardianTrial = {
   wisps: [],                                 // {x,y,collected,t0}
   active:false,
   timeLeft:0,
-  collected:0,
+  collected:0
 };
 
 function resetGuardianTrialForBiome(){
@@ -615,7 +1034,7 @@ function endGuardianTrial(win){
     Game.flags.owl_trial_pass = true;
     // Journal: show Great Owl Trial as done
     try{ Game.quests['q_forest_guardian_owl'] = 'done'; }catch(e){}
-    rebuildPortals();
+    rebuildPortals(); ensureDesertReturnPortal();
     toast("Trial complete!");
   }else{
     toast("Trial failed");
@@ -655,17 +1074,39 @@ function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (playe
 
 
   // Biome seeding wrappers
+  
+  // Biome seeding wrappers
   function seedByBiome(){
     items.length=0; npcs.length=0; pals.length=0; portals.length=0; chests.length=0; particles.length=0;
     if (Game.currentBiome==='forest'){ seedForest(); }
     else if (Game.currentBiome==='desert'){ seedDesert(); }
     else { seedMeadow(); }
-    resetGuardianTrialForBiome();
-    if (Game.currentBiome==='forest' && (!Game.flags.owl_trial_pass || !Game.flags.q_forest_main_done)){ placeGuardianPedestalNearCamp(); }
-    rebuildPortals();
+    rebuildPortals(); ensureDesertReturnPortal();
+    if (typeof sanitizeBiomeEntities==='function') sanitizeBiomeEntities();
   }
 
-  function seedMeadow(){
+  // Ensure desert purity of spawns/forage after seeding
+  function sanitizeBiomeEntities(){
+    if (Game.currentBiome==='desert'){
+      const desertPals = new Set(['scarab','vulture','fennec']);
+      for (let i=0;i<pals.length;i++){
+        const p = pals[i];
+        if (!desertPals.has(p.id)){
+          const nid = pickWeighted(SPAWNS.desert.pals);
+          pals[i] = {x:p.x, y:p.y, w:p.w, h:p.h, id:nid};
+        }
+      }
+      // convert stray meadow/forest forage to desert mats
+      for (let i=0;i<items.length;i++){
+        if (['wood','stone','berry','mushroom','fiber'].includes(items[i].id)){
+          const roll = Math.random();
+          items[i].id = roll<0.5 ? 'sandstone' : (roll<0.85 ? 'cactus' : 'aloe');
+        }
+      }
+    }
+  }
+
+function seedMeadow(){
     const px=(player.x/TILE|0), py=(player.y/TILE|0);
     // starter drops near spawn
     [{dx:-3,dy:-1,id:'berry'},{dx:2,dy:-2,id:'stone'},{dx:-2,dy:2,id:'wood'},{dx:1,dy:1,id:'wood'}]
@@ -700,24 +1141,138 @@ function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (playe
 
   function seedDesert(){
     const px=(player.x/TILE|0), py=(player.y/TILE|0);
-    // starter materials
-    [{dx:2,dy:-1,id:'stone'},{dx:-1,dy:1,id:'wood'}].forEach(d=> items.push({x:(px+d.dx)*TILE+4, y:(py+d.dy)*TILE+4, w:24,h:24, id:d.id}));
-    // scatter
-    for(let i=0;i<60;i++){
+    // Starter desert materials near landing
+    [{dx:2,dy:-1,id:'sandstone'},{dx:-1,dy:1,id:'cactus'}]
+      .forEach(d=> items.push({x:(px+d.dx)*TILE+4, y:(py+d.dy)*TILE+4, w:24,h:24, id:d.id}));
+    // Forage: sandstone/cactus/aloe (avoid water)
+    for(let i=0;i<70;i++){
       const tx=RNG.i(4,W-5), ty=RNG.i(4,H-5); if(ground[gi(tx,ty)]===4) continue;
-      const id = (RNG.f()<0.7)?'stone':'wood';
-      items.push({x:tx*TILE+4, y:ty*TILE+4, w:24, h:24, id});
+      const r=RNG.f(); const id = r<0.50?'sandstone' : r<0.85?'cactus' : 'aloe';
+      items.push({x:tx*TILE+4, y:ty*TILE+4, w:24,h:24, id});
     }
-    // pals reuse meadow
-    const nPals=RNG.i(10,14);
+    
+    // Water-edge resources: reeds (banks) and herbs (fringe)
+    try{
+      const isWater=(tx,ty)=>ground[gi(tx,ty)]===4;
+      // reeds on bank
+      let placedR=0;
+      for(let i=0;i<200;i++){
+        const tx=RNG.i(3,W-4), ty=RNG.i(3,H-4);
+        if (isWater(tx,ty)) continue;
+        const touch = isWater(tx+1,ty)||isWater(tx-1,ty)||isWater(tx,ty+1)||isWater(tx,ty-1);
+        if (touch && Math.random()<0.6){
+          items.push({x:tx*TILE+4, y:ty*TILE+4, w:24,h:24, id:'reed'}); placedR++;
+        }
+      }
+      if (placedR<8){ // guarantee
+        for(let i=0;i<8-placedR;i++){
+          const tx=RNG.i(3,W-4), ty=RNG.i(3,H-4);
+          if (!isWater(tx,ty) && (isWater(tx+1,ty)||isWater(tx-1,ty)||isWater(tx,ty+1)||isWater(tx,ty-1))){
+            items.push({x:tx*TILE+4, y:ty*TILE+4, w:24,h:24, id:'reed'});
+          }
+        }
+      }
+      // herbs near water within radius 3
+      let placedH=0;
+      for(let i=0;i<160;i++){
+        const tx=RNG.i(3,W-4), ty=RNG.i(3,H-4);
+        if (isWater(tx,ty)) continue;
+        let near=false;
+        for(let dy=-3;dy<=3 && !near;dy++) for(let dx=-3;dx<=3 && !near;dx++){
+          const nx=tx+dx, ny=ty+dy; if(nx<1||ny<1||nx>=W-1||ny>=H-1) continue;
+          if (isWater(nx,ny)) near=true;
+        }
+        if (near && Math.random()<0.4){
+          items.push({x:tx*TILE+4, y:ty*TILE+4, w:24,h:24, id:'herb'}); placedH++;
+        }
+      }
+      if (placedH<5){
+        for(let i=0;i<5;i++){
+          const tx=RNG.i(3,W-4), ty=RNG.i(3,H-4);
+          if (!isWater(tx,ty) && (isWater(tx+2,ty)||isWater(tx-2,ty)||isWater(tx,ty+2)||isWater(tx,ty-2))){
+            items.push({x:tx*TILE+4, y:ty*TILE+4, w:24,h:24, id:'herb'});
+          }
+        }
+      }
+    }catch(_){}
+
+    // Pals: desert table
+    const nPals = RNG.i(12,18);
     for(let i=0;i<nPals;i++){
       let tx,ty,tries=0;
-      do{ tx=RNG.i(6,W-6); ty=RNG.i(6,H-6); tries++; }while(ground[gi(tx,ty)]===4 && tries<10);
-      pals.push({x:tx*TILE, y:ty*TILE, w:26, h:26, id:pickWeighted(SPAWNS.meadow.pals)});
+      do{ tx=RNG.i(6,W-6); ty=RNG.i(6,H-6); tries++; }while(ground[gi(tx,ty)]===4 && tries<12);
+      pals.push({x:tx*TILE, y:ty*TILE, w:26,h:26, id:pickWeighted(SPAWNS.desert.pals)});
     }
-    // merchant
-    npcs.push({x:(px+3)*TILE, y:(py-1)*TILE, w:28, h:28, name:'Caravaneer', role:'market', shopId:'forest_camp'});
-  }
+    // NPC: Caravaneer market near landing
+    // (removed caravaneer near spawn)
+
+  // Desert quick-fix: seed landmarks if needed
+  try{ DESERT.seedLandmarks(); }catch(_){}
+
+  // === Stage 6: Desert camp NPCs (visual-only) ===
+  try{
+    if (!Game.flags) Game.flags = {};
+    if (!Game.flags.desert_npcs_added){
+      const trackY = (H*0.40)|0;
+      const T = (typeof TILE!=='undefined'?TILE:32);
+      // Helper to push NPC safely
+      function _pushNPC(tx, ty, role, name, shopId){
+        try{
+          npcs.push({ x: tx*T, y: ty*T, w: 26, h: 26, role, name, shopId });
+        }catch(_){}
+      }
+      // Place the four camp roles near a central strip
+      _pushNPC(16, trackY-2, 'nomad_chief', 'Nomad Chief', null);
+      _pushNPC(12, trackY-2, 'market', 'Fennec Trader', 'desert_caravan');  // shopId unused for now
+      _pushNPC(14, trackY-1, 'workbench', 'Scarab Artisan', null);
+      _pushNPC(18, trackY-2, 'scout', 'Vulture Scout', null);
+
+      Game.flags.desert_npcs_added = true;
+    }
+  }catch(_){}
+
+
+  /* Stage 8c spread_v2: reposition posts (safe, inline) */
+  try{
+    if (Game && Game.flags && Array.isArray(Game.flags.desert_landmarks)){
+      var arr = Game.flags.desert_landmarks;
+      // Find first three scout posts
+      var posts = [];
+      for (var i=0;i<arr.length;i++){ if (arr[i] && arr[i].type==='scout') posts.push(arr[i]); if (posts.length===3) break; }
+      if (posts.length===3){
+        var W2 = (typeof W!=='undefined'?W:128), H2=(typeof H!=='undefined'?H:128);
+        function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+        function isWater(tx,ty){ try{ return ground[ty*W2+tx]===4; }catch(_){ return false; } }
+        function nudge(tx,ty){
+          tx = clamp(tx, 6, W2-7); ty = clamp(ty, 6, H2-7);
+          if (!isWater(tx,ty)) return {tx:tx,ty:ty};
+          for (var r=1;r<=10;r++){
+            for (var dx=-r;dx<=r;dx++){
+              for (var dy=-r;dy<=r;dy++){
+                var nx=clamp(tx+dx,6,W2-7), ny=clamp(ty+dy,6,H2-7);
+                if (!isWater(nx,ny)) return {tx:nx,ty:ny};
+              }
+            }
+          }
+          return {tx:tx,ty:ty};
+        }
+        var T1=nudge(Math.floor(W2*0.20), Math.floor(H2*0.22));
+        var T2=nudge(Math.floor(W2*0.82), Math.floor(H2*0.48));
+        var T3=nudge(Math.floor(W2*0.50), Math.floor(H2*0.82));
+        posts[0].tx=T1.tx; posts[0].ty=T1.ty;
+        posts[1].tx=T2.tx; posts[1].ty=T2.ty;
+        posts[2].tx=T3.tx; posts[2].ty=T3.ty;
+      }
+    }
+  }catch(_){}
+
+
+  // ensure oasis mats exist
+  oasisSpawn();
+}
+
+
+
 
 function seedForest(){
   // --- Reset any per-biome local caches if needed (global arrays cleared by seedByBiome) ---
@@ -746,15 +1301,23 @@ function seedForest(){
   npcs.push({x:(12*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Ranger', role:'ranger'});
   npcs.push({x:(16*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Trader', role:'market', shopId:'forest_camp'});
 
-  // 3) Regular forest pals (use SPAWNS.forest.pals if present)
-  const table = (SPAWNS && SPAWNS.forest && SPAWNS.forest.pals) ? SPAWNS.forest.pals : [['rabbit', 1]];
-  const nPals = RNG.i(18,26);
-  for(let i=0;i<nPals;i++){
-    let tries=0, tx,ty;
-    do{ tx=RNG.i(6,W-6); ty=RNG.i(6,H-6); tries++; }while(tileIsWater(tx,ty) && tries<20);
-    const id = Array.isArray(table[0]) ? pickWeighted(table) : 'rabbit';
-    pals.push({x:tx*TILE, y:ty*TILE, w:26, h:26, id});
-  }
+  // 3) Forest pals — guarantee at least two of each species (sprite handled below)
+  (function(){
+    const table = (SPAWNS && SPAWNS.forest && SPAWNS.forest.pals) ? SPAWNS.forest.pals : [{id:'rabbit',w:1}];
+    function drop(id){
+      let tries=0, tx,ty;
+      do{ tx=RNG.i(6,W-6); ty=RNG.i(6,H-6); tries++; }while(tileIsWater(tx,ty) && tries<24);
+      pals.push({x:tx*TILE, y:ty*TILE, w:26, h:26, id});
+    }
+    // 3a) Ensure two of each (exclude 'sprite' so it stays special)
+    const baseIds = table.map(t=>t.id).filter(id=>id!=='sprite');
+    for (const id of baseIds){ drop(id); drop(id); }
+
+    // 3b) Fill remainder with weighted picks for variety
+    const minTotal = RNG.i(18,26);
+    const toAdd = Math.max(0, minTotal - pals.length);
+    for (let i=0;i<toAdd;i++){ drop(pickWeighted(table)); }
+  })();
 
   // 4) Randomized special spawns (boss boar + sprite)
   function randSpot(){
@@ -826,9 +1389,54 @@ function rebuildPortals(){
         Game.unlocked.desert = true;
       }
     } else if (Game.currentBiome==='desert'){
-      portals.push({x:10*TILE, y:trackY*TILE, w:28, h:28, to:'forest'});
+      const ptx=(player.x/TILE|0), py = trackY;
+      let px = Math.max(3, Math.min(W-4, ptx-3));
+      if (ground[gi(px,py)]===4){ if (px < W-5) px += 2; else px -= 2; }
+      portals.push({x:px*TILE, y:py*TILE, w:32, h:32, to:'forest'});
+      // carve a clear 3x3 corridor around the portal
+      for(let yy=-1; yy<=1; yy++) for(let xx=-1; xx<=1; xx++){
+        const gx=px+xx, gy=py+yy;
+        if (gx>1&&gy>1&&gx<W-2&&gy<H-2){
+          deco[gi(gx,gy)]=0;
+          if (ground[gi(gx,gy)]===BRUSH) ground[gi(gx,gy)]=0;
+        }
+      }
     }
   }
+
+  
+  function ensureDesertReturnPortal(){
+    if (Game.currentBiome!=='desert') return;
+    // If a portal to forest already exists, keep it.
+    if (portals.some(p => p.to==='forest')) return;
+
+    // Place the portal NEAR THE PLAYER'S LANDING SPOT in the desert.
+    const trackY=(H*0.575)|0;
+    const ptx = (player.x / TILE) | 0;
+    const pty = (player.y / TILE) | 0;
+
+    // Try to put it a few tiles to the LEFT of the spawn so it's immediately visible.
+    let px = ptx - 3;
+    let py = trackY;
+
+    // Clamp to safe bounds
+    if (px < 3) px = 3;
+    if (px > W-4) px = W-4;
+    // Avoid placing on water; if water, nudge right.
+    if (ground[gi(px,py)]===4) { if (px < W-5) px += 2; else px -= 2; }
+
+    portals.push({x:px*TILE, y:py*TILE, w:32, h:32, to:'forest'});
+
+    // Carve a 3x3 clear corridor around the portal for smooth access
+    for(let yy=-1; yy<=1; yy++) for(let xx=-1; xx<=1; xx++){
+      const gx=px+xx, gy=py+yy;
+      if (gx>1&&gy>1&&gx<W-2&&gy<H-2){
+        deco[gi(gx,gy)]=0;
+        if (ground[gi(gx,gy)]===BRUSH) ground[gi(gx,gy)]=0;
+      }
+    }
+  }
+
 
   // ---------- Quests ----------
   const QUESTS = {
@@ -886,16 +1494,16 @@ function questState(id){ return Game.quests[id]||"locked"; }
     Game.quests[id]="done";
     if (id==='q_meadow_main'){
       Game.coins+=20; Game.unlocked.forest=true; Game.flags.bridgeFixed=true;
-      toast("Quest complete! +20c, Forest unlocked"); rebuildPortals();
+      toast("Quest complete! +20c, Forest unlocked"); rebuildPortals(); ensureDesertReturnPortal();
     } else if (id==='q_forest_main'){
       Game.coins+=25; addItem('axe_basic',1); Game.flags.q_forest_main_done=true;
-      toast("Errand complete! +25c +axe"); rebuildPortals();
+      toast("Errand complete! +25c +axe"); rebuildPortals(); ensureDesertReturnPortal();
     } else if (id==='q_forest_guardian_owl'){
   addItem('relic_feather',1);
   Game.flags.owl_trial_pass=true;
   if ((Game.flags.owl_trial_pass||Game.flags.owl_trial_passed) && Game.flags.q_forest_main_done===true) { Game.unlocked.desert=true; toast("Great Owl Trial complete! Desert unlocked"); }
   else { toast("Great Owl Trial complete!"); }
-  rebuildPortals();
+  rebuildPortals(); ensureDesertReturnPortal();
 }
   }
 
@@ -1069,13 +1677,13 @@ function questState(id){ return Game.quests[id]||"locked"; }
         Object.assign(Game.unlocked, {meadow:true,forest:true,desert:true,wetlands:true});
         toast('All main biomes unlocked');
       }
-       rebuildPortals(); toast('Portals updated'); break;
+       rebuildPortals(); ensureDesertReturnPortal(); toast('Portals updated'); break;
     case 'SECRETSOPEN':
       if (Game.unlocked){
         Object.assign(Game.unlocked, {volcano:true,glacier:true,mystic:true,skyrealm:true,undersea:true});
         toast('All secret biomes unlocked');
       }
-       rebuildPortals(); toast('Portals updated'); break;
+       rebuildPortals(); ensureDesertReturnPortal(); toast('Portals updated'); break;
   }
   if (typeof CheatsHistory!=='undefined'){
     CheatsHistory.unshift(code);
@@ -1096,7 +1704,7 @@ let invIdx=0;
       biome:Game.currentBiome, coins:Game.coins, stacks:Game.inventory.length,
       palsOwned:Game.companions.length, discoveredItems:Game.discovered.size,
       qMain: (Game.currentBiome==='forest')? questState('q_forest_main') : questState('q_meadow_main'),
-      qGuardian: (Game.currentBiome==='forest')? questState('q_forest_guardian_owl') : 'locked'
+      qGuardian: (Game.flags && Game.flags.owl_trial_pass ? 'done' : ((Game.currentBiome==='forest')? questState('q_forest_guardian_owl') : 'locked'))
     };
   }
 
@@ -1111,36 +1719,9 @@ let invIdx=0;
   function rectOutline(ctx,x,y,w,h,fill,stroke){ ctx.fillStyle=fill; ctx.fillRect(x|0,y|0,w,h); ctx.lineWidth=2; ctx.strokeStyle=stroke; ctx.strokeRect((x|0)+0.5,(y|0)+0.5,w,h); }
 
 function drawPal(ctx, p, vx, vy){
-  const x = (p.x - vx)|0, y = (p.y - vy)|0, w=p.w, h=p.h;
-  // Distinct visuals
-  if (p.id==='sprite'){
-    // glow backdrop
-    ctx.save();
-    ctx.globalAlpha = 0.35; ctx.fillStyle = '#a6f6ff'; ctx.fillRect(x-3,y-3,w+6,h+6);
-    ctx.restore();
-    rectOutline(ctx, x, y, w, h, '#a6f6ff', '#126e82'); // aqua with deep outline
-    // twinkle
-    if ((performance.now()%800)<400){
-      ctx.beginPath(); ctx.moveTo(x+w/2, y-4); ctx.lineTo(x+w/2, y+4);
-      ctx.moveTo(x-4, y+h/2); ctx.lineTo(x+4, y+h/2);
-      ctx.strokeStyle='#d8faff'; ctx.lineWidth=1; ctx.stroke();
-    }
-    return;
-  }
-  if (p.id==='boar' && (p.boss || Game.flags.boarBossActive)){
-    rectOutline(ctx, x, y, w, h, '#ff6b6b', '#7a0000'); // vivid red boss
-    // crown
-    ctx.beginPath();
-    const cx=x+w/2, top=y-6;
-    ctx.moveTo(cx-8, top+8); ctx.lineTo(cx-4, top); ctx.lineTo(cx, top+8); ctx.lineTo(cx+4, top); ctx.lineTo(cx+8, top+8);
-    ctx.closePath();
-    ctx.fillStyle='#ffd54a'; ctx.fill();
-    ctx.strokeStyle='#7a6000'; ctx.stroke();
-    return;
-  }
-  // default pal
-  rectOutline(ctx, x, y, w, h, '#b6ffb6','#0c3a0c');
+  drawPalIcon(ctx, vx, vy, p);
 }
+
   function roundRect(ctx,x,y,w,h,r,fill,stroke){
     const rr=Math.min(r, w/2, h/2);
     ctx.beginPath();
@@ -1302,7 +1883,7 @@ const y = 70, ph = h - 140;
       ctx.fillText(`Inventory stacks: ${j.stacks}`, x+14, yy); yy+=16;
       ctx.fillText(`Pals owned: ${j.palsOwned}`, x+14, yy); yy+=16;
       ctx.fillText(`Discovered items: ${j.discoveredItems}`, x+14, yy); yy+=16;
-      ctx.fillText(`${j.biome==='forest'?'Forest':'Meadow'} Main Quest: ${j.qMain}`, x+14, yy); yy+=16; ctx.fillText(`Guardian Trial: ${j.qGuardian}`, x+14, yy); yy+=16;
+      if (j.biome!=='desert') { ctx.fillText(`${j.biome==='forest'?'Forest':'Meadow'} Main Quest: ${j.qMain}`, x+14, yy); yy+=16; ctx.fillText(`Guardian Trial: ${j.qGuardian}`, x+14, yy); yy+=16; }
       yy+=8; ctx.fillText('Pals & perks:', x+14, yy); yy+=16;
       // Scrollable pals list
       const listTop = yy;
@@ -1464,6 +2045,17 @@ function drawGuardianLayer(ctx, vx, vy){
   }catch(e){}
 }
   // ---------- HUD / World draw ----------
+// Guard: ensure drawPlayer exists before drawWorld is called
+if (typeof window.drawPlayer !== 'function') {
+  window.drawPlayer = function(ctx, px, py){
+    const x=(px|0), y=(py|0);
+    ctx.save();
+    ctx.fillStyle='#ffd86b'; ctx.fillRect(x-3,y-8,6,6);
+    ctx.fillStyle='#e9eef7'; ctx.fillRect(x-3,y-2,6,6);
+    ctx.restore();
+  };
+}
+
   function drawWorld(ctx,w,h){
     const worldW=W*TILE, worldH=H*TILE;
     const vx = clamp((player.x|0) - (w>>1), 0, Math.max(0, worldW - w));
@@ -1503,8 +2095,32 @@ function drawGuardianLayer(ctx, vx, vy){
 }
 
     // entities
-    items.forEach(it=> rectOutline(ctx, it.x-vx, it.y-vy, it.w, it.h, '#7eddd7','#0b3b36'));
-    npcs .forEach(n => rectOutline(ctx, n.x-vx, n.y-vy, n.w, n.h, '#e3d180','#3a2f00'));
+    /* Stage 5e: desert world plates (under entities & player) */
+    try{
+      if (Game && Game.currentBiome==='desert' && Game.flags && Array.isArray(Game.flags.desert_landmarks)){
+        var id = (ctx && ctx.canvas && ctx.canvas.id) || '';
+        if (id==='game' || id==='gameLandscape'){
+          var __vx = (typeof vx!=='undefined'?vx:(typeof camX!=='undefined'?camX:0));
+          var __vy = (typeof vy!=='undefined'?vy:(typeof camY!=='undefined'?camY:0));
+          var T = (typeof TILE!=='undefined'?TILE:32);
+          for (var i=0;i<Game.flags.desert_landmarks.length;i++){
+            var L = Game.flags.desert_landmarks[i];
+            var x = (L.tx*T - __vx)|0, y = (L.ty*T - __vy)|0;
+            // outlines only
+            if (L.type==='scout'){
+              ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2; ctx.strokeRect(x+6, y+6, T-12, T-12);
+            } else if (L.type && L.type.indexOf('shrine_')===0){
+              ctx.strokeStyle = '#ff3b5c'; ctx.lineWidth = 2; ctx.strokeRect(x+5, y+5, T-10, T-10);
+            } else if (L.type==='vault'){
+              ctx.strokeStyle = '#d9c36a'; ctx.lineWidth = 2; ctx.strokeRect(x+7, y+7, T-14, T-14);
+            }
+          }
+        }
+      }
+    }catch(_){}
+
+    items.forEach(it=> drawItemIcon(ctx, vx, vy, it));
+    npcs .forEach(n => drawNPC(ctx, vx, vy, n));
     pals.forEach(p => drawPal(ctx, p, vx, vy));
     portals.forEach(pt=> drawPortal(ctx, pt, vx, vy)); // purple swirl with glow
 
@@ -1512,8 +2128,8 @@ function drawGuardianLayer(ctx, vx, vy){
     try{ drawGuardianLayer(ctx, vx, vy); }catch(e){}
 
     // player
-    const px = player.x - vx, py = player.y - vy;
-    rectOutline(ctx, px, py, player.w, player.h, '#ffd54a', '#3a2a00');
+const px = player.x - vx, py = player.y - vy;
+drawPlayer(ctx, px, py);
 
     // hint
     const nearAny = nearest(items.concat(npcs, pals, portals), 64);
@@ -1605,19 +2221,22 @@ function drawGuardianLayer(ctx, vx, vy){
       }
     }
 
-    // quest tracker
-    const qid = (Game.currentBiome==='forest')? 'q_forest_main' : 'q_meadow_main';
-    if (questState(qid)!=="locked"){
-      const qpr = questProgress(qid);
-      ctx.fillText('Quest: '+QUESTS[qid].name, 420, 24);
-      let x=420, y=40; for(const seg of qpr.prog){ ctx.fillText(seg.label+(seg.done?' ✓':''), x, y); x+=140; }
-    } else {
-      const tip = (Game.currentBiome==='forest') ? 'Talk to the Ranger to begin the forest quest.' : 'Talk to the Elder to begin the main quest.';
-      ctx.fillText(tip, 420, 24);
-    }
-
     
-    // Guardian Trial HUD (compact, inside top band)
+    // quest tracker
+    {
+      const qid = (Game.currentBiome==='forest')? 'q_forest_main' : (Game.currentBiome==='meadow' ? 'q_meadow_main' : null);
+      if (qid && questState(qid)!=="locked"){
+        const qpr = questProgress(qid);
+        ctx.fillText('Quest: '+QUESTS[qid].name, 420, 24);
+        let x=420, y=40; for(const seg of qpr.prog){ ctx.fillText(seg.label+(seg.done?' ✓':''), x, y); x+=140; }
+      } else if (!qid) {
+        ctx.fillText('Explore the dunes', 420, 24);
+      } else {
+        const tip = (Game.currentBiome==='forest') ? 'Talk to the Ranger to begin the forest quest.' : 'Talk to the Elder to begin the meadow quest.';
+        ctx.fillText(tip, 420, 24);
+      }
+    }
+// Guardian Trial HUD (compact, inside top band)
     if (Game.currentBiome==='forest' && (!Game.flags.owl_trial_pass || GuardianTrial.active)){
       const label = 'Wisps ' + GuardianTrial.collected + '/5';
       const secs = Math.ceil((GuardianTrial.active? Math.max(0, GuardianTrial.timeLeft):0)/1000);
@@ -1647,7 +2266,35 @@ function drawGuardianLayer(ctx, vx, vy){
     // Panels
     if (UI.quick) drawQuickPanel(ctx,w,h);
     if (UI.start) drawStartMenu(ctx,w,h);
-  }
+  
+  /* Desert quick-fix: world plates under sprites */
+  try{
+    if (Game && Game.currentBiome==='desert' && Game.flags && Array.isArray(Game.flags.desert_landmarks)){
+      var id = (ctx && ctx.canvas && ctx.canvas.id) || '';
+      if (id==='game' || id==='gameLandscape'){
+        var __vx = (typeof vx!=='undefined'?vx:(typeof camX!=='undefined'?camX:0));
+        var __vy = (typeof vy!=='undefined'?vy:(typeof camY!=='undefined'?camY:0));
+        var T = (typeof TILE!=='undefined'?TILE:32);
+        var __prevGCO = ctx.globalCompositeOperation;
+        ctx.globalCompositeOperation = 'destination-over';
+        for (var i=0;i<Game.flags.desert_landmarks.length;i++){
+          var L = Game.flags.desert_landmarks[i];
+          var x = (L.tx*T - __vx)|0, y = (L.ty*T - __vy)|0;
+          if (L.type==='scout'){
+            ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2; ctx.strokeRect(x+6, y+6, T-12, T-12);
+          } else if (L.type && L.type.indexOf('shrine_')===0){
+            ctx.strokeStyle = '#ff3b5c'; ctx.lineWidth = 2; ctx.strokeRect(x+5, y+5, T-10, T-10);
+          } else if (L.type==='vault'){
+            ctx.strokeStyle = '#d9c36a'; ctx.lineWidth = 2; ctx.strokeRect(x+7, y+7, T-14, T-14);
+          }
+        }
+        ctx.globalCompositeOperation = __prevGCO;
+      }
+    }
+  }catch(_){}
+
+}
+
 
   function controlsLine(){
     return isTouchDevice()
@@ -1688,6 +2335,8 @@ function drawGuardianLayer(ctx, vx, vy){
     window.__AHandledPedestal = false;
 animT = t; // for portal animation
     const dt = Math.min(0.05,(t-last)/1000||0); last=t;
+
+    if (Game.currentBiome==='desert' && typeof DESERT!=='undefined' && DESERT && DESERT._trialUpdate) DESERT._trialUpdate(dt, state);
 
     // Movement (water + brush checks)
     if (!UI.start){
@@ -1783,6 +2432,15 @@ if (GuardianTrial.collected >= 5){ endGuardianTrial(true); }
       }
     }
 
+
+    // desert auto-sanitize (lightweight, every ~120 frames)
+    if (Game.currentBiome==='desert'){
+      if (!frame.__sanCt) frame.__sanCt = 0;
+      frame.__sanCt++;
+      if (frame.__sanCt % 120 === 0 && typeof sanitizeBiomeEntities==='function'){
+        sanitizeBiomeEntities();
+      }
+    }
     // reveal tiles to minimap fog
     const ptx=(player.x/TILE)|0, pty=(player.y/TILE)|0;
     for(let ry=-5; ry<=5; ry++){
@@ -1890,10 +2548,11 @@ toast('Cheats menu'); }
               }
             }
           } else if (quickTab===1){ // Crafting
-            const list = RECIPES.filter(r=>!r.requiresFlag || Game.flags[r.requiresFlag]);
+            const nearWB = npcs && npcs.some(n=>n.role==='workbench' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<64);
+const list = RECIPES.filter(r=>(!r.requiresFlag || Game.flags[r.requiresFlag]) && (r.bench==='work') && (!r.biome || r.biome===Game.currentBiome));
             if (state.pressEdge.has('Up')) craftIdx = (craftIdx+list.length-1)%(list.length||1);
             if (state.pressEdge.has('Down')) craftIdx = (craftIdx+1)%(list.length||1);
-            if (state.pressEdge.has('A')){ const r = list[craftIdx]; if (hasItems(r.needs)) craft(r.out); else toast('Need mats'); }
+            if (state.pressEdge.has('A')){ const r = list[craftIdx]||null; if(!r){/* no-op */}else if(!nearWB){ toast('Find a workbench'); } else if (hasItems(r.needs)) craft(r.out); else toast('Need mats'); }
           }
         }
       } else {
@@ -1919,7 +2578,7 @@ toast('Cheats menu'); }
   if (!__handled){
 
           // nearest portal?
-          let idx = nearest(portals,64);
+          let idx = nearest(portals,60);
           if (idx!==-1){
             const to = portals[idx].to; travelTo(to);
           }
@@ -1943,7 +2602,8 @@ toast('Cheats menu'); }
               toast('Chest opened!');
             } else { toast('Empty chest'); }
           }
-    else if ((idx=nearest(items,64))!==-1){
+    
+          else if (Game.currentBiome==='desert' && DESERT.interactNearby()) { /* desert handled */ }else if ((idx=nearest(items,64))!==-1){
             const gotId = items[idx].id;
             addItem(gotId,1);
             // forage bonus from active pal
@@ -2027,7 +2687,9 @@ else if ((function(){
 try{ if(DefQ.length){ const q=DefQ.splice(0); for(const fn of q){ try{ fn(); }catch(e){} } } }catch(e){}
 status(['mode: '+state.mode,'biome: '+Game.currentBiome,'pressed: ['+(Array.from(state.pressed).join(', ')||' ')+']','fps~: '+(dt? (1/dt|0):'—')].join('  |  '));
     requestAnimationFrame(frame);
-  }
+  
+    if (Game.currentBiome==='desert' && DESERT && DESERT._trialDraw) DESERT._trialDraw(ctx);
+}
 
   // ---------- Travel ----------
   function travelTo(targetBiome){ if (targetBiome===Game.currentBiome) return; Game.currentBiome = targetBiome; if (targetBiome==='forest'){ regenForest(); } else if (targetBiome==='desert'){ regenDesert(); } else { regenMeadow(); }
@@ -2035,7 +2697,7 @@ status(['mode: '+state.mode,'biome: '+Game.currentBiome,'pressed: ['+(Array.from
     const trackY=(H*0.575)|0;
     player.y = trackY*TILE;
     player.x = (targetBiome==='forest') ? (12*TILE) : ((W-12)*TILE);
-    seedByBiome();
+    seedByBiome(); ensureDesertReturnPortal();
     toast('Travelled to '+targetBiome);
   }
 
@@ -2053,9 +2715,25 @@ status(['mode: '+state.mode,'biome: '+Game.currentBiome,'pressed: ['+(Array.from
 // Data-only helper to increment owl riddle progress
 function solveOwlRiddle(){ Game.flags.owl_riddle_count = (Game.flags.owl_riddle_count||0)+1; }
 </script>
+<script>
+// === Player sprite ===
+// Uses the same blocky style as your shopHUD code, but with the local canvas ctx.
+function drawPlayer(ctx, px, py){
+  // Keep the cheat/invisibility behavior if you want it:
+  if (typeof playerInvisible !== 'undefined' && playerInvisible) return;
 
+  // head
+  ctx.fillStyle = '#eaeaea'; ctx.fillRect(px+8,  py+6,  8, 8);
+  // torso
+  ctx.fillStyle = '#3a75c4'; ctx.fillRect(px+6,  py+14, 12, 8);
+  // legs
+  ctx.fillStyle = '#2b2b2b'; ctx.fillRect(px+6,  py+22,  5, 2);
+  ctx.fillStyle = '#2b2b2b'; ctx.fillRect(px+13, py+22,  5, 2);
+  // eye
+  ctx.fillStyle = '#000000'; ctx.fillRect(px+11, py+9,   2, 2);
+}
 
-
+</script>
 <script>
 // Guard to suppress "Nothing to interact with" when A started the Guardian Trial.
 window.__AHandledPedestal = false;
