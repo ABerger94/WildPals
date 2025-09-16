@@ -263,6 +263,60 @@ function plate(ctx, x, y){
   ctx.fillRect(x+4, y+4, 24, 24);
 }
 // ---- Items ----
+
+// === Desert structure painters (posts, shrines, vault) ===
+function drawDesertPost(ctx, obj, vx, vy){
+  const x = (obj.x - vx)|0, y = (obj.y - vy)|0;
+  const w = obj.w || TILE || 28, h = obj.h || TILE || 28;
+  // base plate
+  ctx.fillStyle = 'rgba(90,59,30,0.10)'; ctx.fillRect(x+3,y+h-5,w-6,3);
+  // vertical beam
+  ctx.fillStyle = '#5a3b1e'; ctx.fillRect(x + ((w*0.36)|0), y + 2, Math.max(4,(w*0.14)|0), h - 6);
+  // slanted cross-beam
+  ctx.strokeStyle = '#2d1b0c'; ctx.lineWidth = Math.max(2,(w*0.08)|0);
+  ctx.beginPath();
+  const yMid = y + ((h*0.38)|0);
+  ctx.moveTo(x + 4, yMid);
+  ctx.lineTo(x + w - 4, yMid + 4);
+  ctx.stroke();
+  // bolts
+  ctx.fillStyle = '#2d1b0c';
+  ctx.fillRect(x + ((w*0.34)|0), y + 2, 2, 3);
+  ctx.fillRect(x + ((w*0.34)|0), y + h - 7, 2, 3);
+}
+
+function drawDesertShrine(ctx, obj, vx, vy){
+  const x = (obj.x - vx)|0, y = (obj.y - vy)|0;
+  const w = obj.w || TILE || 28, h = obj.h || TILE || 28;
+  // plinth layers
+  ctx.fillStyle = '#d2b48c'; ctx.fillRect(x, y + (h*0.55)|0, w, (h*0.45)|0);
+  ctx.fillStyle = '#c2a476'; ctx.fillRect(x+4, y + (h*0.55 - 6)|0, w-8, 6);
+  ctx.fillStyle = '#a98b60'; ctx.fillRect(x+8, y + (h*0.55 - 12)|0, w-16, 6);
+  // rune disk + subtle glow
+  const cx = x + (w>>1), cy = y + ((h*0.55 - 16)|0);
+  ctx.save();
+  ctx.globalAlpha = 0.35; ctx.fillStyle = 'rgba(84,201,193,0.45)';
+  ctx.beginPath(); ctx.arc(cx, cy, Math.max(8,(w*0.22)|0), 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = '#54C9C1';
+  ctx.beginPath(); ctx.arc(cx, cy, Math.max(5,(w*0.16)|0), 0, Math.PI*2); ctx.fill();
+  // rune mark
+  ctx.strokeStyle = '#126e82'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, cy-4); ctx.lineTo(cx-4, cy+3); ctx.lineTo(cx+4, cy+3); ctx.closePath(); ctx.stroke();
+}
+
+function drawDesertVault(ctx, obj, vx, vy){
+  const x = (obj.x - vx)|0, y = (obj.y - vy)|0;
+  const w = obj.w || (TILE*1.25) || 40, h = obj.h || (TILE*1.25) || 40;
+  // facade
+  ctx.fillStyle = '#d2b48c'; ctx.fillRect(x, y, w, h);
+  // shadowed arch
+  const r = Math.max(10,(w*0.33)|0), cx = x + (w>>1), cy = y + ((h*0.48)|0);
+  ctx.fillStyle = '#3a2f00';
+  ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 0, false); ctx.fill();
+  ctx.fillRect(cx - r, cy, r*2, Math.max(10,(h*0.32)|0));
+}
+
 function drawItemIcon(ctx, vx, vy, it){
   const x=(it.x-vx)|0, y=(it.y-vy)|0, cx=x+4, cy=y+4;
   plate(ctx, x, y);
@@ -486,34 +540,33 @@ function interactNearby(){
     }
 
     // Landmarks first
-    for (let i=0;i<arr.length;i++){
-      const L = arr[i];
-      if (Math.abs(L.tx-ptx)<=1 && Math.abs(L.ty-pty)<=1){
-        if (L.type==='scout'){
-          if (!L.activated){ L.activated=true; toast('Scout post activated!'); return true; }
-          if (Game.flags.desert_caravan_pass){ if (_fastTravelFrom(L)) return true; }
-          toast('A marked post.'); return true;
-        }
-        if (L.type==='shrine_wind'){ _startWindTrial(); return true; }
-        if (L.type==='shrine_sun'){
-          if (!Game.flags.desert_shrine_sun_done){ Game.flags.desert_shrine_sun_done=true; _checkShrineSet(); toast('Sun Shrine complete!'); return true; }
-          toast('Sun Shrine — completed.'); return true;
-        }
-        if (L.type==='shrine_sand'){
-          if (!Game.flags.desert_shrine_sand_done){ Game.flags.desert_shrine_sand_done=true; _checkShrineSet(); toast('Sand Shrine complete!'); return true; }
-          toast('Sand Shrine — completed.'); return true;
-        }
-        if (L.type==='vault'){
-          const all = Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done;
-          if (all){
-            if (!Game.flags.desert_vault_opened){ Game.flags.desert_vault_opened=true; _addItem('relic_feather',1); toast('Sand Vault opened! (Relic Feather)'); }
-            else toast('Vault cleared.');
-          } else toast('A sealed vault… three sigils are dark.');
-          return true;
-        }
-      }
+for (let i=0;i<arr.length;i++){
+  const L = arr[i];
+  if (Math.abs(L.tx-ptx)<=1 && Math.abs(L.ty-pty)<=1){
+    if (L.type==='scout'){
+      if (!L.activated){ L.activated=true; toast('Scout post activated!'); return true; }
+      if (Game.flags.desert_caravan_pass){ if (_fastTravelFrom(L)) return true; }
+      toast('A marked post.'); return true;
     }
-
+    if (L.type==='shrine_wind'){ _startWindTrial(); return true; }
+    if (L.type==='shrine_sun'){
+      if (!Game.flags.desert_shrine_sun_done){ _startSunTrial(); return true; }
+      toast('Sun Shrine — completed.'); return true;
+    }
+    if (L.type==='shrine_sand'){
+      if (!Game.flags.desert_shrine_sand_done){ Game.flags.desert_shrine_sand_done=true; _checkShrineSet(); toast('Sand Shrine complete!'); return true; }
+      toast('Sand Shrine — completed.'); return true;
+    }
+    if (L.type==='vault'){
+      const all = Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done;
+      if (all){
+        if (!Game.flags.desert_vault_opened){ Game.flags.desert_vault_opened=true; _addItem('relic_feather',1); toast('Sand Vault opened! (Relic Feather)'); }
+        else toast('Vault cleared.');
+      } else toast('A sealed vault… three sigils are dark.');
+      return true;
+    }
+  }
+}
     // NPC placeholders (very light — just toast)
     // Find nearest NPC within ~48px
     let best=-1, bd=1e9;
@@ -604,12 +657,158 @@ function _startWindTrial(){
   };
   if (typeof toast==='function') toast('Wind Trial — Stage 2 (hard)');
 }
+// Launch the Sun Trial overlay using the same single overlay pipeline
+function _startSunTrial(){
+  // Stage 2 (beam + mirrors): layout that REQUIRES >= 4 reflections
+  __trial = {
+    type:'sun',
+    t:0,
+    msg:'Sun Trial — Stage 2',
+    note:'←/→ select • A/↑ rotate • B/Select close',
+    // 7x5 puzzle grid
+    gw:7, gh:5, cell:28,
+    // Source at left-center, beam heading east
+    source:{ x:0, y:2, dir:[1,0] },
+    // Goal placed off the direct line so bounces are required
+    goal:{ x:1, y:3 },
+    // Mirrors (r: 0='/', 1='\') positioned to force 4 bounces:
+    // Path: E to (2,2) '/' -> N -> (2,0) '/' -> E -> (5,0) '\' -> S -> (5,3) '/' -> W -> goal (1,3)
+    mirrors:[
+      {x:2, y:2, r:0},  // bounce 1
+      {x:2, y:0, r:0},  // bounce 2
+      {x:5, y:0, r:1},  // bounce 3
+      {x:5, y:3, r:0}   // bounce 4
+    ],
+    sel:0,
+    path:[],
+    lit:false
+  };
+  
+  // Randomize a few mirrors so it never starts solved but remains solvable.
+  // Flip 2-4 unique mirrors.
+  try {
+    var flips = 2 + ((Math.random()*3)|0);
+    var idxs = [];
+    while (idxs.length < flips && idxs.length < __trial.mirrors.length){
+      var k = (Math.random()*__trial.mirrors.length)|0;
+      if (idxs.indexOf(k) === -1) idxs.push(k);
+    }
+    for (var ii=0; ii<idxs.length; ii++){
+      var m = __trial.mirrors[idxs[ii]];
+      m.r = (m.r^1); // toggle '/' <-> '\'
+    }
+  } catch(_){}
+if (typeof toast==='function') toast('Sun Trial — Stage 2');
+}
+
 
 
 
   
 
 function _updateTrial(dt, state){
+
+  if (!__trial) return;
+  // Branch by type to avoid altering Wind's logic or frame plumbing
+  if (__trial.type === 'sun'){
+
+  __trial.t += (dt||0);
+
+  // Inputs (scoped)
+  const peSun = (state && state.pressEdge && typeof state.pressEdge.has==='function') ? state.pressEdge : null;
+  if (peSun){
+    // Close
+    if (peSun.has('B') || peSun.has('Select')){ __trial = null; return; }
+    // Select mirror
+    if (peSun.has('Left'))  { __trial.sel = (__trial.sel + __trial.mirrors.length - 1) % __trial.mirrors.length; }
+    if (peSun.has('Right')) { __trial.sel = (__trial.sel + 1) % __trial.mirrors.length; }
+    // Rotate selected
+    if (peSun.has('A') || peSun.has('Up')){
+      const m = __trial.mirrors[__trial.sel];
+      m.r = (m.r + 1) & 1; // '/' <-> '\'
+    }
+  }
+
+  // Reflect helper (no shared names)
+  function reflectSun(sdx, sdy, r){
+    if (r===0){ // '/'
+      if (sdx=== 1 && sdy===0) return [0,-1];
+      if (sdx===-1 && sdy===0) return [0, 1];
+      if (sdx=== 0 && sdy===-1) return [1, 0];
+      if (sdx=== 0 && sdy=== 1) return [-1,0];
+    }else{      // '\'
+      if (sdx=== 1 && sdy===0) return [0, 1];
+      if (sdx===-1 && sdy===0) return [0,-1];
+      if (sdx=== 0 && sdy===-1) return [-1,0];
+      if (sdx=== 0 && sdy=== 1) return [1, 0];
+    }
+    return [sdx,sdy];
+  }
+
+  const gwSun = __trial.gw, ghSun = __trial.gh;
+  const occMirrorSun = (mx,my)=> __trial.mirrors.findIndex(mm=>mm.x===mx && mm.y===my);
+
+  let sx = __trial.source.x, sy = __trial.source.y;
+  let sdx = __trial.source.dir[0], sdy = __trial.source.dir[1];
+  const pathSun = [];
+  let litSun = false;
+  let stepsSun = 0, maxStepsSun = 256;
+
+  while (stepsSun++ < maxStepsSun){
+    const nx = sx + sdx, ny = sy + sdy;
+    if (nx < 0 || nx >= gwSun || ny < 0 || ny >= ghSun) break;
+    pathSun.push({x:nx, y:ny});
+
+    if (nx===__trial.goal.x && ny===__trial.goal.y){ litSun = true; break; }
+
+    const mi = occMirrorSun(nx, ny);
+    if (mi !== -1){
+      const m = __trial.mirrors[mi];
+      const out = reflectSun(sdx, sdy, m.r);
+      sdx = out[0]; sdy = out[1];
+    }
+
+    sx = nx; sy = ny;
+  }
+
+  __trial.path = pathSun;
+  __trial.lit  = litSun;
+  
+  // --- Stage 3: auto-complete when lit ---
+  if (__trial.lit){
+    __trial.victoryT = (__trial.victoryT||0) + (dt||0);
+    if (__trial.victoryT > 0.18){
+      try{
+        if (typeof Game!=='undefined' && Game && Game.flags){
+          if (!Game.flags.desert_shrine_sun_done){
+            Game.flags.desert_shrine_sun_done = true;
+            if (typeof toast==='function') toast('Sun Shrine complete!');
+          }
+          // Guardian + key + recipe if all shrines now done
+          var allDone = !!(Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sand_done && Game.flags.desert_shrine_sun_done);
+          if (allDone && !Game.flags.desert_oasis_guardian_awake){
+            Game.flags.desert_oasis_guardian_awake = true;
+            if (typeof _addItem==='function') _addItem('sandstone_key',1);
+            // Try to unlock crafting recipe in whichever system exists
+            if (typeof unlockRecipe==='function'){ unlockRecipe('pot_heal_s_plus'); }
+            else {
+              Game.flags.recipe_pot_heal_s_plus = true;
+              if (Game.recipesUnlocked) Game.recipesUnlocked['pot_heal_s_plus'] = true;
+            }
+            if (typeof toast==='function') toast('Oasis Guardian awakens! (Key gained + recipe)');
+          }
+        }
+      }catch(_){}
+      __trial = null; // close overlay
+      return;
+    }
+  } else {
+    __trial.victoryT = 0;
+  }
+return;
+}
+
+
   if (!__trial) return;
   __trial.t += (dt||0);
 
@@ -698,6 +897,7 @@ function _updateTrial(dt, state){
     __trial = null;
   }
 
+
 }
 
 
@@ -705,6 +905,99 @@ function _updateTrial(dt, state){
   
 
 function _drawTrial(ctx){
+
+  if (!__trial) return;
+  if (__trial.type === 'sun'){
+
+  var ui = ctx;
+  if (ui && typeof ui.setTransform==='function') ui.setTransform(1,0,0,1,0,0);
+  var cw = (ui && ui.canvas && ui.canvas.width) ? ui.canvas.width : 960;
+  var ch = (ui && ui.canvas && ui.canvas.height) ? ui.canvas.height : 528;
+
+  // Backdrop
+  ui.save(); ui.globalAlpha = 0.60; ui.fillStyle = '#000'; ui.fillRect(0,0,cw,ch); ui.restore();
+
+  // Panel
+  var W=520, H=300, px=(cw-W)/2, py=(ch-H)/2;
+  ui.fillStyle = 'rgba(60,44,16,.92)'; ui.fillRect(px,py,W,H);
+  ui.strokeStyle = 'rgba(255,230,160,.92)'; ui.lineWidth = 2; ui.strokeRect(px+1,py+1,W-2,H-2);
+
+  // Header
+  ui.font = '16px ui-monospace'; ui.fillStyle = '#ffe9b8';
+  ui.fillText(__trial.msg || 'Sun Trial — Stage 2', px+16, py+28);
+  ui.fillText(__trial.note || '←/→ select • A/↑ rotate • B/Select close', px+16, py+48);
+
+  // Grid
+  var gCell = __trial.cell, gw = __trial.gw, gh = __trial.gh;
+  var gx = px + 24, gy = py + 74;
+  ui.fillStyle = 'rgba(26,22,12,0.85)'; ui.fillRect(gx-6, gy-6, gw*gCell+12, gh*gCell+12);
+  ui.strokeStyle = 'rgba(255,255,255,0.22)'; ui.strokeRect(gx-6+0.5, gy-6+0.5, gw*gCell+12-1, gh*gCell+12-1);
+
+  for (var yy=0; yy<gh; yy++){
+    for (var xx=0; xx<gw; xx++){
+      var cx = gx + xx*gCell, cy = gy + yy*gCell;
+      ui.fillStyle = 'rgba(80,64,26,0.18)'; ui.fillRect(cx, cy, gCell-2, gCell-2);
+      ui.strokeStyle = 'rgba(255,255,255,0.08)'; ui.strokeRect(cx+0.5, cy+0.5, gCell-3, gCell-3);
+    }
+  }
+
+  // Goal
+  (function(){
+    var sx = gx + __trial.goal.x*gCell, sy = gy + __trial.goal.y*gCell;
+    ui.strokeStyle = __trial.lit ? '#fff3c2' : 'rgba(255,240,180,0.6)';
+    ui.lineWidth = 2;
+    ui.strokeRect(sx+5.5, sy+5.5, gCell-11, gCell-11);
+    if (__trial.lit){
+      ui.font = '14px ui-monospace'; ui.fillStyle = '#fff3c2';
+      ui.fillText('LIT', sx + 6, sy + gCell - 8);
+    }
+  })();
+
+  // Source (sun)
+  (function(){
+    var sx = gx + __trial.source.x*gCell + gCell/2;
+    var sy = gy + __trial.source.y*gCell + gCell/2;
+    ui.fillStyle = '#ffd34a';
+    ui.beginPath(); ui.arc(sx,sy, gCell*0.28, 0, Math.PI*2); ui.fill();
+    ui.strokeStyle = '#7a5a12'; ui.lineWidth = 2; ui.stroke();
+  })();
+
+  // Mirrors
+  for (var m=0; m<__trial.mirrors.length; m++){
+    var mm = __trial.mirrors[m];
+    var cx = gx + mm.x*gCell, cy = gy + mm.y*gCell;
+    if (m===__trial.sel){
+      ui.strokeStyle = 'rgba(255,230,160,0.9)'; ui.lineWidth = 2;
+      ui.strokeRect(cx+2.5, cy+2.5, gCell-5, gCell-5);
+    }
+    ui.strokeStyle = '#ffeabf'; ui.lineWidth = 2.5;
+    if (mm.r===0){ // '/'
+      ui.beginPath(); ui.moveTo(cx+5, cy+gCell-5); ui.lineTo(cx+gCell-5, cy+5); ui.stroke();
+    }else{         // '\'
+      ui.beginPath(); ui.moveTo(cx+5, cy+5); ui.lineTo(cx+gCell-5, cy+gCell-5); ui.stroke();
+    }
+  }
+
+  // Beam
+  if (__trial.path && __trial.path.length){
+    ui.strokeStyle = __trial.lit ? '#fff3c2' : '#ffd98a';
+    ui.lineWidth = 3;
+    ui.beginPath();
+    var sx0 = gx + __trial.source.x*gCell + gCell/2;
+    var sy0 = gy + __trial.source.y*gCell + gCell/2;
+    ui.moveTo(sx0, sy0);
+    for (var p=0; p<__trial.path.length; p++){
+      var cell = __trial.path[p];
+      var cx = gx + cell.x*gCell + gCell/2;
+      var cy = gy + cell.y*gCell + gCell/2;
+      ui.lineTo(cx, cy);
+    }
+    ui.stroke();
+  }
+  return;
+}
+
+
   if (!__trial) return;
   var ui = ctx;
   if (ui && typeof ui.setTransform==='function') ui.setTransform(1,0,0,1,0,0);
@@ -791,6 +1084,7 @@ function _drawTrial(ctx){
     ui.font = '14px ui-monospace'; ui.fillStyle = '#bdf5c8';
     ui.fillText('✓ Completed', px + 16, py + H - 12);
   }
+
 }
 
 
@@ -2272,10 +2566,16 @@ if (typeof window.drawPlayer !== 'function') {
           for (var i=0;i<Game.flags.desert_landmarks.length;i++){
             var L = Game.flags.desert_landmarks[i];
             var x = (L.tx*T - __vx)|0, y = (L.ty*T - __vy)|0;
-            // outlines only
+            // painted structures
+            const obj = {x:x, y:y, w:T, h:T};
             if (L.type==='scout'){
-              ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2; ctx.strokeRect(x+6, y+6, T-12, T-12);
+              drawDesertPost(ctx, obj, 0, 0);
             } else if (L.type && L.type.indexOf('shrine_')===0){
+              drawDesertShrine(ctx, obj, 0, 0);
+            } else if (L.type==='vault'){
+              drawDesertVault(ctx, obj, 0, 0);
+            }
+            else if (L.type && L.type.indexOf('shrine_')===0){
               ctx.strokeStyle = '#ff3b5c'; ctx.lineWidth = 2; ctx.strokeRect(x+5, y+5, T-10, T-10);
             } else if (L.type==='vault'){
               ctx.strokeStyle = '#d9c36a'; ctx.lineWidth = 2; ctx.strokeRect(x+7, y+7, T-14, T-14);
