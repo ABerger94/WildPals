@@ -388,6 +388,21 @@ function drawNPC(ctx, vx, vy, n){
     if(!n) return;
     const ax = (n.x - vx) | 0, ay = (n.y - vy) | 0;
     const type = n.type || n.role || n.kind || null;
+    // Sand Lynx Guardian (NPC render)
+    if (type==='guardian' || type==='guardian_lynx' || type==='sand_lynx'){
+      const t = (performance.now?performance.now():Date.now())*0.004;
+      const bob = Math.sin(t)*1.5;
+      // golden plate
+      ctx.save(); ctx.globalAlpha=0.30; ctx.fillStyle='rgba(255,211,74,0.85)';
+      ctx.beginPath(); ctx.arc(ax+16, ay+22, 14, 0, Math.PI*2); ctx.fill(); ctx.restore();
+      // lynx
+      ctx.fillStyle='#c09070'; ctx.fillRect(ax+8,  ay+8 + bob, 20, 12);
+      ctx.fillStyle='#6b4a2a'; ctx.fillRect(ax+10, ay+20 + bob, 4, 4); ctx.fillRect(ax+18, ay+20 + bob, 4, 4);
+      ctx.fillStyle='#c09070'; ctx.fillRect(ax+18, ay+4 + bob, 8, 6);
+      ctx.fillStyle='#6b4a2a'; ctx.fillRect(ax+18, ay+2 + bob, 2, 3); ctx.fillRect(ax+24, ay+2 + bob, 2, 3);
+      return;
+    }
+
     if(type==='market'){
       if (typeof TILE === 'number') { ctx.fillStyle = '#5a3b7a'; ctx.fillRect(ax, ay, TILE, TILE); }
       ctx.fillStyle = '#f2d3a0'; ctx.fillRect(ax+8, ay+6, 8, 8);
@@ -415,6 +430,120 @@ function drawNPC(ctx, vx, vy, n){
    G) Portals: vivid purple swirl with pulsing glow + cheat alias FORESTOPEN
 */
 (function(){
+
+  // === Guardian dynamic placement (robust) ===
+  try{
+    Game.flags = Game.flags || {};
+    var shrinesDone = !!(Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done);
+    if (shrinesDone && !Game.flags.desert_oasis_guardian_awake){ Game.flags.desert_oasis_guardian_awake = true; }
+    if (Game.flags.desert_oasis_guardian_awake){
+      var LM = (Game.D && Game.D.DESERT_LANDMARKS) ? Game.D.DESERT_LANDMARKS
+              : (typeof DESERT_LANDMARKS!=='undefined' ? DESERT_LANDMARKS : (Game.flags.DESERT_LANDMARKS||[]));
+      var hasG=false;
+      for (var i=0;i<LM.length;i++){ if (LM[i] && LM[i].type==='guardian'){ hasG=true; break; } }
+      if (!hasG){
+        var T = (typeof TILE!=='undefined'?TILE:32);
+        var ptx = 70, pty = 58; // default near oasis-ish
+        try{
+          if (typeof player!=='undefined' && player && player.x!=null && player.y!=null){
+            ptx = (player.x/T)|0; pty = (player.y/T)|0;
+          }
+        }catch(_){}
+        Game.flags.desert_guardian_tx = ptx;
+        Game.flags.desert_guardian_ty = pty;
+        LM.push({type:'guardian', tx:ptx, ty:pty});
+        if (typeof toast==='function') toast('A guardian stirs nearby…');
+      }
+      // write back
+      if (Game.D && Game.D.DESERT_LANDMARKS) Game.D.DESERT_LANDMARKS = LM;
+      else if (typeof DESERT_LANDMARKS!=='undefined') DESERT_LANDMARKS = LM;
+      else Game.flags.DESERT_LANDMARKS = LM;
+    }
+  }catch(_){}
+
+
+
+  // === Desert Guardian / Wetlands portal: safe pin ensure ===
+  try{
+    Game.flags = Game.flags || {};
+    var shrOK = !!(Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done);
+    if (shrOK && !Game.flags.desert_oasis_guardian_awake) Game.flags.desert_oasis_guardian_awake = true;
+
+    var LM = (Game.D && Game.D.DESERT_LANDMARKS) ? Game.D.DESERT_LANDMARKS
+            : (typeof DESERT_LANDMARKS!=='undefined' ? DESERT_LANDMARKS : (Game.flags.DESERT_LANDMARKS||[]));
+    var hasG=false, hasP=false;
+    for (var i=0;i<LM.length;i++){ var t=LM[i]&&LM[i].type; if (t==='guardian') hasG=true; if (t==='portal_wetlands') hasP=true; }
+    if (Game.flags.desert_oasis_guardian_awake && !hasG){
+      LM.push({type:'guardian', tx:72, ty:58});
+      if (typeof toast==='function') toast('A guardian stirs by the oasis…');
+    }
+    if ((Game.flags.desert_guardian_portal_ready || (Game.unlocked&&Game.unlocked.wetlands)) && !hasP){
+      LM.push({type:'portal_wetlands', tx:40, ty:36});
+    }
+    if (Game.D && Game.D.DESERT_LANDMARKS) Game.D.DESERT_LANDMARKS = LM;
+    else if (typeof DESERT_LANDMARKS!=='undefined') DESERT_LANDMARKS = LM;
+    else Game.flags.DESERT_LANDMARKS = LM;
+  }catch(_){}
+
+
+
+  // === Desert Guardian & Wetlands portal pins (boot-time augment) ===
+  try{
+    Game.flags = Game.flags || {};
+    var LM = (Game.D && Game.D.DESERT_LANDMARKS) ? Game.D.DESERT_LANDMARKS
+            : (typeof DESERT_LANDMARKS!=='undefined' ? DESERT_LANDMARKS : (Game.flags.DESERT_LANDMARKS||[]));
+    // Choose stable coordinates near oasis if not already present (tweak tx/ty if you want exact tiles)
+    var hasGuardian = !!Game.flags.desert_oasis_guardian_awake;
+    var hasGuardianPin = false, hasPortalPin = false;
+    for (var i=0;i<LM.length;i++){
+      if (LM[i].type==='guardian') hasGuardianPin = true;
+      if (LM[i].type==='portal_wetlands') hasPortalPin = true;
+    }
+    if (hasGuardian && !hasGuardianPin){
+      LM.push({type:'guardian', tx:72, ty:58}); // near oasis default
+    }
+    // Portal pin appears only after guardian turn-in preps it OR when globally unlocked
+    var portalReady = !!(Game.flags.desert_guardian_portal_ready || (Game.unlocked && Game.unlocked.wetlands));
+    if (portalReady && !hasPortalPin){
+      LM.push({type:'portal_wetlands', tx:40, ty:36}); // a clear desert tile
+    }
+    // write back
+    if (Game.D && Game.D.DESERT_LANDMARKS) Game.D.DESERT_LANDMARKS = LM;
+    else if (typeof DESERT_LANDMARKS!=='undefined') DESERT_LANDMARKS = LM;
+    else Game.flags.DESERT_LANDMARKS = LM;
+  }catch(_){}
+
+
+  // === safe inventory consume helper ===
+  function _takeItem(id, qty){
+    try{
+      qty = qty|0; if (qty<=0) qty=1;
+      var inv = Game.inventory || [];
+      for (var i=0;i<inv.length;i++){
+        var it = inv[i]; if (it && it.id===id && (it.qty||1) >= qty){
+          it.qty = (it.qty||1) - qty;
+          if (it.qty<=0){ inv.splice(i,1); }
+          return true;
+        }
+      }
+    }catch(_){}
+    return false;
+  }
+
+  // === Crafting unlock helper (sets flags the crafting tab understands) ===
+  function _unlockRecipeCompat(id){
+    try{
+      Game.flags = Game.flags || {};
+      Game.flags['recipe_'+id] = true;
+      // Also set alias form for + <-> _plus
+      if (id.indexOf('+')>=0){
+        Game.flags['recipe_'+id.replace('+','_plus')] = true;
+      }else if (id.indexOf('_plus')>=0){
+        Game.flags['recipe_'+id.replace('_plus','+')] = true;
+      }
+    }catch(_){}
+  }
+
   // ---------- Status / Toast ----------
   const debugEl = document.getElementById('debug');
   function status(msg){ if(debugEl) debugEl.textContent = msg; }
@@ -525,6 +654,73 @@ const DESERT = (function(){
  // Stage 7: basic interactions near player (1-tile proximity)
 function interactNearby(){
   if (Game.currentBiome!=='desert') return false;
+    
+    
+
+    // on-demand guardian placement (when interacting)
+    try{
+      if (Game.currentBiome==='desert'){
+        Game.flags = Game.flags || {};
+        var shrOK = !!(Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done);
+        if (shrOK){ if (!Game.flags.desert_oasis_guardian_awake) Game.flags.desert_oasis_guardian_awake = true; }
+        if (Game.flags.desert_oasis_guardian_awake){
+          var LM = (Game.D && Game.D.DESERT_LANDMARKS) ? Game.D.DESERT_LANDMARKS
+                  : (typeof DESERT_LANDMARKS!=='undefined' ? DESERT_LANDMARKS : (Game.flags.DESERT_LANDMARKS||[]));
+          var hasG=false; for (var i=0;i<LM.length;i++){ if (LM[i] && LM[i].type==='guardian'){ hasG=true; break; } }
+          if (!hasG && typeof player!=='undefined' && player){
+            var T = (typeof TILE!=='undefined'?TILE:32);
+            var ptx = (player.x/T)|0, pty = (player.y/T)|0;
+            LM.push({type:'guardian', tx:ptx, ty:pty});
+            Game.flags.desert_guardian_tx = ptx; Game.flags.desert_guardian_ty = pty;
+            if (typeof toast==='function') toast('A guardian stirs nearby…');
+            if (Game.D && Game.D.DESERT_LANDMARKS) Game.D.DESERT_LANDMARKS = LM;
+            else if (typeof DESERT_LANDMARKS!=='undefined') DESERT_LANDMARKS = LM;
+            else Game.flags.DESERT_LANDMARKS = LM;
+          }
+        }
+        // Portal pin ensure when ready
+        if (Game.flags.desert_guardian_portal_ready || (Game.unlocked && Game.unlocked.wetlands)){
+          var LM2 = (Game.D && Game.D.DESERT_LANDMARKS) ? Game.D.DESERT_LANDMARKS
+                  : (typeof DESERT_LANDMARKS!=='undefined' ? DESERT_LANDMARKS : (Game.flags.DESERT_LANDMARKS||[]));
+          var hasP=false; for (var j=0;j<LM2.length;j++){ if (LM2[j] && LM2[j].type==='portal_wetlands'){ hasP=true; break; } }
+          if (!hasP){ LM2.push({type:'portal_wetlands', tx:40, ty:36});
+            if (Game.D && Game.D.DESERT_LANDMARKS) Game.D.DESERT_LANDMARKS = LM2;
+            else if (typeof DESERT_LANDMARKS!=='undefined') DESERT_LANDMARKS = LM2;
+            else Game.flags.DESERT_LANDMARKS = LM2;
+          }
+        }
+      }
+    }catch(_){}
+
+/* guardian dynamic coord read */
+    var __gx = (Game.flags && typeof Game.flags.desert_guardian_tx==='number') ? Game.flags.desert_guardian_tx : 72;
+    var __gy = (Game.flags && typeof Game.flags.desert_guardian_ty==='number') ? Game.flags.desert_guardian_ty : 58;
+/* guardian proximity safe fallback */
+    try{
+      if (Game.currentBiome==='desert' && Game.flags && Game.flags.desert_oasis_guardian_awake){
+        var T = (typeof TILE!=='undefined'?TILE:32);
+        var ptx = (player.x/T)|0, pty = (player.y/T)|0;
+        var gx = __gx, gy = __gy;
+        if (Math.abs(ptx-gx)<=1 && Math.abs(pty-gy)<=1){
+          var inv = Game.inventory||[]; var hasFeather=false;
+          for (var k=0;k<inv.length;k++){ if (inv[k].id==='relic_feather' && (inv[k].qty||1)>0){ hasFeather=true; break; } }
+          if (!Game.flags.desert_guardian_met){ Game.flags.desert_guardian_met=true; toast('A sand lynx of light watches the dunes…'); return true; }
+          if (hasFeather && !Game.flags.desert_guardian_portal_ready){
+            if (_takeItem('relic_feather',1)){
+              Game.flags.desert_guardian_portal_ready = true;
+              Game.unlocked = Game.unlocked || {}; Game.unlocked.wetlands = true;
+              toast('The Sand Lynx parts the dunes… a path to Wetlands stirs.');
+            } else {
+              toast('The lynx blinks slowly. Something featherlight is missing.');
+            }
+            return true;
+          }
+          if (Game.unlocked && Game.unlocked.wetlands){ toast('The path lies open. Wetlands awaits.'); return true; }
+          toast('Three trials wake the oasis. Bring what the vault returned.'); return true;
+        }
+      }
+    }catch(_){}
+
   try{
     const T = (typeof TILE!=='undefined'?TILE:32);
     const ptx = (player.x/T)|0, pty = (player.y/T)|0;
@@ -535,7 +731,16 @@ function interactNearby(){
       if (done && !Game.flags.desert_oasis_guardian_awake){
         Game.flags.desert_oasis_guardian_awake = true;
         _addItem('sandstone_key',1);
-        toast('Oasis Guardian awakens! (Key gained + recipe)');
+        
+      // Shrine set check => ensure guardian awakens
+      (function(){
+        try{
+          if (Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done){
+            if (!Game.flags.desert_oasis_guardian_awake){ Game.flags.desert_oasis_guardian_awake = true; toast('Oasis Guardian stirs…'); }
+          }
+        }catch(_){}
+      })();
+toast('Oasis Guardian awakens! (Key gained + recipe)');
       }
     }
 
@@ -544,7 +749,51 @@ for (let i=0; i < arr.length; i++) {
   const L = arr[i];
   if (Math.abs(L.tx-ptx) <= 1 && Math.abs(L.ty-pty) <= 1) {
     if (L.type === 'scout') {
-      if (!L.activated) { L.activated = true; toast('Scout post activated!'); return true; }
+      if (!L.activated) { L.activated = true; toast('Scout post activated!'); return true; 
+        if (L.type==='guardian'){
+          // Sand Lynx — Desert Guardian
+          if (!Game.flags.desert_guardian_met){
+            Game.flags.desert_guardian_met = true;
+            toast('A sand lynx of light watches the dunes…');
+            return true;
+          }
+          // Turn-in: relic_feather -> prepare wetlands portal
+          var inv = Game.inventory||[];
+          var hasFeather = false;
+          for (var k=0;k<inv.length;k++){ if (inv[k].id==='relic_feather' && (inv[k].qty||1)>0){ hasFeather=true; break; } }
+          if (hasFeather && !Game.flags.desert_guardian_portal_ready){
+            if (_takeItem('relic_feather',1)){
+              Game.flags.desert_guardian_portal_ready = true;
+              Game.unlocked = Game.unlocked || {};
+              Game.unlocked.wetlands = true; // rebuildPortals() reads this to expose the portal
+              toast('The Sand Lynx parts the dunes… a path to Wetlands stirs.');
+            }else{
+              toast('The lynx blinks slowly. Something featherlight is missing.');
+            }
+            return true;
+          }
+          if (Game.unlocked && Game.unlocked.wetlands){
+            toast('The path lies open. Wetlands awaits.');
+          }else{
+            toast('Three trials wake the oasis. Bring what the vault returned.');
+          }
+          return true;
+        }
+        if (L.type==='portal_wetlands'){
+          if (Game.unlocked && Game.unlocked.wetlands){
+            toast('The portal hums with riverlight…');
+            // instant travel to wetlands
+            try{ if (typeof switchBiome==='function') { switchBiome('wetlands'); return true; } }catch(_){}
+            // fallback flag if switchBiome differs
+            try{ Game.currentBiome='wetlands'; }catch(_){}
+            return true;
+          }else{
+            toast('A sealed portal. The guardian has not yet opened the way.');
+            return true;
+          }
+        }
+    
+      }
       if (Game.flags.desert_caravan_pass) { if (_fastTravelFrom(L)) return true; }
       toast('A marked post.'); return true;
     }
@@ -596,8 +845,58 @@ for (let i=0; i < arr.length; i++) {
         if (Game.flags.desert_caravan_pass){ toast('Chief: fast-travel unlocked at posts.'); return true; }
         toast('Nomad Chief: prove the route (activate 3 posts).'); return true;
       }
-      if (n.role==='market'){ toast('Fennec Trader: come back with a Caravan Pass.'); return true; }
-      if (n.role==='workbench'){ toast('Scarab Artisan: crafting soon.'); return true; }
+      if (n.role==='market'){
+      if (!Game.flags.desert_caravan_pass){ toast('Fennec Trader: come back with a Caravan Pass.'); return true; }
+      UI.quick = true; openShop('desert_fennec');
+      return true;
+    }
+      
+      if (n.role==='workbench'){
+        // Scarab Artisan — dialog + gated recipe unlocks
+        var f = Game.flags||{};
+        var shr = 0; if (f.desert_shrine_wind_done) shr++; if (f.desert_shrine_sun_done) shr++; if (f.desert_shrine_sand_done) shr++;
+        var havePass = !!f.desert_caravan_pass;
+
+        // Forest completion & desert portal open per actual code:
+        // forest is considered complete when owl trial passed + q_forest_main_done
+        var forestDone = !!((f.owl_trial_pass||f.owl_trial_passed) && f.q_forest_main_done);
+        // desert portal open is tracked on Game.unlocked.desert in rebuildPortals()
+        var desertPortalOpen = !!(Game.unlocked && Game.unlocked.desert);
+
+        function _hasAny(id){
+          try{ var inv=Game.inventory||[]; for(var i=0;i<inv.length;i++){ var it=inv[i]; if(it && it.id===id && (it.qty||1)>0) return true; } }catch(_){}
+          return false;
+        }
+
+        if (!havePass){
+          toast('Scarab Artisan: Prove the route. Earn a Caravan Pass, then I\'ll work my bench.');
+          return true;
+        }
+
+        // Unlock Boots+ only when forest is completed AND desert portal is open AND you've progressed in desert (2+ shrines)
+        if (!f.recipe_boots_desert_plus && forestDone && desertPortalOpen && shr>=2){
+          toast('Scarab Artisan: Bring stone and reed—I\'ll set Desert Boots + under your soles.');
+          _unlockRecipeCompat('boots_desert_plus');
+          return true;
+        }
+
+        // Unlock Sandstone Blade once Sun shrine is done (or if the player has seen reeds as a hint)
+        if (!f.recipe_sandstone_blade && (f.desert_shrine_sun_done || _hasAny('reed'))){
+          toast('Scarab Artisan: With reed bindings and sandstone I can fashion a Sandstone Blade.');
+          _unlockRecipeCompat('sandstone_blade');
+          return true;
+        }
+
+        // Flavor rations line (no unlock here)
+        if (_hasAny('aloe') || _hasAny('reed')){
+          toast('Scarab Artisan: Oasis fare travels well. With aloe and reeds, I\'ll pack you rations.');
+          return true;
+        }
+
+        toast('Scarab Artisan: Sand cuts keen. Bring sandstone and reeds—I\'ll set a blade for you.');
+        return true;
+      }
+
       if (n.role==='scout'){ toast('Vulture Scout: posts mark safe paths.'); return true; }
     }
   }catch(_){}
@@ -714,8 +1013,27 @@ if (typeof toast==='function') toast('Sun Trial');
 }
 // === Sand Shrine Trial — Stage 1 (overlay stub; close with B or Select) ===
 function _startSandTrial(){
-  __trial = { type:'sand', t:0, msg:'Sand Trial — Stage 1', note:'Press B or Select to close' };
-  if (typeof toast==='function') toast('Sand Trial — Stage 1');
+  // Stage 2: Falling-sand prototype with temporary net platforms
+  __trial = {
+    type:'sand',
+    t:0,
+    msg:'Sand Trial — Stage 2',
+    note:'D-Pad move • A place net • B/Select close',
+    // Grid
+    gw:7, gh:7, cell:28,
+    // Player start
+    px:1, py:5,
+    // Goal chest
+    goal:{x:5, y:1},
+    // Sand emitters (top row columns)
+    emit:[{x:1},{x:3},{x:4},{x:6}],
+    // State
+    sand:[],
+    nets:[], netMax:3, netTTL:3.2,
+    fallTick:0, fallEvery:0.22
+  };
+  for (var yy=0; yy<__trial.gh; yy++){ __trial.sand[yy] = Array(__trial.gw).fill(0); }
+  if (typeof toast==='function') toast('Sand Trial — Stage 2');
 }
 
 
@@ -725,15 +1043,94 @@ function _startSandTrial(){
   
 
 function _updateTrial(dt, state){
+  // === Sand trial logic (Stage 2) ===
   if (__trial && __trial.type === 'sand'){
     __trial.t += (dt||0);
     const peSand = (state && state.pressEdge && typeof state.pressEdge.has==='function') ? state.pressEdge : null;
+    // Close overlay
     if (peSand && (peSand.has('B') || peSand.has('Select'))){ __trial = null; return; }
-    return;
+
+    // Helpers
+    const inB = (x,y)=> (x>=0 && x<__trial.gw && y>=0 && y<__trial.gh);
+    const occSand = (x,y)=> inB(x,y) ? (__trial.sand[y][x] ? 1 : 0) : 1;
+    const occNet  = (x,y)=> inB(x,y) && __trial.nets.findIndex(n=>n.x===x && n.y===y)>=0;
+    const solidAt = (x,y)=> occSand(x,y) || occNet(x,y);
+
+    // Movement (1 tile per press)
+    if (peSand){
+      let mx=0,my=0;
+      if (peSand.has('Left'))  mx=-1; else if (peSand.has('Right')) mx=1;
+      else if (peSand.has('Up')) my=-1; else if (peSand.has('Down')) my=1;
+      if (mx||my){
+        const nx = __trial.px + mx, ny = __trial.py + my;
+        if (inB(nx,ny) && !solidAt(nx,ny)){ __trial.px = nx; __trial.py = ny; }
+      }
+      // Place temporary net with A
+      if (peSand.has('A')){
+        const nx = __trial.px, ny = __trial.py;
+        if (!occNet(nx,ny) && __trial.nets.length < __trial.netMax){
+          __trial.nets.push({x:nx, y:ny, t:__trial.netTTL});
+        }
+      }
+    }
+
+    // Nets TTL
+    for (let i=__trial.nets.length-1; i>=0; i--){
+      __trial.nets[i].t -= (dt||0);
+      if (__trial.nets[i].t <= 0) __trial.nets.splice(i,1);
+    }
+
+    // Sand falling step
+    __trial.fallTick += (dt||0);
+    if (__trial.fallTick >= __trial.fallEvery){
+      __trial.fallTick = 0;
+
+      // spawn from emitters
+      for (let e=0; e<__trial.emit.length; e++){
+        const ex = __trial.emit[e].x, ey = 0;
+        if (!solidAt(ex,ey)) __trial.sand[ey][ex] = 1;
+      }
+      // fall bottom-up
+      for (let y=__trial.gh-2; y>=0; y--){
+        for (let x=0; x<__trial.gw; x++){
+          if (__trial.sand[y][x] && !solidAt(x, y+1)){
+            __trial.sand[y][x] = 0;
+            __trial.sand[y+1][x] = 1;
+          }
+        }
+      }
+      // nudge player upward if buried
+      if (solidAt(__trial.px, __trial.py)){
+        if (inB(__trial.px, __trial.py-1) && !solidAt(__trial.px, __trial.py-1)) __trial.py -= 1;
+      }
+    }
+    
+    // Victory: reach chest tile
+    if (__trial.px === __trial.goal.x && __trial.py === __trial.goal.y){
+      if (typeof Game!=='undefined' && Game.flags){ Game.flags.desert_shrine_sand_done = true; }
+      if (typeof toast==='function') toast('Sand Shrine complete!');
+      __trial = null;
+
+      // Mirror Wind/Sun: if all shrines done, awaken Guardian and grant key + recipe
+      try{
+        var allDone = Game && Game.flags && Game.flags.desert_shrine_wind_done && Game.flags.desert_shrine_sun_done && Game.flags.desert_shrine_sand_done;
+        if (allDone && !Game.flags.desert_oasis_guardian_awake){
+          Game.flags.desert_oasis_guardian_awake = true;
+          if (typeof _addItem==='function') _addItem('sandstone_key',1);
+          if (typeof unlockRecipe==='function'){ unlockRecipe('pot_heal_s_plus'); }
+          else {
+            if (!Game.recipes) Game.recipes = {};
+            Game.recipes['pot_heal_s_plus'] = true;
+          }
+          if (typeof toast==='function') toast('Oasis Guardian awakens! (Key gained + recipe)');
+        }
+      }catch(_){}
+      return;
+    }
+return;
   }
 
-
-  if (!__trial) return;
+if (!__trial) return;
   // Branch by type to avoid altering Wind's logic or frame plumbing
   if (__trial.type === 'sun'){
 
@@ -935,18 +1332,84 @@ function _drawTrial(ctx){
     if (ui && typeof ui.setTransform==='function') ui.setTransform(1,0,0,1,0,0);
     var cw = (ui && ui.canvas && ui.canvas.width) ? ui.canvas.width : 960;
     var ch = (ui && ui.canvas && ui.canvas.height) ? ui.canvas.height : 528;
+
+    // Backdrop
     ui.save(); ui.globalAlpha = 0.60; ui.fillStyle = '#000'; ui.fillRect(0,0,cw,ch); ui.restore();
-    var W=480, H=160, px=(cw-W)/2, py=(ch-H)/2;
+
+    // Panel
+    var W=520, H=320, px=(cw-W)/2, py=(ch-H)/2;
     ui.fillStyle = 'rgba(46,36,18,.94)'; ui.fillRect(px,py,W,H);
     ui.strokeStyle = 'rgba(255,230,160,.85)'; ui.lineWidth = 2; ui.strokeRect(px+1,py+1,W-2,H-2);
+
+    // Header
     ui.font = '16px ui-monospace'; ui.fillStyle = '#ffe9b8';
-    ui.fillText(__trial.msg || 'Sand Trial — Stage 1', px+16, py+28);
-    ui.fillText(__trial.note || 'Press B or Select to close', px+16, py+52);
+    ui.fillText(__trial.msg || 'Sand Trial — Stage 2', px+16, py+28);
+    ui.fillText(__trial.note || 'D-Pad move • A place net • B/Select close', px+16, py+48);
+
+    // Grid background
+    var gCell = __trial.cell, gw = __trial.gw, gh = __trial.gh;
+    var gx = px + 24, gy = py + 72;
+    ui.fillStyle = 'rgba(32,24,12,0.85)'; ui.fillRect(gx-6, gy-6, gw*gCell+12, gh*gCell+12);
+    ui.strokeStyle = 'rgba(255,255,255,0.22)'; ui.strokeRect(gx-6+0.5, gy-6+0.5, gw*gCell+12-1, gh*gCell+12-1);
+
+    for (var yy=0; yy<gh; yy++){
+      for (var xx=0; xx<gw; xx++){
+        var cx = gx + xx*gCell, cy = gy + yy*gCell;
+        ui.fillStyle = 'rgba(120,96,42,0.12)'; ui.fillRect(cx, cy, gCell-2, gCell-2);
+        ui.strokeStyle = 'rgba(255,255,255,0.08)'; ui.strokeRect(cx+0.5, cy+0.5, gCell-3, gCell-3);
+      }
+    }
+
+    // Goal chest
+    (function(){
+      var gx2 = gx + __trial.goal.x*gCell, gy2 = gy + __trial.goal.y*gCell;
+      ui.fillStyle = '#8a5a2f'; ui.fillRect(gx2+6, gy2+10, gCell-12, gCell-10);
+      ui.strokeStyle = '#5a3a1f'; ui.strokeRect(gx2+6+0.5, gy2+10+0.5, gCell-12-1, gCell-10-1);
+      ui.fillStyle = '#d9c36a'; ui.fillRect(gx2 + gCell/2 - 1, gy2 + 14, 2, 6);
+    })();
+
+    // Nets
+    for (var ni=0; ni<__trial.nets.length; ni++){
+      var n = __trial.nets[ni];
+      var cx = gx + n.x*gCell, cy = gy + n.y*gCell;
+      ui.fillStyle = 'rgba(220,220,220,0.85)'; ui.fillRect(cx+4, cy+12, gCell-8, 6);
+      ui.strokeStyle = 'rgba(140,116,70,0.85)'; ui.lineWidth = 1;
+      ui.strokeRect(cx+4+0.5, cy+12+0.5, gCell-8-1, 6-1);
+      ui.beginPath();
+      ui.moveTo(cx+6, cy+12); ui.lineTo(cx+gCell-6, cy+18);
+      ui.moveTo(cx+6, cy+18); ui.lineTo(cx+gCell-6, cy+12);
+      ui.stroke();
+    }
+
+    // Sand
+    for (var sy=0; sy<__trial.gh; sy++){
+      for (var sx=0; sx<__trial.gw; sx++){
+        if (__trial.sand[sy][sx]){
+          var cx = gx + sx*gCell, cy = gy + sy*gCell;
+          ui.fillStyle = '#d4b86a'; ui.fillRect(cx+4, cy+4, gCell-8, gCell-8);
+          ui.strokeStyle = '#7c6a36'; ui.strokeRect(cx+4+0.5, cy+4+0.5, gCell-9, gCell-9);
+        }
+      }
+    }
+
+    // Emitters hint
+    for (var ei=0; ei<__trial.emit.length; ei++){
+      var ex = __trial.emit[ei].x;
+      var cx = gx + ex*gCell, cy = gy + 0*gCell;
+      ui.fillStyle = 'rgba(212,184,106,0.55)'; ui.fillRect(cx+6, cy+2, gCell-12, 6);
+    }
+
+    // Player
+    (function(){
+      var px2 = gx + __trial.px*gCell, py2 = gy + __trial.py*gCell;
+      ui.fillStyle = '#dfe8ff'; ui.fillRect(px2+8, py2+8, gCell-16, gCell-16);
+      ui.strokeStyle = '#4a5a7a'; ui.strokeRect(px2+8+0.5, py2+8+0.5, gCell-17, gCell-17);
+    })();
+
     return;
   }
 
-
-  if (!__trial) return;
+if (!__trial) return;
   if (__trial.type === 'sun'){
 
   var ui = ctx;
@@ -1384,6 +1847,18 @@ function regenDesert(){
     sandstone_key:{cat:"quest"}
 ,
     pot_heal_s_plus:{cat:"consumable"}
+
+  , desert_rations: { kind:'consumable', label:'Desert Rations', desc:'+5 HP', use:function(game){
+      try{
+        var hpMax = (game.hpMax||20);
+        game.hp = Math.min(hpMax, (game.hp||hpMax) + 5);
+        return true;
+      }catch(_){ return false; }
+    } }
+,
+  sandstone_blade:{ name:'Sandstone Blade', cat:'weapon', dmg:12, desc:'Rough but sharp desert blade.' , chargesMax:20},
+  aloe_bundle:{ name:'Aloe Bundle', cat:'material', desc:'Bundle of desert aloe leaves.' },
+  reed_bundle:{ name:'Reed Bundle', cat:'material', desc:'Bundle of desert reeds.' }
 };
   const RECIPES = [
     {out:"weapon_stick", needs:[{id:"wood",qty:3},{id:"fiber",qty:2}], bench:"work"},
@@ -1393,13 +1868,33 @@ function regenDesert(){
     {out:"boots_desert", needs:[{id:"fiber",qty:6, biome:"desert"},{id:"mushroom",qty:4}], bench:"work", requiresFlag:"q_forest_main_done"}
   ,
     {out:"pot_heal_s_plus", needs:[{id:"aloe",qty:2, biome:"desert"},{id:"reed",qty:2},{id:"herb",qty:1}], bench:"work", requiresFlag:"desert_oasis_guardian_awake"}
+
+  ,{out:"sandstone_blade",
+     title:"Sandstone Blade",
+     needs:[{id:"sandstone",qty:6},{id:"reed",qty:2}],
+     bench:"work",
+     requiresFlag:"recipe_sandstone_blade"}
+  ,{out:"boots_desert_plus",
+     title:"Desert Boots +",
+     needs:[{id:"boots_desert",qty:1},{id:"sandstone",qty:4},{id:"reed",qty:3}],
+     bench:"work",
+     requiresFlag:"recipe_boots_desert_plus"}
 ];
   const SHOPS = {
     meadow_village:{ items:[{id:"net_basic",price:30},{id:"pot_heal_s",price:10}] },
     forest_camp:{   items:[{id:"net_fine",price:60},{id:"pot_heal_s",price:14}]} // coin sinks
-  };
+  
+    , desert_fennec:{ items:[{id:'sandstone_blade', price:60},
+{id:'sandstone',       qty:3,   price:24},
+{id:'desert_rations',  price:12},
+{id:'boots_desert',    price:80},
+      {id:'aloe', qty:3, price:12},
+      {id:'reed', qty:3, price:12}
+    ] }};
   // Simple sell values (materials only)
-  const SELL_VALUE = { wood:1, stone:2, berry:1, herb:2, reed:1, mushroom:2, fiber:2, cactus:2, sandstone:2, aloe:3 };
+  const SELL_VALUE = { wood:1, stone:2, berry:1, herb:2, reed:1, mushroom:2, fiber:2, cactus:2, sandstone:2, aloe:3 , aloe_bundle:6, reed_bundle:5, sandstone_blade:30, sandstone_key:40, boots_desert:40,
+  desert_rations:6
+};
 
   // Pals + passive perks (functional: speed, water_walk, forage_bonus, brush_break; glide is groundwork)
   const PALS = {
@@ -1477,6 +1972,40 @@ function currentSpeed(){ return player.baseSpeed * (1 + ((Game.companions.find(p
 
 
   const items=[], npcs=[], pals=[];
+
+// -- Guardian NPC ensure (non-invasive) --
+function __ensureGuardianNPC(){
+  try{
+    if (!Game || !Game.flags || !Game.flags.desert_oasis_guardian_awake) return;
+    const T = (typeof TILE==='number') ? TILE : 32;
+    // Try flags first
+    let tx = Game.flags.desert_guardian_tx|0, ty = Game.flags.desert_guardian_ty|0;
+    // Fallback: scan known landmark arrays
+    if (!(tx||ty)){
+      try{
+        const cands = [];
+        if (Array.isArray(Game.flags && Game.flags.desert_landmarks)) cands.push(...Game.flags.desert_landmarks);
+        if (Array.isArray(Game.flags && Game.flags.DESERT_LANDMARKS)) cands.push(...Game.flags.DESERT_LANDMARKS);
+        if (Game.D && Array.isArray(Game.D.DESERT_LANDMARKS)) cands.push(...Game.D.DESERT_LANDMARKS);
+        if (Array.isArray(window.DESERT_LANDMARKS)) cands.push(...window.DESERT_LANDMARKS);
+        const g = cands.find(o=>o && o.type==='guardian');
+        if (g){ tx = (g.tx!=null?g.tx:((g.x|0)/T)|0); ty = (g.ty!=null?g.ty:((g.y|0)/T)|0); }
+      }catch(_){}
+    }
+    if (!(tx||ty)){
+      // Last resort: place at player
+      try{ tx=(player.x/T)|0; ty=(player.y/T)|0; }catch(_){ tx=12; ty=12; }
+    }
+    const gx = (tx|0)*T, gy = (ty|0)*T;
+    // ensure one guardian npc
+    let idx = -1;
+    for (let i=0;i<npcs.length;i++){ const n=npcs[i]; if (n && (n.role==='guardian_lynx'||n.type==='guardian')) { idx=i; break; } }
+    if (idx<0){ npcs.push({x:gx,y:gy,w:26,h:26,role:'guardian_lynx',name:'Sand Lynx',facing:1,solid:false}); }
+    else { npcs[idx].x=gx; npcs[idx].y=gy; }
+  }catch(_){}
+}
+try{ setInterval(__ensureGuardianNPC, 450); }catch(_){}
+
   const portals=[]; // {x,y,w,h,to:'forest'|'meadow'}
 // --- Deferred Actions Queue (end-of-frame mutator) ---
 const DefQ = [];
@@ -2090,7 +2619,7 @@ function questState(id){ return Game.quests[id]||"locked"; }
     const shop=SHOPS[ShopUI.shopId]; if(!shop) return;
     const it=shop.items[ShopUI.idx]; if(!it) return;
     if(Game.coins < it.price) return toast('Not enough coins');
-    Game.coins -= it.price; addItem(it.id,1); toast('Bought '+it.id);
+    Game.coins -= it.price; addItem(it.id,(it.qty||1)); if (Game.discovered) Game.discovered.add(it.id); toast('Bought '+it.id);
   }
   function sellSelected(){
     if (ShopUI.mode!=='sell') return;
@@ -2764,9 +3293,34 @@ drawPlayer(ctx, px, py);
     }
 
     // Toast
-    if (performance.now() < toastUntil){
-      ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(12, h-40, Math.min(600,w-24), 26);
-      ctx.fillStyle='#e9f1ff'; ctx.font='14px ui-monospace, monospace'; ctx.fillText(toastMsg, 20, h-22);
+    if (performance.now() < toastUntil) {
+
+      // Toast with dynamic background sizing (multi-line safe)
+      var padX = 12, padY = 6;
+      var maxW = w - 24;
+      var lines = (toastMsg && (""+toastMsg).split("\n")) || [""];
+      ctx.save();
+      if (typeof ctx.setTransform==='function') ctx.setTransform(1,0,0,1,0,0);
+      ctx.font = ctx.font || '14px ui-monospace';
+      var textW = 0;
+      for (var i=0;i<lines.length;i++){
+        var tw = (ctx.measureText? ctx.measureText(lines[i]).width : (12*lines[i].length));
+        if (tw > textW) textW = tw;
+      }
+      var boxW = Math.min(Math.max(textW + padX*2, 220), maxW);
+      var lineH = 18;
+      var boxH = padY*2 + lineH*lines.length;
+      var x = 12, y = h - (boxH + 14);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(x, y, boxW, boxH);
+
+      ctx.fillStyle = '#e9f1ff';
+      for (var j=0;j<lines.length;j++){
+        ctx.fillText(lines[j], x + padX, y + padY + lineH*(j+0.7));
+      }
+      ctx.restore();
+
     }
 
     // Panels
