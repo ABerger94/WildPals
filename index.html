@@ -157,6 +157,21 @@
     color:#cfe6ff; pointer-events:none; min-width:180px;
   }
 </style>
+
+<style id="introOverlayStyles">
+#introOverlay{cursor:pointer; touch-action: manipulation; -webkit-user-select:none; user-select:none;
+  position:fixed; inset:0; z-index:999999;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.82); color:#e9f1ff; text-align:center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+#introOverlay .box{ pointer-events:none; max-width:min(820px, 92vw); padding:24px 28px; border:1px solid rgba(255,255,255,.15); border-radius:12px; background:rgba(16,24,40,.55); box-shadow:0 18px 36px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06); }
+#introOverlay h1{ margin:0 0 12px; font-size:22px; letter-spacing:.06em; color:#cfe6ff; }
+#introOverlay p{ margin:8px 0; font-size:16px; opacity:.95 }
+#introOverlay .hint{ margin-top:14px; font-size:12px; color:#bcd1ff; opacity:.9 }
+#introOverlay .cta{ margin-top:20px; font-weight:800; font-size:13px; color:#dfe8ff; letter-spacing:.04em }
+</style>
+
 </head>
 <body>
   <!-- PORTRAIT -->
@@ -653,6 +668,30 @@ const DESERT = (function(){
   
  // Stage 7: basic interactions near player (1-tile proximity)
 function interactNearby(){
+
+  // --- Guardian feather turn-in (Desert) ---
+  try{
+    if (Game && Game.currentBiome==='desert' && Game.flags && Game.flags.desert_oasis_guardian_awake && !Game.flags.desert_guardian_portal_ready){
+      var T = (typeof TILE==='number')?TILE:32;
+      var gx = ((Game.flags.desert_guardian_tx|0)*T)|0, gy=((Game.flags.desert_guardian_ty|0)*T)|0;
+      var dx = Math.abs((player.x|0) - gx), dy = Math.abs((player.y|0) - gy);
+      if (dx<=40 && dy<=40){
+        // consume relic feather if present
+        var inv = Game.inventory||[]; var idx = -1;
+        for (var ii=0; ii<inv.length; ii++){ var it=inv[ii]; if (it && it.id==='relic_feather' && (it.qty||1)>0){ idx=ii; break; } }
+        if (idx>=0){
+          inv[idx].qty = (inv[idx].qty||1) - 1; if (inv[idx].qty<=0) inv.splice(idx,1);
+          Game.flags.desert_guardian_portal_ready = true;
+          if (!Game.unlocked) Game.unlocked = {};
+          Game.unlocked.wetlands = true;
+          if (typeof toast==='function') toast('The Sand Lynx parts the dunes… a portal stirs to the west.');
+          if (typeof rebuildPortals==='function') rebuildPortals();
+          return true;
+        }
+      }
+    }
+  }catch(_){}
+
   if (Game.currentBiome!=='desert') return false;
     
     
@@ -840,7 +879,17 @@ for (let i=0; i < arr.length; i++) {
     if (best!==-1 && bd<48){
       const n=npcs[best];
       if (n.role==='nomad_chief'){
-        if (!Game.flags.desert_caravan_started){ Game.flags.desert_caravan_started=true; toast('Caravan Circuit started'); return true; }
+        if (!Game.flags.desert_caravan_started){
+        Game.flags.desert_caravan_started = true;
+        try{
+          Game.quests = Game.quests || {};
+          if (!Game.quests['q_desert_main'] || Game.quests['q_desert_main']==='locked'){
+            Game.quests['q_desert_main'] = 'active';
+          }
+        }catch(_){}
+        toast('Caravan Circuit started');
+        return true;
+      }
         if (!Game.flags.desert_caravan_pass && _postsActive()>=3){ Game.flags.desert_caravan_pass=true; Game.flags.desert_caravan_done=true; toast('Caravan Pass granted!'); return true; }
         if (Game.flags.desert_caravan_pass){ toast('Chief: fast-travel unlocked at posts.'); return true; }
         toast('Nomad Chief: prove the route (activate 3 posts).'); return true;
@@ -1718,6 +1767,20 @@ function drawChests(gb, vx, vy){ { for(const c of chests){ const cx=(c.x - vx)|0
     const mid = mixRGB(SAND_DARK, SAND_LIGHT, t);
     return mid;
   }
+
+
+function wetlandsTone(tx,ty){
+  var g = ground[gi(tx,ty)];
+  var base =
+    (g===4) ? '#2a3b3b' :   // water - murky teal
+    (g===3) ? '#32412c' :   // brush - swampy dark green
+    (g===2) ? '#3a2e24' :   // mud - deep brown-olive
+    (g===1) ? '#2e4b2f' :   // grass - moss green
+              '#2b2f26';    // default - peat earth
+  var n = _hashNoise(tx,ty);
+  var k = 0.10 + (n*0.08);  // darken 10–18%
+  return _shade(base, k);
+}
 // Meadow gen
   function regenMeadow(){
     ground.fill(0); deco.fill(0); seen.fill(0);
@@ -1975,6 +2038,27 @@ function currentSpeed(){ return player.baseSpeed * (1 + ((Game.companions.find(p
 
 // -- Guardian NPC ensure (non-invasive) --
 function __ensureGuardianNPC(){
+  // --- Desert-only guardian enforcement (added) ---
+  try{
+    if (typeof Game !== 'undefined' && Game && Game.currentBiome && Game.currentBiome !== 'desert'){
+      // Remove any guardian/lynx variants from npcs while off-desert
+      try{
+        if (Array.isArray(window.npcs)){
+          for (var i = npcs.length - 1; i >= 0; i--){
+            var n = npcs[i];
+            var t = n && (n.role || n.type || n.kind || n.id || n.name) || '';
+            t = (''+t).toLowerCase();
+            if (t==='guardian' || t==='guardian_lynx' || t==='sand_lynx' || t.indexOf('lynx')!==-1){
+              npcs.splice(i,1);
+            }
+          }
+        }
+      }catch(_){}
+      return; // skip guardian ensure while not in desert
+    }
+  }catch(_){}
+  // --- end added desert-only block ---
+
   try{
     if (!Game || !Game.flags || !Game.flags.desert_oasis_guardian_awake) return;
     const T = (typeof TILE==='number') ? TILE : 32;
@@ -2090,6 +2174,32 @@ function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (playe
   function tileIsWater(tx,ty){ return ground[gi(tx,ty)]===4; }
   function tileIsBrush(tx,ty){ return ground[gi(tx,ty)]===BRUSH; }
 
+// --- Ensure spawn on land for wetlands ---
+function ensurePlayerOnLand(){
+  try{
+    const tx0 = (player.x / TILE) | 0;
+    const ty0 = (player.y / TILE) | 0;
+    const isBad = (tx,ty)=> (tx<1||ty<1||tx>=W-1||ty>=H-1|| tileIsWater(tx,ty) || tileIsBrush(tx,ty));
+    if (!isBad(tx0,ty0)) return; // already safe
+    let best = null;
+    for (let r=1; r<=20 && !best; r++){
+      for (let dy=-r; dy<=r && !best; dy++){
+        for (let dx=-r; dx<=r; dx++){
+          if (Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
+          const tx = tx0 + dx, ty = ty0 + dy;
+          if (tx<=1||ty<=1||tx>=W-1||ty>=H-1) continue;
+          if (!tileIsWater(tx,ty) && !tileIsBrush(tx,ty)){
+            best = {tx,ty};
+            break;
+          }
+        }
+      }
+    }
+    if (best){ player.x = best.tx*TILE; player.y = best.ty*TILE; }
+  }catch(e){}
+}
+
+
   function safeCampSpawn(){
     const trackY=(H*0.575)|0; // camp strip
     const candidates = [
@@ -2109,10 +2219,89 @@ function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (playe
     items.length=0; npcs.length=0; pals.length=0; portals.length=0; chests.length=0; particles.length=0;
     if (Game.currentBiome==='forest'){ seedForest(); }
     else if (Game.currentBiome==='desert'){ seedDesert(); }
+    else if (Game.currentBiome==='wetlands'){ seedWetlands();
+      ensurePlayerOnLand(); }
     else { seedMeadow(); }
     rebuildPortals(); ensureDesertReturnPortal();
     if (typeof sanitizeBiomeEntities==='function') sanitizeBiomeEntities();
   }
+
+// === Regen: Wetlands (marsh / fen) ===
+
+function regenWetlands(){
+  try{ ground.fill(1); deco.fill(0); seen.fill(0); }catch(_){}
+
+  // Tiles: 0=bare,1=grass,2=mud,3=brush,4=water
+  const T = (typeof TILE==='number')?TILE:32;
+
+  // 1) Start with grass baseline
+  for (let y=0;y<H;y++) for (let x=0;x<W;x++) ground[gi(x,y)] = 1;
+
+  // 2) Meandering main channel across map (sine + jitter)
+  const amp = Math.max(6, (H>>3));           // vertical swing of channel
+  const half = Math.max(3, (W>>5));          // half-width of channel
+  const f = (Math.PI*2) / Math.max(28, W);   // meander frequency
+  for (let x=0; x<W; x++){
+    const cy = (H>>1) + Math.floor(Math.sin((x + (Game.seed||1)*7)*f) * amp);
+    for (let y=cy - half; y<=cy + half; y++){
+      if (y<0||y>=H) continue;
+      ground[gi(x,y)] = 4; // water
+      // feather edges irregularly
+      const k = ((x*928371 + y*192837) & 7);
+      if (k<2){
+        if (y-1>=0) ground[gi(x,y-1)] = 4;
+        if (y+1<H) ground[gi(x,y+1)] = 4;
+      }
+    }
+  }
+
+  // 3) Oxbow ponds sprinkled around
+  const ponds = 18;
+  for (let i=0;i<ponds;i++){
+    const px = (i*37 + ((Game.seed||1)*53)) % W;
+    const py = (i*71 + ((Game.seed||1)*19)) % H;
+    const r  = 3 + ((i*(Game.seed||3)) % 4); // radius 3..6
+    for (let y=py-r; y<=py+r; y++){
+      for (let x=px-r; x<=px+r; x++){
+        if (x<0||y<0||x>=W||y>=H) continue;
+        const dx=x-px, dy=y-py, d2=dx*dx+dy*dy;
+        // noisy circle
+        const jitter = (((x*73856093) ^ (y*19349663)) & 1023)/1023;
+        if (d2 <= r*r * (0.75 + 0.55*jitter)) ground[gi(x,y)] = 4;
+      }
+    }
+  }
+
+  // 4) Mud belts ringing water
+  function isWater(x,y){ return x>=0&&y>=0&&x<W&&y<H && ground[gi(x,y)]===4; }
+  for (let y=0; y<H; y++){
+    for (let x=0; x<W; x++){
+      if (ground[gi(x,y)]!==1) continue;
+      const n4 = (isWater(x+1,y)?1:0) + (isWater(x-1,y)?1:0) + (isWater(x,y+1)?1:0) + (isWater(x,y-1)?1:0);
+      if (n4>0) ground[gi(x,y)] = 2; // mud edge
+    }
+  }
+
+  // 5) Sparse brush on drier grass patches, avoid water
+  for (let y=2;y<H-2;y++) for (let x=2;x<W-2;x++){
+    if (ground[gi(x,y)]===1 && Math.random()<0.045){
+      for (let yy=-1; yy<=1; yy++) for (let xx=-1; xx<=1; xx++){
+        const gx=x+xx, gy=y+yy;
+        if (gx>1&&gy>1&&gx<W-2&&gy<H-2 && ground[gi(gx,gy)]!==4) ground[gi(gx,gy)] = 3;
+      }
+    }
+  }
+
+  // 6) Lily pads: deco index 9 on calm/shallow (not too connected) water
+  for (let y=2; y<H-2; y++) for (let x=2; x<W-2; x++){
+    if (ground[gi(x,y)]===4){
+      const n4=(ground[gi(x+1,y)]===4?1:0)+(ground[gi(x-1,y)]===4?1:0)+(ground[gi(x,y+1)]===4?1:0)+(ground[gi(x,y-1)]===4?1:0);
+      if (n4<=2 && Math.random()<0.08) deco[gi(x,y)] = 9;
+    }
+  }
+}
+
+
 
   // Ensure desert purity of spawns/forage after seeding
   function sanitizeBiomeEntities(){
@@ -2402,8 +2591,96 @@ function seedForest(){
   }
 }
 
+// === Seed: Wetlands (flora + ambience) ===
+function seedWetlands(){
+  const T = (typeof TILE==='number')?TILE:32;
+  const isWater = (tx,ty)=> ground[gi(tx,ty)]===4;
+
+  // Shoreline reeds/herbs
+  for (let y=2;y<H-2;y++) for (let x=2;x<W-2;x++){
+    if (!isWater(x,y)){
+      const n4=(isWater(x+1,y)?1:0)+(isWater(x-1,y)?1:0)+(isWater(x,y+1)?1:0)+(isWater(x,y-1)?1:0);
+      if (n4>0){
+        const r=RNG.f();
+        if (r<0.22) items.push({id:'reed', x:x*T+(T>>1), y:y*T+(T>>1), w:20, h:20});
+        else if (r<0.32) items.push({id:'herb', x:x*T+(T>>1), y:y*T+(T>>1), w:20, h:20});
+      } else if (RNG.f()<0.012){
+        items.push({id:'mushroom', x:x*T+(T>>1), y:y*T+(T>>1), w:18, h:14});
+      }
+    }
+  }
+
+  // Friendly frog pal to telegraph biome life
+  try{ pals.push({id:'frog', x:(W*0.5|0)*T, y:(H*0.58|0)*T, w:24, h:24, wander:1}); }catch(_){}
+
+  // Fireflies ambience
+  for (let i=0;i<36;i++){
+    particles.push({x:RNG.i(0,W*T), y:RNG.i(0,H*T), vx:(RNG.f()-0.5)*0.2, vy:(RNG.f()-0.5)*0.15, life:180+RNG.i(0,180), c:'#a6ff8a'});
+  }
+
+  // --- Wetlands camp NPCs (quest + vendor + bench + scout) ---
+  try{
+    const T = (typeof TILE==='number')?TILE:32;
+    const camp = (typeof safeCampSpawn==='function') ? safeCampSpawn() : {x:(12*T), y:(((H*0.575)|0)-2)*T};
+    const cx = camp.x|0, cy = (camp.y|0) - 18*T;
+    npcs.push({ x: cx + 0*T,  y: cy + 0*T,  w:26, h:26, role:'bog_hermit',  name:'Bog Hermit' });
+    npcs.push({ x: cx - 2*T, y: cy + 0*T,  w:26, h:26, role:'market',      name:'Mud Trader',   shopId:'wetlands_outfitter' });
+    npcs.push({ x: cx + 2*T, y: cy + 0*T,  w:26, h:26, role:'workbench',   name:'Reed Artisan' });
+    npcs.push({ x: cx + 4*T, y: cy - 1*T,  w:26, h:26, role:'scout',       name:'Heron Scout' });
+  }catch(_){}
+}
+
+
 
   
+
+// ---- Portal placement helper: find a shoreline tile near the oasis water mass ----
+function findOasisPortalSpot(){
+  try{
+    if (typeof W!=='number' || typeof H!=='number' || !ground) return null;
+    var WATER = 4; // water tile id in Desert (matches map gen)
+    var pts = [];
+    for (var y=2;y<H-2;y++){
+      for (var x=2;x<W-2;x++){
+        if (ground[y*W + x] === WATER) pts.push([x,y]);
+      }
+    }
+    if (!pts.length) return null;
+
+    // centroid of water mass (sample to keep it fast)
+    var sx=0, sy=0, step=Math.max(1, Math.floor(pts.length/800));
+    for (var i=0;i<pts.length;i+=step){ sx+=pts[i][0]; sy+=pts[i][1]; }
+    var n=Math.ceil(pts.length/step), cx=Math.round(sx/n), cy=Math.round(sy/n);
+
+    function isWater(x,y){ return ground[y*W + x] === WATER; }
+    function inb(x,y){ return x>1 && y>1 && x<W-2 && y<H-2; }
+
+    // search outward for shoreline land tile (has at least one water neighbor)
+    for (var r=0; r<=18; r++){
+      for (var dy=-r; dy<=r; dy++){
+        for (var dx=-r; dx<=r; dx++){
+          if (Math.abs(dx)!=r && Math.abs(dy)!=r) continue;
+          var xx=cx+dx, yy=cy+dy;
+          if (!inb(xx,yy)) continue;
+          if (!isWater(xx,yy)){
+            var n4=(isWater(xx+1,yy)?1:0)+(isWater(xx-1,yy)?1:0)+(isWater(xx,yy+1)?1:0)+(isWater(xx,yy-1)?1:0);
+            if (n4>0) return {x:xx, y:yy};
+          }
+        }
+      }
+    }
+    // fallback: nearest land on cardinal rays
+    for (var r2=1; r2<=24; r2++){
+      var cand=[[cx+r2,cy],[cx-r2,cy],[cx,cy+r2],[cx,cy-r2]];
+      for (var k=0;k<cand.length;k++){
+        var xx2=cand[k][0], yy2=cand[k][1];
+        if (inb(xx2,yy2) && !isWater(xx2,yy2)) return {x:xx2, y:yy2};
+      }
+    }
+  }catch(_){}
+  return null;
+}
+
 function rebuildPortals(){
     portals.length=0;
     const trackY=(H*0.575)|0;
@@ -2421,8 +2698,12 @@ function rebuildPortals(){
       const ptx=(player.x/TILE|0), py = trackY;
       let px = Math.max(3, Math.min(W-4, ptx-3));
       if (ground[gi(px,py)]===4){ if (px < W-5) px += 2; else px -= 2; }
-      portals.push({x:px*TILE, y:py*TILE, w:32, h:32, to:'forest'});
-      // carve a clear 3x3 corridor around the portal
+      portals.push({x:(W-12)*TILE, y:trackY*TILE, w:32, h:32, to:'forest'});
+      // Wetlands portal (appears after relic feather is given to the guardian) — LEFT edge
+      if ((Game.flags && Game.flags.desert_guardian_portal_ready) || (Game.unlocked && Game.unlocked.wetlands)){
+        portals.push({x:10*TILE, y:trackY*TILE, w:32, h:32, to:'wetlands'});
+      }
+// carve a clear 3x3 corridor around the portal
       for(let yy=-1; yy<=1; yy++) for(let xx=-1; xx<=1; xx++){
         const gx=px+xx, gy=py+yy;
         if (gx>1&&gy>1&&gx<W-2&&gy<H-2){
@@ -2430,6 +2711,11 @@ function rebuildPortals(){
           if (ground[gi(gx,gy)]===BRUSH) ground[gi(gx,gy)]=0;
         }
       }
+    }
+  
+    else if (Game.currentBiome==='wetlands'){
+      const trackY=(H*0.575)|0;
+      portals.push({x:10*TILE, y:trackY*TILE, w:28, h:28, to:'desert'});
     }
   }
 
@@ -2488,36 +2774,100 @@ function rebuildPortals(){
       objectives:[ {type:"solve",id:"owl_riddle",qty:2, of:3}, {type:"capture",id:"owllet",qty:1} ],
       reward:{item:"relic_feather", unlock:"desert", flag:"owl_trial_pass"}
     }
+
+    , q_desert_main:{
+      name:"Circuit of the Dunes", giver:"nomad_chief",
+      objectives:[
+        {type:"posts_active", qty:3},                // activate 3 scout posts
+        {type:"shrine_count", qty:3},                // complete Wind, Sun, Sand
+        {type:"flag", id:"desert_vault_opened"},     // open the Sand Vault
+        {type:"flag", id:"desert_guardian_portal_ready"} // present Relic Feather to the Guardian
+      ],
+      reward:{coins:40, flag:"q_desert_main_done"}
+    }
 };
 function questState(id){ return Game.quests[id]||"locked"; }
   function beginQuest(id){ if(questState(id)==="locked"){ Game.quests[id]="active"; toast("Quest started: "+QUESTS[id].name); } }
   function questProgress(id){
-    const q=QUESTS[id]; if(!q) return null; const prog=[];
-    for(const o of q.objectives){
-      if(o.type==="collect"){
-        const have=(Game.inventory.find(s=>s.id===o.id)?.qty)||0;
-        prog.push({label:`${o.id} ${have}/${o.qty}`, done:have>=o.qty});
-      } else if(o.type==="craft"){
-        const have=(Game.inventory.find(s=>s.id===o.id)?.qty)||0;
-        prog.push({label:`craft ${o.id} ${have>=o.qty?o.qty:0}/${o.qty}`, done:have>=o.qty});
-      } else if(o.type==="capture_any"){
-        const have=Math.max(0, Game.companions.length-1);
-        prog.push({label:`capture any ${have}/${o.qty}`, done:have>=o.qty});
-      } else if(o.type==="capture"){
-        const have = Game.companions.some(p=>p.id===o.id) ? 1 : 0;
-        const need = o.qty||1;
-        prog.push({label:`capture ${o.id} ${Math.min(have,need)}/${need}`, done:have>=need});
-      } else if(o.type==="defeat"){
-        const doneFlag = !!Game.flags[o.id+"_defeated"];
-        prog.push({label:`defeat ${o.id}`, done:doneFlag});
-      } else if(o.type==="solve"){
-        const n = Game.flags.owl_riddle_count||0;
-        const need = o.qty||2;
-        prog.push({label:`solve riddles ${Math.min(n,need)}/${need}`, done:n>=need});
-      }
+  const q = QUESTS[id]; if (!q) return null;
+  const prog = [];
+  for (const o of q.objectives){
+    if (o.type === "collect"){
+      const have = (Game.inventory.find(s=>s.id===o.id)?.qty) || 0;
+      prog.push({ label: `${o.id} ${Math.min(have,o.qty)}/${o.qty}`, done: have >= o.qty });
+    } else if (o.type === "craft"){
+      const have = (Game.inventory.find(s=>s.id===o.id)?.qty) || 0;
+      const need = o.qty || 1;
+      prog.push({ label: `craft ${o.id} ${Math.min(have,need)}/${need}`, done: have >= need });
+    } else if (o.type === "capture_any"){
+      const need = o.qty || 1;
+      // count current companions as captures; clamp to need
+      const have = Math.max(0, Game.companions ? Game.companions.length : 0);
+      prog.push({ label: `capture any ${Math.min(have,need)}/${need}`, done: have >= need });
+    } else if (o.type === "posts_active" || o.type === "scout") {
+  // Prefer the existing counter if present; otherwise fall back to a safe scout counter
+  const have = (typeof _postsActive === 'function')
+    ? _postsActive()
+    : (function countScoutsActivated(){
+        try {
+          const arr = (Game.flags && Array.isArray(Game.flags.desert_landmarks))
+            ? Game.flags.desert_landmarks : [];
+          let c = 0;
+          for (let i = 0; i < arr.length; i++) {
+            const L = arr[i];
+            if (L && L.type === 'scout' && L.activated) c++;
+          }
+          return c;
+        } catch (_){ return 0; }
+      })();
+
+  const need = o.qty || 3;
+  prog.push({
+    label: `activate scout posts ${Math.min(have, need)}/${need}`,
+    done: have >= need
+  });
+    } else if (o.type === "shrine_count"){
+      let n = 0;
+      try{
+        n += Game.flags.desert_shrine_wind_done?1:0;
+        n += Game.flags.desert_shrine_sun_done?1:0;
+        n += Game.flags.desert_shrine_sand_done?1:0;
+      }catch(_){}
+      const need = o.qty || 3;
+      prog.push({ label: `complete shrines ${Math.min(n,need)}/${need}`, done: n >= need });
+    } else if (o.type === "flag"){
+      const ok = !!Game.flags[o.id];
+      prog.push({ label: `${(o.id||'flag').replace(/_/g,' ')} ${ok?1:0}/1`, done: ok });
+    } else if (o.type === "capture"){
+      const have = Game.companions && Game.companions.some(p=>p.id===o.id) ? 1 : 0;
+      const need = o.qty || 1;
+      prog.push({ label: `capture ${o.id} ${Math.min(have,need)}/${need}`, done: have >= need });
+    } else if (o.type === "defeat"){
+      const doneFlag = !!Game.flags[o.id + "_defeated"];
+      prog.push({ label: `defeat ${o.id}`, done: doneFlag });
+    } else if (o.type === "solve"){
+      const n = Game.flags.owl_riddle_count || 0;
+      const need = o.qty || 2;
+      prog.push({ label: `solve riddles ${Math.min(n,need)}/${need}`, done: n >= need });
     }
-    const done = prog.every(p=>p.done); return {prog,done};
   }
+  const done = prog.every(p => p.done);
+  return { prog, done }
+// === Helper: buildQuestProgress() -> choose active biome quest ===
+function buildQuestProgress(){
+  try{
+    const qid = (Game.currentBiome==='forest') ? 'q_forest_main'
+              : (Game.currentBiome==='meadow') ? 'q_meadow_main'
+              : (Game.currentBiome==='desert') ? 'q_desert_main'
+              : null;
+    if (!qid || questState(qid)==="locked") return { prog: [], done: false };
+    return questProgress(qid) || { prog: [], done: false };
+  }catch(_){ return { prog: [], done: false }; }
+}
+try{ if (typeof window!=='undefined') window.buildQuestProgress = window.buildQuestProgress || buildQuestProgress; }catch(_){}
+
+;
+}
   function tryTurnIn(id){
     const pr=questProgress(id); if(!pr || !pr.done) return toast("Not ready yet");
     Game.quests[id]="done";
@@ -2912,7 +3262,47 @@ const y = 70, ph = h - 140;
       ctx.fillText(`Inventory stacks: ${j.stacks}`, x+14, yy); yy+=16;
       ctx.fillText(`Pals owned: ${j.palsOwned}`, x+14, yy); yy+=16;
       ctx.fillText(`Discovered items: ${j.discoveredItems}`, x+14, yy); yy+=16;
-      if (j.biome!=='desert') { ctx.fillText(`${j.biome==='forest'?'Forest':'Meadow'} Main Quest: ${j.qMain}`, x+14, yy); yy+=16; ctx.fillText(`Guardian Trial: ${j.qGuardian}`, x+14, yy); yy+=16; }
+      
+      { // Unified quest lines for all biomes
+        let qid = (j.biome==='forest') ? 'q_forest_main' :
+                  (j.biome==='meadow') ? 'q_meadow_main' :
+                  (j.biome==='desert') ? 'q_desert_main' : null;
+        if (qid && questState(qid)!=="locked"){
+          const qpr = questProgress(qid);
+          ctx.fillStyle='#ffd54a';
+          ctx.fillText('Quest: '+QUESTS[qid].name, x+14, yy); yy+=16;
+          ctx.fillStyle='#e9f1ff';
+          // print up to 3 objective segments per line
+          let line=''; let segs=0;
+          for(const seg of qpr.prog){
+            const t = seg.label+(seg.done?' ✓':'');
+            if (segs && (line.length + t.length) > 40){ ctx.fillText(line, x+28, yy); yy+=16; line=''; segs=0; }
+            line += (segs? '   ' : '') + t; segs++;
+          }
+          if (line) { ctx.fillText(line, x+28, yy); yy+=16; }
+        } else if (!qid){
+          ctx.fillText('Explore freely', x+14, yy);       hudQuestBottomY = 54;
+yy+=16;
+        } else {
+          const tip = (j.biome==='forest') ? 'Talk to the Ranger to begin.' :
+                      (j.biome==='meadow') ? 'Talk to the Elder to begin.' :
+                      (j.biome==='desert') ? 'Speak with the Nomad Chief to start the circuit.' : '—';
+          ctx.fillText(tip, x+14, yy);       hudQuestBottomY = 54;
+yy+=16;
+        }
+        // Guardian/Trial line
+        if (j.biome==='forest'){
+          ctx.fillText(`Guardian Trial: ${questState('q_forest_guardian_owl')}`, x+14, yy); yy+=16;
+        } else if (j.biome==='desert'){
+          let gState = 'locked';
+          try{
+            if (Game.flags.desert_guardian_portal_ready || (Game.unlocked&&Game.unlocked.wetlands)) gState='done';
+            else if (Game.flags.desert_oasis_guardian_awake) gState='active';
+          }catch(_){}
+          ctx.fillText(`Guardian: ${gState}`, x+14, yy); yy+=16;
+        }
+      }
+    
       yy+=8; ctx.fillText('Pals & perks:', x+14, yy); yy+=16;
       // Scrollable pals list
       const listTop = yy;
@@ -3097,6 +3487,8 @@ if (typeof window.drawPlayer !== 'function') {
       if (Game.currentBiome==='desert'){
         const g=ground[gi(tx,ty)];
         ctx.fillStyle = (g===4) ? (COLORS[g]||'#3a78b8') : desertTone(tx,ty);
+      } else if (Game.currentBiome==='wetlands'){
+        ctx.fillStyle = (typeof wetlandsTone==='function') ? wetlandsTone(tx,ty) : (COLORS[ground[gi(tx,ty)]] || '#2f7a3f');
       } else {
         ctx.fillStyle = COLORS[ground[gi(tx,ty)]] || '#2f7a3f';
       }
@@ -3182,8 +3574,9 @@ drawPlayer(ctx, px, py);
     if (Game.buffs && nowB < Game.buffs.defUntil){ ctx.fillStyle='rgba(43,60,43,0.65)'; ctx.fillRect(bx,by-12,84,16); ctx.fillStyle='#b7ffb7'; ctx.fillText('BUFF: DEF↑', bx+6, by); bx+=96; }
     if (Game.buffs && nowB < Game.buffs.speedUntil){ ctx.fillStyle='rgba(43,52,72,0.65)'; ctx.fillRect(bx,by-12,104,16); ctx.fillStyle='#9ec6ff'; ctx.fillText('BUFF: SPEED↑', bx+6, by); bx+=116; }
     if (Game.buffs && nowB < Game.buffs.partyUntil){ ctx.fillStyle='rgba(60,43,58,0.65)'; ctx.fillRect(bx,by-12,116,16); ctx.fillStyle='#ffb7d1'; ctx.fillText('PARTYTIME', bx+6, by); }
-// HUD band
-    const bandX=8, bandY=8, bandW=w-16, bandH=72;
+
+// HUD band (expanded height to prevent overlap)
+    const bandX=8, bandY=8, bandW=w-16, bandH=96;
     ctx.fillStyle='rgba(0,0,0,0.55)'; roundRect(ctx, bandX, bandY, bandW, bandH, 10, true, false);
     ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.beginPath();
     ctx.moveTo(150, bandY+12); ctx.lineTo(150, bandY+bandH-12);
@@ -3191,6 +3584,7 @@ drawPlayer(ctx, px, py);
     ctx.stroke();
 
     ctx.fillStyle='#e9f1ff'; ctx.font='12px ui-monospace, monospace';
+    // Row 1 — static readouts
     ctx.fillText('Scene: '+Game.currentBiome, 16, 24);
     ctx.fillText('Pos: '+(player.x|0)+','+(player.y|0), 16, 40);
     ctx.fillText('Coins: '+Game.coins, 160, 24);
@@ -3198,16 +3592,60 @@ drawPlayer(ctx, px, py);
 
     // active pal chip
     const ap = Game.companions.find(p=>p.isActive) || Game.companions[0];
-    if (ap){ ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(260, 12, 140, 20); ctx.fillStyle='#e9f1ff'; ctx.fillText('Pal: '+ap.id, 266, 26); }
-    // Player HP bar
-    { const hp=Game.stats.hp||Game.stats.hpMax||100, hpm=Game.stats.hpMax||100; ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(12,56,180,10); ctx.fillStyle='#6cf07a'; ctx.fillRect(12,56, Math.max(0,180*(hp/hpm)),10); ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.strokeRect(12.5,56.5,179,9); }
+    if (ap){ ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(260, 16, 120, 20); ctx.fillStyle='#e9f1ff'; ctx.fillText('Pal: '+ap.id, 266, 26); }
 
-    // Equipped chips (dynamic width) + Boss HP bar (avoids chips)
-    { 
-      // Build chip data first so we can layout the boss HP with no overlap.
-      let ex = 410, ey = 44;
+    // Player HP bar
+    { const hp=Game.stats.hp||Game.stats.hpMax||100, hpm=Game.stats.hpMax||100;
+      const ratio = Math.max(0, Math.min(1, hp/hpm));
+      ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(12,54,180,10);
+      ctx.fillStyle='#54C9C1'; ctx.fillRect(12,54, (180*ratio)|0, 10);
+      ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.strokeRect(12.5,56.5,179,9);
+    }
+
+    // === Quest / Progress line (full row, wraps) ===
+    hudQuestBottomY = 56; // default fall-back baseline
+    {
+      const qpr = (typeof window!=='undefined' && typeof window.buildQuestProgress==='function') ? window.buildQuestProgress() : (typeof buildQuestProgress==='function' ? buildQuestProgress() : null);
+      if (qpr && qpr.prog && qpr.prog.length){
+        const segs = qpr.prog.map(seg => (seg.done?'\u2713 ':'• ') + seg.label);
+        const x0 = 16, y0 = 68; const maxW = Math.max(140, (ctx.canvas?ctx.canvas.width:960) - x0 - 18);
+        const lines = clampHUDSegments(ctx, segs, maxW, 2);
+        for(let i=0;i<lines.length;i++){ ctx.fillText(lines[i], x0, y0 + i*14); }
+        hudQuestBottomY = y0 + lines.length*14;
+      } else {
+        // No quest progress — show a single, right-aligned hint on the top HUD row.
+        var hint = (Game.currentBiome === 'desert')
+          ? ''
+          : (Game.currentBiome === 'forest'
+              ? ''
+              : '');
+
+        // right-align at y=24, clamp to one line with ellipsis
+        var padR = 18;
+        var maxW = Math.max(120, (ctx.canvas ? ctx.canvas.width : 960) * 0.40);
+        function clampOneLine(text, maxWidth){
+          var w = ctx.measureText(text).width;
+          if (w <= maxWidth) return text;
+          var ell = '…', out = '';
+          for (var i=0;i<text.length;i++){ var t = out + text[i]; if (ctx.measureText(t + ell).width > maxWidth) break; out = t; }
+          return out + ell;
+        }
+        var txt = clampOneLine(hint, maxW);
+        var tw = ctx.measureText(txt).width;
+        var xRight = (ctx.canvas ? ctx.canvas.width : 960) - padR - tw;
+        ctx.fillText(txt, xRight, 24);
+        hudQuestBottomY = 68; // baseline for HP layout
+      }}
+
+    // === Equipment chips on next row (wrap as needed) + Boss HP bar avoids them ===
+    {
+      let ex = 16, ey = hudQuestBottomY + 4;
       const chips = [];
       if (Game.equipped){
+        if (Game.equipped.weapon){
+          const t = Game.equipped.weapon;
+          chips.push(['Weapon', t.id + (t.usesLeft!=null? ` (${t.usesLeft}/${t.usesMax||t.usesLeft})` : '')]);
+        }
         if (Game.equipped.tool){
           const t = Game.equipped.tool;
           chips.push(['Tool', t.id + (t.usesLeft!=null? ` (${t.usesLeft}/${t.usesMax||t.usesLeft})` : '')]);
@@ -3215,62 +3653,102 @@ drawPlayer(ctx, px, py);
         if (Game.equipped.armor){
           chips.push(['Armor', Game.equipped.armor.id]);
         }
-        if (Game.equipped.weapon){
-          const t = Game.equipped.weapon;
-          chips.push(['Weapon', t.id + (t.usesLeft!=null? ` (${t.usesLeft}/${t.usesMax||t.usesLeft})` : '')]);
+        if (Game.buffs && Game.buffs.buffme){ // BUFF+ chip if cheat active
+          chips.push(['BUFF+', 'Active']);
         }
       }
       ctx.font='12px ui-monospace, monospace';
       const chipRects = [];
+      const rightLimit = w - 16;
       for (const [k,v] of chips){
         const label = `${k}: ${v}`;
         const tw = Math.ceil(ctx.measureText(label).width);
-        const cw = tw + 14; // 7px pad left/right
+        const cw = tw + 14;
+        if (ex + cw > rightLimit){ ex = 16; ey += 22; }
         chipRects.push({x:ex, y:ey, w:cw, h:20, label});
-        ex += cw + 10; // gap
+        ex += cw + 10;
       }
-      const chipsRight = chipRects.length ? (chipRects[chipRects.length-1].x + chipRects[chipRects.length-1].w) : 410;
+      const chipsRight = chipRects.length ? (chipRects[chipRects.length-1].x + chipRects[chipRects.length-1].w) : 16;
 
-      // Boss HP bar (right-aligned at y=52) — shrink/move left to avoid chips
+      // Boss HP bar (y aligned under chips) — shrink/move left to avoid chips
       if (typeof BoarBoss!=='undefined' && BoarBoss.active){
         const desiredW = 240;
         let bx = Math.max((w - 12 - desiredW)|0, (chipsRight + 8)|0);
         let bwMax = Math.max(0, (w - 12) - bx);
         const ratio = Math.max(0, Math.min(1, BoarBoss.hp/BoarBoss.hpMax));
-        // background
         ctx.fillStyle='rgba(0,0,0,0.5)';
-        ctx.fillRect(bx, 52, bwMax, 12);
-        // fill
+        ctx.fillRect(bx, ey + 8, bwMax, 12);
         ctx.fillStyle='#ff7b7b';
-        ctx.fillRect(bx, 52, Math.max(0, bwMax*ratio), 12);
-        // label centered over bar
+        ctx.fillRect(bx, ey + 8, Math.max(0, bwMax*ratio), 12);
         ctx.fillStyle='#e9f1ff';
         const labelX = bx + (bwMax>>1) - 18;
-        ctx.fillText('Boar', labelX|0, 50);
+        ctx.fillText('Boar', labelX|0, ey + 6);
       }
 
-      // Draw chips after computing layout
       for (const r of chipRects){
         ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(r.x, r.y, r.w, r.h);
         ctx.fillStyle='#e9f1ff'; ctx.fillText(r.label, r.x+6, r.y+14);
       }
     }
-
-    
-    // quest tracker
-    {
-      const qid = (Game.currentBiome==='forest')? 'q_forest_main' : (Game.currentBiome==='meadow' ? 'q_meadow_main' : null);
-      if (qid && questState(qid)!=="locked"){
-        const qpr = questProgress(qid);
-        ctx.fillText('Quest: '+QUESTS[qid].name, 420, 24);
-        let x=420, y=40; for(const seg of qpr.prog){ ctx.fillText(seg.label+(seg.done?' ✓':''), x, y); x+=140; }
-      } else if (!qid) {
-        ctx.fillText('Explore the dunes', 420, 24);
-      } else {
-        const tip = (Game.currentBiome==='forest') ? 'Talk to the Ranger to begin the forest quest.' : 'Talk to the Elder to begin the meadow quest.';
-        ctx.fillText(tip, 420, 24);
-      }
+function clampHUDSegments(ctx, segments, maxWidth, maxLines){
+  const lines=[]; let line=''; let segs=0;
+  for(const seg of segments){
+    const token = (segs? '   ' : '') + seg;
+    if (line && ctx.measureText(line + token).width > maxWidth){
+      lines.push(line); line = seg; segs = 1;
+      if (lines.length >= maxLines) break;
+    } else {
+      line += token; segs++;
     }
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  const joined = segments.join('   ');
+  const printed = lines.join('   ');
+  if (joined.length > printed.length && lines.length){
+    let last = lines[lines.length-1]; const ell=' …';
+    while (last && ctx.measureText(last + ell).width > maxWidth){ last = last.slice(0,-1); }
+    lines[lines.length-1] = (last||'…') + (last ? ell : '');
+  }
+  return lines;
+}
+// quest tracker
+{
+  hudQuestBottomY = 0;  // unified declaration to avoid redeclare errors
+
+  const qid = (Game.currentBiome==='forest') ? 'q_forest_main'
+            : (Game.currentBiome==='meadow') ? 'q_meadow_main'
+            : (Game.currentBiome==='desert') ? 'q_desert_main'
+            : (Game.currentBiome==='wetlands') ? 'q_wetlands_main'
+            : null;
+
+  if (qid && questState(qid)!=="locked"){
+    const qpr = questProgress(qid);
+    ctx.fillText('Quest: '+QUESTS[qid].name, 420, 24);
+    const segs = qpr.prog.map(seg => seg.label + (seg.done?' ✓':''));
+    const x0 = 420, y0 = 40; 
+    const maxW = Math.max(140, (ctx.canvas ? ctx.canvas.width : 960) - x0 - 18);
+    const lines = clampHUDSegments(ctx, segs, maxW, 2);
+    for (let i=0; i<lines.length; i++){ 
+      ctx.fillText(lines[i], x0, y0 + i*14); 
+    }
+    hudQuestBottomY = y0 + lines.length*14;
+
+  } else if (Game.currentBiome === 'desert') {
+    ctx.fillText('Speak with the Nomad Chief to start the circuit.', 420, 24);
+    hudQuestBottomY = 54;
+
+  } else if (Game.currentBiome === 'wetlands') {
+    ctx.fillText('Seek out the Bog Hermit to begin your swamp trials.', 420, 24);
+    hudQuestBottomY = 54;
+
+  } else {
+    const tip = (Game.currentBiome==='forest')
+      ? 'Talk to the Ranger to begin the forest quest.'
+      : 'Talk to the Elder to begin the meadow quest.';
+    ctx.fillText(tip, 420, 24);
+    hudQuestBottomY = 54;
+  }
+   }
 // Guardian Trial HUD (compact, inside top band)
     if (Game.currentBiome==='forest' && (!Game.flags.owl_trial_pass || GuardianTrial.active)){
       const label = 'Wisps ' + GuardianTrial.collected + '/5';
@@ -3602,6 +4080,10 @@ toast('Cheats menu'); }
                   const m=Game.stats.hpMax||100; Game.stats.hp=Math.min(m,(Game.stats.hp||m)+15);
                   s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); }
                   toast('Healed +15');
+                } else if (s.id==='pot_heal_s_plus'){
+                  const m=Game.stats.hpMax||100; Game.stats.hp=Math.min(m,(Game.stats.hp||m)+30);
+                  s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); }
+                  toast('Healed +30');
                 } else { toast('Used '+s.id); s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); } }
               } else {
                 equipFromInventory(invIdx);
@@ -3752,11 +4234,15 @@ status(['mode: '+state.mode,'biome: '+Game.currentBiome,'pressed: ['+(Array.from
 }
 
   // ---------- Travel ----------
-  function travelTo(targetBiome){ if (targetBiome===Game.currentBiome) return; Game.currentBiome = targetBiome; if (targetBiome==='forest'){ regenForest(); } else if (targetBiome==='desert'){ regenDesert(); } else { regenMeadow(); }
+  function travelTo(targetBiome){ if (targetBiome===Game.currentBiome) return; Game.currentBiome = targetBiome;
+    try{ if (targetBiome==='desert'){ Game.quests = Game.quests||{}; if (!Game.quests['q_desert_main']) Game.quests['q_desert_main']='active'; } }catch(_){} if (targetBiome==='forest'){ regenForest(); }
+    else if (targetBiome==='desert'){ regenDesert(); }
+    else if (targetBiome==='wetlands'){ regenWetlands(); }
+    else { regenMeadow(); }
     // put player near the respective portal landing
     const trackY=(H*0.575)|0;
     player.y = trackY*TILE;
-    player.x = (targetBiome==='forest') ? (12*TILE) : ((W-12)*TILE);
+    player.x = (targetBiome==='forest' || targetBiome==='wetlands') ? (12*TILE) : ((W-12)*TILE);
     seedByBiome(); ensureDesertReturnPortal();
     toast('Travelled to '+targetBiome);
   }
@@ -3774,6 +4260,20 @@ status(['mode: '+state.mode,'biome: '+Game.currentBiome,'pressed: ['+(Array.from
 
 // Data-only helper to increment owl riddle progress
 function solveOwlRiddle(){ Game.flags.owl_riddle_count = (Game.flags.owl_riddle_count||0)+1; }
+
+function _hashNoise(x,y){
+  let n = (x*73856093) ^ (y*19349663); n = (n<<13) ^ n;
+  return ((1.0 + (n*(n*n*15731 + 789221) + 1376312589) & 0x7fffffff) / 2147483648.0);
+}
+
+function _hexToRGBArr(hex){
+  try{ return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)]; }
+  catch(_){ return [32,49,79]; }
+}
+function _shade(hex, k){
+  var a=_hexToRGBArr(hex); var r=(a[0]*(1-k))|0, g=(a[1]*(1-k))|0, b=(a[2]*(1-k))|0;
+  return 'rgb('+r+','+g+','+b+')';
+}
 </script>
 <script>
 // === Player sprite ===
@@ -3799,6 +4299,73 @@ function drawPlayer(ctx, px, py){
 window.__AHandledPedestal = false;
 function maybeToastNoInteract(){ if (!window.__AHandledPedestal) toast('Nothing to interact with'); }
 </script>
+
+
+<div id="introOverlay" role="dialog" aria-modal="true" tabindex="0">
+  <div class="box">
+    <h1>Wild Pals — The Palbond</h1>
+    <p>Long ago, the Palbond Stone kept the world in harmony.</p>
+    <p>When it shattered, the guardians turned apart. The biomes drifted into silence.</p>
+    <p>You alone can bond with wild pals and mend the rift.</p>
+    <p class="cta">Your journey begins now — Seek the <strong>Wetlands</strong> to start the true path.</p>
+    <div class="hint">Press Start / Select / A — or Enter / Space — or tap anywhere to begin</div>
+  </div>
+</div>
+
+
+
+<script id="introOverlayScript">
+(function(){
+  if (window.__INTRO_WIRED__) return; window.__INTRO_WIRED__ = true;
+  var overlay = document.getElementById('introOverlay');
+  if (!overlay) return;
+  // Focus so keyboard works without clicking first
+  overlay.setAttribute('tabindex','0');
+  try{ overlay.focus({preventScroll:true}); }catch(_){ try{ overlay.focus(); }catch(__){} }
+  window.__INTRO_ACTIVE__ = true;
+
+  function startGame(){
+    overlay.style.display = 'none';
+    window.__INTRO_ACTIVE__ = false;
+    try{ if (typeof toast==='function') toast('Begin.'); }catch(e){}
+  }
+  function introActive(){ return (overlay && overlay.style.display !== 'none'); }
+  function stop(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(_){ } }
+
+  // Pointer/touch/mouse handlers on the overlay itself
+  ['click','pointerdown','pointerup','touchstart','touchend','mousedown','mouseup'].forEach(function(ev){
+    overlay.addEventListener(ev, function(e){ stop(e); if (introActive()) startGame(); }, {passive:false});
+  });
+
+  // Fallback on document (in case overlay misses an event)
+  ['pointerdown','pointerup','touchstart','touchend','click','mousedown','mouseup'].forEach(function(ev){
+    window.addEventListener(ev, function(e){ if (introActive()){ stop(e); startGame(); } }, {passive:false});
+  });
+
+  // Buttons present in your shell (portrait + landscape) — click to start
+  function hook(id){ var el=document.getElementById(id); if (el) el.addEventListener('click', function(e){ stop(e); startGame(); }, {passive:false}); }
+  ['btnStart','btnSelect','btnA','btnB','btnZ','lStart','lSelect','lA','lB','lZ'].forEach(hook);
+  // Canvas clicks also start
+  var cv = document.getElementById('game'); if (cv) cv.addEventListener('click', function(e){ if (introActive()){ stop(e); startGame(); } }, {passive:false});
+  var cv2= document.getElementById('gameLandscape'); if (cv2) cv2.addEventListener('click', function(e){ if (introActive()){ stop(e); startGame(); } }, {passive:false});
+
+  
+  // Keyboard: Q/E/WASD/Enter/Space/Arrow keys
+  window.addEventListener('keydown', function(e){
+    var ok = (
+      e.code==='KeyQ' || e.code==='KeyE' ||
+      e.code==='KeyW' || e.code==='KeyA' || e.code==='KeyS' || e.code==='KeyD' ||
+      e.code==='Enter' || e.code==='Space' ||
+      e.code==='ArrowUp' || e.code==='ArrowDown' || e.code==='ArrowLeft' || e.code==='ArrowRight'
+    );
+    if (ok && introActive()){ stop(e); startGame(); }
+  }, {passive:false});
+  // Safety auto-dismiss
+  setTimeout(function(){ if (introActive()) startGame(); }, 12000);
+})();
+
+</script>
+
 
 </body>
 </html>
