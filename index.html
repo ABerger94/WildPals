@@ -172,11 +172,12 @@
 #introOverlay .cta{ margin-top:20px; font-weight:800; font-size:13px; color:#dfe8ff; letter-spacing:.04em }
 </style>
 
-<!-- ===== SUPABASE CONFIG — paste your project values here ===== -->
+<!-- ===== SUPABASE + ABLY CONFIG ===== -->
 <script>
 window.WP_CONFIG = {
-  SUPABASE_URL: 'https://uyfaumobkgnzioklrqdb.supabase.co',       // e.g. https://xxxx.supabase.co
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5ZmF1bW9ia2duemlva2xycWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MjI3NzksImV4cCI6MjA5NjQ5ODc3OX0.N9eURKmQ9m3mYwAigGP9o6HJYxWhlWPPWpaeN0baVJQ'
+  SUPABASE_URL: 'YOUR_SUPABASE_URL',
+  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
+  ABLY_KEY: 'DEsPig.FgkI4w:3lcw2PSXe8qWvz7z3odBcfHIA3hl9mH4gPlIVEXhmIE'
 };
 </script>
 
@@ -199,7 +200,6 @@ const sb = window.WP_SB;
 window.WP_Auth = {
   user: null,
   profile: null,
-  channel: null,      // realtime presence channel for current biome
   _presenceTimer: null,
 
   async init() {
@@ -313,67 +313,91 @@ window.WP_Auth = {
     } catch(e) { console.error('[WildPals] Cloud load failed', e); }
   },
 
-  // ── Realtime Presence ────────────────────────────────────────
+  // ── Realtime Presence (Ably) ─────────────────────────────────
+  _ablyClient: null,
+  _ablyChannel: null,
+  _presenceTimer: null,
+
+  async _initAbly() {
+    if (this._ablyClient) return;
+    const key = window.WP_CONFIG?.ABLY_KEY;
+    if (!key) return console.warn('[WP] No Ably key configured');
+    try {
+      // Load Ably SDK
+      if (!window.Ably) {
+        await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.ably.com/lib/ably.min-2.js';
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      const clientId = this.profile?.username || this.user?.id || 'anon';
+      this._ablyClient = new Ably.Realtime({ key, clientId });
+      console.log('[WP Ably] initialized, clientId:', clientId);
+    } catch(e) { console.error('[WP Ably] init failed', e); }
+  },
+
   async joinBiome(biomeName) {
-    if (!sb || !this.profile) return;
+    if (!this.profile) return;
+    await this._initAbly();
+    if (!this._ablyClient) return;
+
+    // Leave old channel
     this._leavePresence();
 
-    const channelName = 'biome:' + biomeName;
-    this.channel = sb.channel(channelName, {
-      config: { presence: { key: this.user.id } }
+    const channelName = 'wildpals:biome:' + biomeName;
+    this._ablyChannel = this._ablyClient.channels.get(channelName);
+
+    // Subscribe to presence updates
+    await this._ablyChannel.presence.subscribe((msg) => {
+      try {
+        const { action, clientId, data } = msg;
+        if (clientId === (this.profile?.username || this.user?.id)) return;
+        if (action === 'leave' || action === 'absent') {
+          delete window._WP_OtherPlayers[clientId];
+        } else {
+          window._WP_OtherPlayers[clientId] = { ...data, username: clientId };
+        }
+      } catch(e) {}
     });
 
-    this.channel
-      .on('presence', { event: 'sync' }, () => {
-        try {
-          const state = this.channel.presenceState();
-          const next = {};
-          for (const key in state) {
-            if (key === this.user.id) continue;
-            const p = state[key][0];
-            if (p) next[key] = p;
-          }
-          window._WP_OtherPlayers = next;
-          console.log('[WP presence] others:', Object.keys(next).length);
-        } catch(e) { console.error('[WP presence sync]', e); }
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        if (key === this.user.id) return;
-        if (newPresences?.[0]) window._WP_OtherPlayers[key] = newPresences[0];
-      })
-      .on('presence', { event: 'leave' }, ({ key }) => {
-        delete window._WP_OtherPlayers[key];
-      })
-      .subscribe(async (status) => {
-        console.log('[WP channel]', channelName, status);
-        if (status === 'SUBSCRIBED') {
-          await this._broadcastPosition();
-        }
-      });
+    // Get current members
+    try {
+      const members = await this._ablyChannel.presence.get();
+      window._WP_OtherPlayers = {};
+      const myId = this.profile?.username || this.user?.id;
+      for (const m of members) {
+        if (m.clientId === myId) continue;
+        window._WP_OtherPlayers[m.clientId] = { ...m.data, username: m.clientId };
+      }
+      console.log('[WP Ably] joined', channelName, 'peers:', Object.keys(window._WP_OtherPlayers).length);
+    } catch(e) {}
 
-    // Broadcast position every 250ms
+    // Enter presence with current position
+    await this._broadcastPosition();
+
+    // Broadcast every 250ms
     this._presenceTimer = setInterval(() => this._broadcastPosition(), 250);
   },
 
   async _broadcastPosition() {
-    if (!this.channel || !this.profile || !window._WP_Player) return;
+    if (!this._ablyChannel || !this.profile || !window._WP_Player) return;
     try {
       const ap = window._WP_Game?.companions?.find(p => p.isActive) || window._WP_Game?.companions?.[0];
-      const biome = window._WP_Game?.currentBiome || 'meadow';
-      await this.channel.track({
-        uid: this.user.id,
-        username: this.profile.username,
+      await this._ablyChannel.presence.update({
         x: window._WP_Player.x | 0,
         y: window._WP_Player.y | 0,
         pal: ap?.id || 'rabbit',
-        biome
+        biome: window._WP_Game?.currentBiome || 'meadow'
       });
     } catch(e) {}
   },
 
   _leavePresence() {
     if (this._presenceTimer) { clearInterval(this._presenceTimer); this._presenceTimer = null; }
-    if (this.channel) { sb?.removeChannel(this.channel); this.channel = null; }
+    try { if (this._ablyChannel) { this._ablyChannel.presence.leave(); this._ablyChannel.presence.unsubscribe(); } } catch(e) {}
+    this._ablyChannel = null;
     window._WP_OtherPlayers = {};
   },
 
