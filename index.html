@@ -2262,8 +2262,9 @@ let particles = Array.isArray(globalThis.particles) ? globalThis.particles : [];
     Space:'Select', Tab:'Select',
     KeyZ:'Z'
   };
-  addEventListener('keydown', e=>{ const n=keyMap[e.code]; if(n){ e.preventDefault(); if(!state.pressed.has(n)) state.pressEdge.add(n); state.pressed.add(n); pulse(n);} });
-  addEventListener('keyup',   e=>{ const n=keyMap[e.code]; if(n){ e.preventDefault(); state.pressed.delete(n);} });
+  const _isTyping = () => { const t = document.activeElement?.tagName; return t === 'INPUT' || t === 'TEXTAREA'; };
+  addEventListener('keydown', e=>{ if (_isTyping()) return; const n=keyMap[e.code]; if(n){ e.preventDefault(); if(!state.pressed.has(n)) state.pressEdge.add(n); state.pressed.add(n); pulse(n);} });
+  addEventListener('keyup',   e=>{ if (_isTyping()) return; const n=keyMap[e.code]; if(n){ e.preventDefault(); state.pressed.delete(n);} });
 
   function bindBtn(id, name){
     const el=document.getElementById(id); if(!el) return;
@@ -5413,6 +5414,8 @@ function maybeToastNoInteract(){ if (!window.__AHandledPedestal) toast('Nothing 
 
   // Keyboard: Q/E/WASD/Enter/Space/Arrow keys
   window.addEventListener('keydown', function(e){
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     var ok = (
       e.code==='KeyQ' || e.code==='KeyE' ||
       e.code==='KeyW' || e.code==='KeyA' || e.code==='KeyS' || e.code==='KeyD' ||
