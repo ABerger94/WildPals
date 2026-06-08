@@ -236,6 +236,18 @@ window.WP_Auth = {
     showAuthMsg('Check your email for the login link ✓');
   },
 
+  // Google OAuth — full page redirect (avoids popup blockers)
+  async signInWithGoogle() {
+    if (!sb) return showAuthMsg('Supabase not configured');
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, skipBrowserRedirect: false }
+    });
+    if (error) showAuthMsg('Error: ' + error.message);
+    // Browser navigates away to Google then back — no further action needed
+  },
+
   async logout() {
     if (!sb) return;
     await this._saveToCloud(1);
@@ -384,7 +396,7 @@ window.showAuthMsg = function(msg) {
 window.wpSignInWithGoogle = function(e) {
   if (e) { e.stopPropagation(); e.preventDefault(); }
   if (!window.WP_SB) return showAuthMsg('Supabase not configured — check WP_CONFIG in the HTML');
-  showAuthMsg('Opening Google sign-in…');
+  showAuthMsg('Redirecting to Google…');
   WP_Auth.signInWithGoogle();
 };
 window.wpSendMagicLink = function() {
