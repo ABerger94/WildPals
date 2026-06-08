@@ -2609,21 +2609,49 @@ const ITEMS = {
   sandstone_blade:{ name:'Sandstone Blade', cat:'weapon', dmg:12, desc:'Rough but sharp desert blade.', chargesMax:20},
   aloe_bundle:{ name:'Aloe Bundle', cat:'material', desc:'Bundle of desert aloe leaves.' },
   reed_bundle:{ name:'Reed Bundle', cat:'material', desc:'Bundle of desert reeds.' },
+
   // === Phase 1: Food & Cooking ===
-  raw_fish:     { name:'Raw Fish',       cat:'food', desc:'A fresh catch. Cook it first.' },
-  cooked_fish:  { name:'Cooked Fish',    cat:'consumable', desc:'Restores 30 HP and 25 stamina.' },
-  berry_snack:  { name:'Berry Snack',    cat:'consumable', desc:'Restores 10 HP and 15 stamina.' },
-  roasted_berry:{ name:'Roasted Berry',  cat:'consumable', desc:'Restores 20 HP and 20 stamina.' },
-  mushroom_soup:{ name:'Mushroom Soup',  cat:'consumable', desc:'Restores 35 HP and 40 stamina.' },
-  herb_tea:     { name:'Herb Tea',       cat:'consumable', desc:'Restores 15 HP, 30 stamina. Grants regen for 30s.' },
-  hearty_stew:  { name:'Hearty Stew',    cat:'consumable', desc:'Restores 60 HP and 60 stamina. Full meal.' },
-  trail_mix:    { name:'Trail Mix',      cat:'consumable', desc:'Restores 20 HP and 35 stamina.' },
-  campfire_ash: { name:'Campfire Ash',   cat:'material',   desc:'Left after a campfire burns out.' },
-  torch:        { name:'Torch',          cat:'tool',       desc:'Lights the dark. Lasts 3 minutes.' },
-  fishing_rod:  { name:'Fishing Rod',    cat:'tool',       desc:'For catching fish at water edges.' },
-  basic_bait:   { name:'Basic Bait',     cat:'material',   desc:'Attracts common fish.' },
-  wooden_axe:   { name:'Wooden Axe',     cat:'tool',       desc:'Chops wood faster. 20 uses.' },
-  wooden_pick:  { name:'Wooden Pick',    cat:'tool',       desc:'Breaks stone faster. 20 uses.' },
+  raw_fish:     { name:'Raw Fish',       cat:'food',        desc:'A fresh catch. Cook it first.' },
+  cooked_fish:  { name:'Cooked Fish',    cat:'consumable',  desc:'Restores 30 HP and 25 stamina.' },
+  berry_snack:  { name:'Berry Snack',    cat:'consumable',  desc:'Restores 10 HP and 15 stamina.' },
+  roasted_berry:{ name:'Roasted Berry',  cat:'consumable',  desc:'Restores 20 HP and 20 stamina.' },
+  mushroom_soup:{ name:'Mushroom Soup',  cat:'consumable',  desc:'Restores 35 HP and 40 stamina.' },
+  herb_tea:     { name:'Herb Tea',       cat:'consumable',  desc:'Restores 15 HP, 30 stamina. Regen 30s.' },
+  hearty_stew:  { name:'Hearty Stew',    cat:'consumable',  desc:'Restores 60 HP and 60 stamina.' },
+  trail_mix:    { name:'Trail Mix',      cat:'consumable',  desc:'Restores 20 HP and 35 stamina.' },
+  campfire_ash: { name:'Campfire Ash',   cat:'material',    desc:'Left after a campfire burns out.' },
+  torch:        { name:'Torch',          cat:'tool',        desc:'Lights the dark. Lasts 3 minutes.' },
+  fishing_rod:  { name:'Fishing Rod',    cat:'tool',        desc:'For catching fish at water edges.' },
+  basic_bait:   { name:'Basic Bait',     cat:'material',    desc:'Attracts common fish.' },
+  wooden_axe:   { name:'Wooden Axe',     cat:'tool',        desc:'Chops wood faster. 20 uses.' },
+  wooden_pick:  { name:'Wooden Pick',    cat:'tool',        desc:'Breaks stone faster. 20 uses.' },
+
+  // === Phase 2: Fishing depth ===
+  worm_bait:    { name:'Worm Bait',      cat:'material',    desc:'Better than berries. Attracts rare fish.' },
+  glowing_lure: { name:'Glowing Lure',   cat:'material',    desc:'For night fishing. Attracts legendary fish.' },
+  fine_rod:     { name:'Fine Rod',       cat:'tool',        desc:'Improved fishing rod. Wider catch window.' },
+  river_trout:  { name:'River Trout',    cat:'food',        desc:'A common but tasty fish.' },
+  golden_fish:  { name:'Golden Fish',    cat:'food',        desc:'Rare. Worth a lot, or cook for big heal.' },
+  swamp_eel:    { name:'Swamp Eel',      cat:'food',        desc:'Found in wetlands at night.' },
+  desert_carp:  { name:'Desert Carp',    cat:'food',        desc:'Survives in oasis pools.' },
+  cooked_trout: { name:'Cooked Trout',   cat:'consumable',  desc:'+40 HP, +30 stam.' },
+  cooked_eel:   { name:'Cooked Eel',     cat:'consumable',  desc:'+25 HP, +50 stam. Night vision 20s.' },
+  golden_meal:  { name:'Golden Meal',    cat:'consumable',  desc:'+80 HP, +80 stam. Full restoration.' },
+  fish_stew:    { name:'Fish Stew',      cat:'consumable',  desc:'+50 HP, +50 stam. Good for long trips.' },
+
+  // === Phase 2: Farming ===
+  garden_plot:  { name:'Garden Plot',    cat:'tool',        desc:'Place on ground to start farming.' },
+  seed_berry:   { name:'Berry Seed',     cat:'material',    desc:'Plant in a garden plot.' },
+  seed_wheat:   { name:'Wheat Seed',     cat:'material',    desc:'Plant in a garden plot. Makes flour.' },
+  seed_herb:    { name:'Herb Seed',      cat:'material',    desc:'Plant in a garden plot.' },
+  seed_mushroom:{ name:'Mushroom Spore', cat:'material',    desc:'Plant in a shady garden plot.' },
+  seed_potato:  { name:'Potato Seed',    cat:'material',    desc:'Plant in a garden plot. Hearty crop.' },
+  wheat:        { name:'Wheat',          cat:'material',    desc:'Ground into flour for cooking.' },
+  flour:        { name:'Flour',          cat:'material',    desc:'Made from wheat. Used in bread recipes.' },
+  potato:       { name:'Potato',         cat:'food',        desc:'A filling root vegetable.' },
+  bread:        { name:'Bread',          cat:'consumable',  desc:'+25 HP, +40 stam. Simple but filling.' },
+  potato_soup:  { name:'Potato Soup',    cat:'consumable',  desc:'+45 HP, +45 stam.' },
+  watering_can: { name:'Watering Can',   cat:'tool',        desc:'Waters garden plots.' },
 };
 
 // Crafting recipes
@@ -2690,17 +2718,47 @@ const RECIPES = [
   { out:"basic_bait",     title:"Basic Bait",     needs:[{id:"berry",qty:2}],                              bench:"work" },
   { out:"wooden_axe",     title:"Wooden Axe",     needs:[{id:"wood",qty:4},{id:"stone",qty:2}],            bench:"work" },
   { out:"wooden_pick",    title:"Wooden Pick",    needs:[{id:"wood",qty:4},{id:"stone",qty:3}],            bench:"work" },
+
+  // === Phase 2: Advanced fishing tools ===
+  { out:"worm_bait",     title:"Worm Bait",      needs:[{id:"mushroom",qty:1},{id:"fiber",qty:1}],         bench:"work" },
+  { out:"glowing_lure",  title:"Glowing Lure",   needs:[{id:"fiber",qty:2},{id:"herb",qty:2}],             bench:"work" },
+  { out:"fine_rod",      title:"Fine Rod",        needs:[{id:"wood",qty:4},{id:"fiber",qty:4},{id:"stone",qty:1}], bench:"work" },
+
+  // === Phase 2: Advanced cooking (fish) ===
+  { out:"cooked_trout",  title:"Cooked Trout",   needs:[{id:"river_trout",qty:1}],                         bench:"campfire" },
+  { out:"cooked_eel",    title:"Cooked Eel",     needs:[{id:"swamp_eel",qty:1},{id:"herb",qty:1}],         bench:"campfire" },
+  { out:"golden_meal",   title:"Golden Meal",    needs:[{id:"golden_fish",qty:1},{id:"mushroom",qty:2}],   bench:"campfire" },
+  { out:"fish_stew",     title:"Fish Stew",      needs:[{id:"raw_fish",qty:2},{id:"herb",qty:1}],          bench:"campfire" },
+
+  // === Phase 2: Farming tools ===
+  { out:"garden_plot",   title:"Garden Plot",    needs:[{id:"wood",qty:4},{id:"stone",qty:2},{id:"fiber",qty:3}], bench:"work" },
+  { out:"watering_can",  title:"Watering Can",   needs:[{id:"wood",qty:2},{id:"stone",qty:3}],             bench:"work" },
+  { out:"seed_berry",    title:"Berry Seeds",    needs:[{id:"berry",qty:3}],                               bench:"work" },
+  { out:"seed_wheat",    title:"Wheat Seeds",    needs:[{id:"fiber",qty:2}],                               bench:"work" },
+  { out:"seed_herb",     title:"Herb Seeds",     needs:[{id:"herb",qty:2}],                                bench:"work" },
+  { out:"seed_mushroom", title:"Mushroom Spore", needs:[{id:"mushroom",qty:2}],                            bench:"work" },
+  { out:"seed_potato",   title:"Potato Seeds",   needs:[{id:"stone",qty:1},{id:"fiber",qty:2}],            bench:"work" },
+  { out:"flour",         title:"Flour",          needs:[{id:"wheat",qty:3}],                               bench:"work" },
+
+  // === Phase 2: Farm cooking ===
+  { out:"bread",         title:"Bread",          needs:[{id:"flour",qty:2},{id:"berry",qty:1}],            bench:"campfire" },
+  { out:"potato_soup",   title:"Potato Soup",    needs:[{id:"potato",qty:2},{id:"mushroom",qty:1}],        bench:"campfire" },
 ];
 
   const SHOPS = {
     meadow_village:{ items:[
       {id:"net_basic",price:20},{id:"pot_heal_s",price:10},
-      {id:"basic_bait",price:5},{id:"berry_snack",price:8},
-      {id:"torch",price:12},{id:"fishing_rod",price:30}
+      {id:"basic_bait",price:5},{id:"worm_bait",price:12},
+      {id:"berry_snack",price:8},{id:"torch",price:12},
+      {id:"fishing_rod",price:30},{id:"watering_can",price:24},
+      {id:"seed_berry",price:8},{id:"seed_wheat",price:12},
+      {id:"seed_herb",price:15},{id:"seed_potato",price:14}
     ]},
     forest_camp:{   items:[
       {id:"net_reed",price:45},{id:"pot_heal_s",price:14},
-      {id:"trail_mix",price:15},{id:"herb_tea",price:18}
+      {id:"trail_mix",price:15},{id:"herb_tea",price:18},
+      {id:"worm_bait",price:12},{id:"glowing_lure",price:20},
+      {id:"seed_mushroom",price:16},{id:"seed_herb",price:15}
     ]},
     
     wetlands_camp:{ items:[
@@ -2718,8 +2776,17 @@ const RECIPES = [
       {id:'reed', qty:3, price:12}
     ] }};
   // Simple sell values (materials only)
-  const SELL_VALUE = { wood:1, stone:2, berry:1, herb:2, reed:1, mushroom:2, fiber:2, cactus:2, sandstone:2, aloe:3 , aloe_bundle:6, reed_bundle:5, sandstone_blade:30, sandstone_key:40, boots_desert:40,
-  desert_rations:6
+  const SELL_VALUE = { wood:1, stone:2, berry:1, herb:2, reed:1, mushroom:2, fiber:2, cactus:2, sandstone:2, aloe:3,
+  aloe_bundle:6, reed_bundle:5, sandstone_blade:30, sandstone_key:40, boots_desert:40, desert_rations:6,
+  // Phase 2: Fish
+  raw_fish:4, river_trout:8, golden_fish:25, swamp_eel:10, desert_carp:6,
+  cooked_fish:8, cooked_trout:14, cooked_eel:16, golden_meal:40, fish_stew:12,
+  // Phase 2: Farm
+  wheat:2, flour:4, potato:3, bread:10, potato_soup:12,
+  // Phase 2: Bait
+  worm_bait:3, glowing_lure:8,
+  // Phase 1: Food
+  roasted_berry:4, mushroom_soup:8, herb_tea:7, hearty_stew:18, trail_mix:6, berry_snack:3
 };
 
   // Pals + passive perks (functional: speed, water_walk, forage_bonus, brush_break; glide is groundwork)
@@ -3328,6 +3395,13 @@ function seedForest(){
   npcs.push({x:(12*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Ranger', role:'ranger'});
   npcs.push({x:(16*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Trader', role:'market', shopId:'forest_camp'});
   npcs.push({x:(14*TILE), y:(trackY-1)*TILE, w:26,h:26, name:'Campfire', role:'campfire'});
+  // Fishing spot near water
+  let fTx2=14, fTy2=trackY+3;
+  for(let a=0;a<40;a++){
+    const tx=RNG.i(8,W-8), ty=RNG.i(trackY-4,trackY+8);
+    if (!tileIsWater(tx,ty)&&(tileIsWater(tx+1,ty)||tileIsWater(tx-1,ty)||tileIsWater(tx,ty+1)||tileIsWater(tx,ty-1))){ fTx2=tx; fTy2=ty; break; }
+  }
+  npcs.push({x:fTx2*TILE, y:fTy2*TILE, w:26,h:26, name:'Fishing Spot', role:'fishing_spot'});
 
   // 3) Forest pals — guarantee at least two of each species (sprite handled below)
   (function(){
@@ -5323,8 +5397,7 @@ toast('Cheats menu'); }
             if (state.pressEdge.has('Down')) invIdx = (invIdx + 1) % (L||1);
             if (state.pressEdge.has('A')){
               const s=Game.inventory[invIdx];
-              if (s && ITEMS[s.id]?.cat==='consumable'){
-                const _eat = (hp, stam, msg, regenSec) => {
+              if (s && ITEMS[s.id]?.cat==='consumable'){                const _eat = (hp, stam, msg, regenSec) => {
                   const hm = Game.stats.hpMax||100, sm = Game.stats.stamMax||100;
                   if (hp)   Game.stats.hp   = Math.min(hm, (Game.stats.hp||hm) + hp);
                   if (stam) Game.stats.stam = Math.min(sm, (Game.stats.stam||sm) + stam);
@@ -5348,7 +5421,19 @@ toast('Cheats menu'); }
                 else if (s.id==='herb_tea')        _eat(15,  30, '+15 HP, +30 stam, regen↑', 30);
                 else if (s.id==='hearty_stew')     _eat(60,  60, '+60 HP, +60 stam — full meal!');
                 else if (s.id==='trail_mix')       _eat(20,  35, '+20 HP, +35 stam');
+                // Phase 2 fish meals
+                else if (s.id==='cooked_trout')    _eat(40,  30, '+40 HP, +30 stam');
+                else if (s.id==='cooked_eel')   {  _eat(25,  50, '+25 HP, +50 stam, night vision↑');
+                  if (Game.buffs) Game.buffs.nightVisionUntil = Math.max(Game.buffs.nightVisionUntil||0, Date.now()+20000); }
+                else if (s.id==='golden_meal')     _eat(80,  80, '+80 HP, +80 stam — full restoration!');
+                else if (s.id==='fish_stew')       _eat(50,  50, '+50 HP, +50 stam');
+                // Phase 2 farm meals
+                else if (s.id==='bread')           _eat(25,  40, '+25 HP, +40 stam');
+                else if (s.id==='potato_soup')     _eat(45,  45, '+45 HP, +45 stam');
+                else if (s.id==='potato')          _eat(15,  20, '+15 HP, +20 stam (raw)');
                 else { toast('Used '+s.id); s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); } }
+              } else if (s && s.id === 'garden_plot') {
+                try{ WP_Survival.tryPlacePlot(player.x+player.w/2, player.y+player.h/2); }catch(_){ toast('Cannot place here'); }
               } else {
                 equipFromInventory(invIdx);
               }
@@ -5393,6 +5478,9 @@ toast('Cheats menu'); }
     const nearPlayer = WP_Social.nearestOtherPlayer(player, 56);
     if (nearPlayer) { WP_Social.openRadial(nearPlayer); __handled = true; }
   }catch(_){}
+
+  // ── Farm plot interaction ─────────────────────────────────
+  if (!__handled){ try{ if(WP_Survival.checkFarmInteract(player.x+player.w/2, player.y+player.h/2)) __handled=true; }catch(_){} }
 
   // Guardian Pedestal priority (forest)
   let __handled = false;
@@ -5640,163 +5728,408 @@ function maybeToastNoInteract(){ if (!window.__AHandledPedestal) toast('Nothing 
 </script>
 <script>
 // ============================================================
-//  WP_Survival — Phase 1: Campfire cooking + fishing minigame
+//  WP_Survival — Phase 2: Rich fishing + Farming system
 // ============================================================
 window.WP_Survival = (function(){
+
+  // ── State ────────────────────────────────────────────────────
   const state = {
-    cooking: { open: false, idx: 0 },
-    fishing: { open: false, phase: 'idle', timer: 0, biteTimer: 0, biteWindow: 0, result: null }
+    cooking:  { open: false },
+    fishing:  { open:false, phase:'idle', biteTimer:0, biteWindow:0, reelTimer:0, reelProgress:0, fish:null },
+    farming:  { open:false, plots:[], selectedPlot:null, idx:0 },
+    planting: { open:false, plotIdx:-1, seedIdx:0 },
   };
 
-  function _isOpen() { return state.cooking.open || (state.fishing.open && state.fishing.phase !== 'idle'); }
+  function _isOpen(){ return state.fishing.open || state.planting.open || state.farming.open; }
+
+  // ── Helpers ──────────────────────────────────────────────────
+  function _G(){ return window._WP_Game; }
+  function _inv(){ return _G()?.inventory || []; }
+  function _has(id,qty=1){ const s=_inv().find(s=>s.id===id); return s && s.qty>=qty; }
+  function _use(id,qty=1){ const G=_G(); if(!G) return; const s=G.inventory.find(s=>s.id===id); if(s){ s.qty-=qty; if(s.qty<=0) G.inventory=G.inventory.filter(x=>x.qty>0); } }
+  function _give(id,qty=1){ const G=_G(); if(!G) return; const ex=G.inventory.find(s=>s.id===id); if(ex) ex.qty+=qty; else G.inventory.push({id,qty}); }
+  function _toast(msg){ try{ if(typeof toast==='function') toast(msg); }catch(_){} }
+  function _rod(){ const G=_G(); const t=G?.equipped?.tool; return t?.id; }
+  function _rodTier(){ const r=_rod(); return r==='fine_rod'?2 : r==='fishing_rod'?1 : 0; }
+  function _biome(){ return _G()?.currentBiome||'meadow'; }
+  function _isNight(){ return _G()?.isNight||false; }
+
+  // ── Fish tables (by biome + time) ────────────────────────────
+  const FISH = {
+    meadow: {
+      day:   [ {id:'raw_fish',     name:'Common Fish',   w:50, bait:'any'},
+               {id:'river_trout',  name:'River Trout',   w:30, bait:'any'},
+               {id:'golden_fish',  name:'Golden Fish',   w:8,  bait:'worm_bait', rodMin:1},
+               {id:'raw_fish',     name:'Tiny Minnow',   w:12, bait:'any'} ],
+      night: [ {id:'river_trout',  name:'Night Trout',   w:40, bait:'any'},
+               {id:'golden_fish',  name:'Moon Fish',     w:20, bait:'glowing_lure', rodMin:1},
+               {id:'raw_fish',     name:'Common Fish',   w:40, bait:'any'} ]
+    },
+    forest: {
+      day:   [ {id:'river_trout',  name:'Forest Trout',  w:45, bait:'any'},
+               {id:'raw_fish',     name:'Creek Fish',    w:35, bait:'any'},
+               {id:'golden_fish',  name:'Dappled Carp',  w:10, bait:'worm_bait', rodMin:1},
+               {id:'raw_fish',     name:'Tiny Fish',     w:10, bait:'any'} ],
+      night: [ {id:'river_trout',  name:'Dark Trout',    w:35, bait:'any'},
+               {id:'golden_fish',  name:'Starlit Carp',  w:25, bait:'glowing_lure'},
+               {id:'raw_fish',     name:'Creek Fish',    w:40, bait:'any'} ]
+    },
+    wetlands: {
+      day:   [ {id:'raw_fish',     name:'Bog Fish',      w:40, bait:'any'},
+               {id:'river_trout',  name:'Swamp Perch',   w:30, bait:'any'},
+               {id:'swamp_eel',    name:'Swamp Eel',     w:20, bait:'worm_bait'},
+               {id:'golden_fish',  name:'Jade Carp',     w:10, bait:'worm_bait', rodMin:1} ],
+      night: [ {id:'swamp_eel',    name:'Night Eel',     w:50, bait:'any'},
+               {id:'golden_fish',  name:'Glimmer Fish',  w:25, bait:'glowing_lure'},
+               {id:'raw_fish',     name:'Bog Fish',      w:25, bait:'any'} ]
+    },
+    desert: {
+      day:   [ {id:'desert_carp',  name:'Oasis Carp',   w:50, bait:'any'},
+               {id:'raw_fish',     name:'Sand Fish',    w:30, bait:'any'},
+               {id:'golden_fish',  name:'Gold Carp',    w:10, bait:'worm_bait', rodMin:1},
+               {id:'river_trout',  name:'Desert Trout', w:10, bait:'any'} ],
+      night: [ {id:'desert_carp',  name:'Moonlit Carp', w:40, bait:'any'},
+               {id:'golden_fish',  name:'Desert Pearl', w:30, bait:'glowing_lure'},
+               {id:'raw_fish',     name:'Sand Fish',    w:30, bait:'any'} ]
+    }
+  };
+
+  function _pickFish(bait){
+    const biome  = _biome();
+    const table  = (FISH[biome] || FISH.meadow)[_isNight() ? 'night' : 'day'];
+    const rodTier = _rodTier();
+    // Filter by rod and bait requirements
+    const eligible = table.filter(f => {
+      if (f.rodMin && rodTier < f.rodMin) return false;
+      if (f.bait !== 'any' && bait !== f.bait) return false;
+      return true;
+    });
+    const pool = eligible.length ? eligible : table.filter(f => f.bait === 'any');
+    let sum = 0; for(const f of pool) sum += f.w;
+    let r = Math.random() * sum;
+    for(const f of pool){ r -= f.w; if(r<=0) return f; }
+    return pool[pool.length-1];
+  }
+
+  // bite speed: fine rod = wider window, worm bait = slightly longer wait
+  function _biteTime(bait){ return 2.0 + Math.random()*3.5 + (bait==='worm_bait'?0.5:0) - (_rodTier()===2?0.5:0); }
+  function _biteWindow(){ return _rodTier()===2 ? 2.0 : 1.2; }
+
+  function _hasBait(type){ return type ? _has(type) : (_has('basic_bait')||_has('worm_bait')||_has('glowing_lure')); }
+  function _bestBait(){
+    if (_has('glowing_lure') && _isNight()) return 'glowing_lure';
+    if (_has('worm_bait')) return 'worm_bait';
+    if (_has('basic_bait')) return 'basic_bait';
+    return null;
+  }
+
+  // ── Fishing entry ────────────────────────────────────────────
+  function startFishing(){
+    if (_rodTier()===0) return _toast('Need a Fishing Rod! Craft at workbench.');
+    const bait = _bestBait();
+    if (!bait) return _toast('Need bait! Craft Basic Bait from berries.');
+    _use(bait);
+    const f = state.fishing;
+    f.open=true; f.phase='casting'; f.bait=bait;
+    f.biteTimer=_biteTime(bait); f.biteWindow=_biteWindow();
+    f.reelTimer=0; f.reelProgress=0; f.fish=null;
+    _toast('Cast! ('+(bait.replace('_',' '))+') Wait for a bite…');
+  }
+
+  // ── Fishing tick ─────────────────────────────────────────────
+  function _tickFishing(dt){
+    const f = state.fishing;
+    if (!f.open || f.phase==='idle') return;
+    if (f.phase==='casting'){
+      f.biteTimer -= dt;
+      if (f.biteTimer<=0){ f.phase='bite'; _toast('BITE! Press A!'); }
+    } else if (f.phase==='bite'){
+      f.biteWindow -= dt;
+      if (f.biteWindow<=0){ f.phase='idle'; f.open=false; _toast('It got away! Try again.'); }
+    } else if (f.phase==='reeling'){
+      // Reeling minigame: mash A to fill progress bar
+      f.reelTimer += dt;
+      f.reelProgress -= 8*dt; // drains if you don't press
+      if (f.reelProgress <= 0) f.reelProgress = 0;
+      if (f.reelProgress >= 100){
+        // Caught!
+        const fish = f.fish;
+        _give(fish.id, 1);
+        _toast('Caught a ' + fish.name + '!');
+        try{ _G().discovered?.add(fish.id); }catch(_){}
+        // Bonus loot on golden fish
+        if (fish.id==='golden_fish' && Math.random()<0.3) { _give('herb',1); _toast('Also found an herb!'); }
+        f.phase='idle'; f.open=false;
+      }
+      if (f.reelTimer > 8){ // timeout — fish escapes
+        f.phase='idle'; f.open=false; _toast('It got away while reeling!');
+      }
+    }
+  }
+
+  function _fishingPressA(){
+    const f = state.fishing;
+    if (f.phase==='bite'){
+      f.fish = _pickFish(f.bait);
+      f.phase='reeling'; f.reelTimer=0; f.reelProgress=20;
+      _toast('Got it! Reel in — keep pressing A!');
+      return true;
+    }
+    if (f.phase==='reeling'){
+      f.reelProgress = Math.min(100, f.reelProgress + 18);
+      return true;
+    }
+    return false;
+  }
+
+  // ── Farming system ───────────────────────────────────────────
+  const CROPS = {
+    seed_berry:    { name:'Berries',   growTime:60,  yield:'berry',    yieldQty:3, waterNeeded:2 },
+    seed_wheat:    { name:'Wheat',     growTime:90,  yield:'wheat',    yieldQty:2, waterNeeded:3 },
+    seed_herb:     { name:'Herbs',     growTime:75,  yield:'herb',     yieldQty:2, waterNeeded:2 },
+    seed_mushroom: { name:'Mushrooms', growTime:120, yield:'mushroom', yieldQty:3, waterNeeded:1 },
+    seed_potato:   { name:'Potatoes',  growTime:100, yield:'potato',   yieldQty:2, waterNeeded:3 },
+  };
+
+  // Plots persist in Game.flags.farm_plots array
+  function _plots(){ const G=_G(); if(!G) return []; G.flags=G.flags||{}; G.flags.farm_plots=G.flags.farm_plots||[]; return G.flags.farm_plots; }
+
+  function placePlot(tx, ty){
+    const plots = _plots();
+    if (plots.some(p=>p.tx===tx&&p.ty===ty)) return _toast('Already a plot here');
+    plots.push({ tx, ty, seed:null, waterCount:0, growElapsed:0, stage:0, ready:false });
+    _toast('Garden plot placed! Interact to plant seeds.');
+  }
+
+  function interactPlot(plotIdx){
+    const plots = _plots();
+    const plot = plots[plotIdx];
+    if (!plot) return;
+    if (plot.ready){
+      // Harvest
+      const crop = CROPS[plot.seed];
+      if (crop){ _give(crop.yield, crop.yieldQty); _toast('Harvested '+crop.yieldQty+' '+crop.name+'!'); }
+      plot.seed=null; plot.waterCount=0; plot.growElapsed=0; plot.stage=0; plot.ready=false;
+      return;
+    }
+    if (!plot.seed){
+      // Open seed picker
+      state.planting.open=true; state.planting.plotIdx=plotIdx; state.planting.seedIdx=0;
+      return;
+    }
+    // Water if we have watering can
+    if (_has('watering_can')){
+      const crop = CROPS[plot.seed];
+      if (plot.waterCount < (crop?.waterNeeded||2)){
+        plot.waterCount++;
+        _toast('Watered! ('+plot.waterCount+'/'+(crop?.waterNeeded||2)+')');
+      } else { _toast('Already watered enough. Wait for it to grow.'); }
+    } else { _toast('Seed planted — craft a Watering Can to water it.'); }
+  }
+
+  function _tickFarming(dt){
+    const plots = _plots();
+    const dayLen = Math.max(60, _G()?.dayLength||300);
+    for(const p of plots){
+      if (!p.seed || p.ready) continue;
+      if (p.waterCount <= 0) continue; // needs water to grow
+      const crop = CROPS[p.seed];
+      if (!crop) continue;
+      // Grow faster when fully watered
+      const rate = p.waterCount >= crop.waterNeeded ? 1.0 : 0.4;
+      p.growElapsed += dt * rate;
+      p.stage = Math.min(3, Math.floor((p.growElapsed / crop.growTime) * 4));
+      if (p.growElapsed >= crop.growTime){ p.ready=true; _toast('Your '+crop.name+' are ready to harvest!'); }
+    }
+  }
+
+  function _nearestPlot(playerX, playerY, radius){
+    const plots = _plots();
+    const T = (typeof TILE!=='undefined'?TILE:32);
+    let best=-1, bestD=radius*radius;
+    for(let i=0;i<plots.length;i++){
+      const p=plots[i];
+      const dx=(p.tx*T+T/2)-playerX, dy=(p.ty*T+T/2)-playerY;
+      const d2=dx*dx+dy*dy;
+      if(d2<bestD){ bestD=d2; best=i; }
+    }
+    return best;
+  }
+
+  // Called by A-press in game — check if near a plot
+  function checkFarmInteract(playerX, playerY){
+    const idx = _nearestPlot(playerX, playerY, 56);
+    if (idx < 0) return false;
+    interactPlot(idx);
+    return true;
+  }
 
   // ── Cooking ─────────────────────────────────────────────────
-  function openCooking() {
-    state.cooking.open = true;
-    state.cooking.idx  = 0;
-    if (typeof toast === 'function') toast('Campfire: Select → Crafting to cook');
-    // Just flag that we're near a campfire — the crafting panel handles the rest
-    if (typeof UI !== 'undefined') { UI.quick = true; }
-    if (typeof quickTab !== 'undefined') { quickTab = 1; } // jump to crafting tab
-    state.cooking.open = false; // close immediately, panel takes over
+  function openCooking(){
+    if (typeof UI!=='undefined') UI.quick=true;
+    try{ if(typeof quickTab!=='undefined') quickTab=1; }catch(_){}
   }
 
-  // ── Fishing ─────────────────────────────────────────────────
-  const FISH_TABLE = [
-    { id:'raw_fish', name:'Common Fish',  weight:55, minRod:0 },
-    { id:'raw_fish', name:'River Trout',  weight:30, minRod:0 },
-    { id:'raw_fish', name:'Rare Catch',   weight:10, minRod:1, bonus:'mushroom' },
-    { id:'raw_fish', name:'Golden Fish',  weight:5,  minRod:1, bonus:'herb' },
-  ];
-
-  function _hasBait() {
-    const G = window._WP_Game;
-    return G && G.inventory && G.inventory.some(s => s.id === 'basic_bait' && s.qty > 0);
-  }
-  function _hasRod() {
-    const G = window._WP_Game;
-    return G && G.equipped && G.equipped.tool && G.equipped.tool.id === 'fishing_rod';
-  }
-  function _useBait() {
-    const G = window._WP_Game;
-    if (!G) return;
-    const slot = G.inventory.find(s => s.id === 'basic_bait');
-    if (slot) { slot.qty--; if (slot.qty <= 0) G.inventory = G.inventory.filter(s => s.qty > 0); }
-  }
-  function _addItem(id, qty) {
-    const G = window._WP_Game;
-    if (!G) return;
-    const ex = G.inventory.find(s => s.id === id);
-    if (ex) ex.qty += qty; else G.inventory.push({ id, qty });
-  }
-
-  function startFishing() {
-    if (!_hasRod()) return typeof toast === 'function' ? toast('You need a Fishing Rod! Craft one at a workbench.') : null;
-    if (!_hasBait()) return typeof toast === 'function' ? toast('You need Basic Bait! Craft from berries at a workbench.') : null;
-    _useBait();
-    state.fishing.phase = 'casting';
-    state.fishing.open  = true;
-    state.fishing.timer = 0;
-    state.fishing.biteTimer  = 1.5 + Math.random() * 3.0; // 1.5–4.5s wait for bite
-    state.fishing.biteWindow = 0;
-    state.fishing.result = null;
-    if (typeof toast === 'function') toast('Cast! Wait for a bite…');
-  }
-
-  function _tick(dt) {
-    const f = state.fishing;
-    if (!f.open || f.phase === 'idle') return;
-    f.timer += dt;
-    if (f.phase === 'casting') {
-      f.biteTimer -= dt;
-      if (f.biteTimer <= 0) {
-        f.phase = 'bite';
-        f.biteWindow = 1.2; // 1.2s to press A
-        if (typeof toast === 'function') toast('BITE! Press A!');
-      }
-    } else if (f.phase === 'bite') {
-      f.biteWindow -= dt;
-      if (f.biteWindow <= 0) {
-        // Missed
-        f.phase = 'idle'; f.open = false;
-        if (typeof toast === 'function') toast('It got away! Try again.');
-      }
-    } else if (f.phase === 'reeling') {
-      f.timer += dt;
-      if (f.timer > 1.0) {
-        // Give fish
-        const fish = _pickFish();
-        _addItem(fish.id, 1);
-        if (fish.bonus) _addItem(fish.bonus, 1);
-        if (typeof toast === 'function') toast('Caught a ' + fish.name + '!');
-        if (typeof Game !== 'undefined') Game.discovered?.add(fish.id);
-        f.phase = 'idle'; f.open = false;
-      }
-    }
-  }
-
-  function _pickFish() {
-    let sum = 0;
-    for (const f of FISH_TABLE) sum += f.weight;
-    let r = Math.random() * sum;
-    for (const f of FISH_TABLE) { r -= f.weight; if (r <= 0) return f; }
-    return FISH_TABLE[0];
-  }
-
-  function handleInput(st) {
-    if (!state.fishing.open) return false;
-    if (state.fishing.phase === 'bite' && st.pressEdge.has('A')) {
-      state.fishing.phase = 'reeling';
-      state.fishing.timer = 0;
-      if (typeof toast === 'function') toast('Got it! Reeling in…');
+  // ── Input handler ────────────────────────────────────────────
+  function handleInput(st){
+    // Fishing
+    if (state.fishing.open){
+      if (state.fishing.phase==='idle'){ state.fishing.open=false; return false; }
+      if (st.pressEdge.has('A')) _fishingPressA();
+      if (st.pressEdge.has('B')||st.pressEdge.has('Start')){ state.fishing.open=false; state.fishing.phase='idle'; return true; }
       return true;
     }
-    if (st.pressEdge.has('B') || st.pressEdge.has('Start')) {
-      state.fishing.phase = 'idle'; state.fishing.open = false;
+    // Seed picker
+    if (state.planting.open){
+      const seeds = Object.keys(CROPS).filter(id=>_has(id));
+      if (seeds.length===0){ _toast('No seeds! Craft seeds at a workbench.'); state.planting.open=false; return true; }
+      if (st.pressEdge.has('Up'))   state.planting.seedIdx=(state.planting.seedIdx+seeds.length-1)%seeds.length;
+      if (st.pressEdge.has('Down')) state.planting.seedIdx=(state.planting.seedIdx+1)%seeds.length;
+      if (st.pressEdge.has('A')){
+        const sid = seeds[state.planting.seedIdx];
+        const plot = _plots()[state.planting.plotIdx];
+        if (plot){ _use(sid); plot.seed=sid; plot.waterCount=0; plot.growElapsed=0; plot.stage=0; _toast('Planted '+CROPS[sid].name+'! Water it to grow.'); }
+        state.planting.open=false; return true;
+      }
+      if (st.pressEdge.has('B')||st.pressEdge.has('Start')){ state.planting.open=false; return true; }
       return true;
     }
-    return state.fishing.open;
+    return false;
   }
 
-  function draw(ctx, w, h) {
-    if (!state.fishing.open || state.fishing.phase === 'idle') return;
+  // ── Tick ─────────────────────────────────────────────────────
+  function tick(dt){
+    _tickFishing(dt);
+    _tickFarming(dt);
+  }
+
+  // ── Draw ─────────────────────────────────────────────────────
+  function draw(ctx, w, h){
+    if (state.fishing.open && state.fishing.phase!=='idle') _drawFishing(ctx,w,h);
+    if (state.planting.open) _drawSeedPicker(ctx,w,h);
+    _drawFarmPlots(ctx,w,h);
+  }
+
+  function _drawFishing(ctx,w,h){
     const f = state.fishing;
-    const pw = 220, ph = 90;
-    const x = (w - pw) >> 1, y = h - ph - 70;
+    const pw=260, ph=100;
+    const x=(w-pw)>>1, y=h-ph-70;
+    ctx.fillStyle='rgba(10,14,26,.96)'; ctx.fillRect(x,y,pw,ph);
+    ctx.strokeStyle='rgba(84,201,193,.5)'; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+.5,pw,ph);
 
-    ctx.fillStyle = 'rgba(10,14,26,.95)';
-    ctx.fillRect(x, y, pw, ph);
-    ctx.strokeStyle = 'rgba(84,201,193,.5)'; ctx.lineWidth = 1;
-    ctx.strokeRect(x+.5, y+.5, pw, ph);
-
-    ctx.font = 'bold 13px ui-monospace, monospace';
-    ctx.fillStyle = '#7eddd7';
-    if (f.phase === 'casting') {
-      ctx.fillText('🎣 Waiting for bite…', x+14, y+24);
-      // Animated dots
-      const dots = '.'.repeat(((f.timer*2)|0) % 4);
-      ctx.fillStyle = '#cfe6ff'; ctx.font = '11px ui-monospace, monospace';
-      ctx.fillText('Line in water' + dots, x+14, y+44);
-    } else if (f.phase === 'bite') {
-      ctx.fillStyle = '#ffd54a';
-      ctx.fillText('⚡ BITE! Press A NOW!', x+14, y+24);
-      // Countdown bar
-      const ratio = Math.max(0, f.biteWindow / 1.2);
-      ctx.fillStyle = 'rgba(255,213,74,.2)'; ctx.fillRect(x+14, y+34, pw-28, 12);
-      ctx.fillStyle = ratio > 0.4 ? '#ffd54a' : '#ff5555';
-      ctx.fillRect(x+14, y+34, ((pw-28)*ratio)|0, 12);
-    } else if (f.phase === 'reeling') {
-      ctx.fillText('Reeling in…', x+14, y+24);
-      const ratio = Math.min(1, f.timer / 1.0);
-      ctx.fillStyle = 'rgba(84,201,193,.2)'; ctx.fillRect(x+14, y+34, pw-28, 12);
-      ctx.fillStyle = '#54C9C1'; ctx.fillRect(x+14, y+34, ((pw-28)*ratio)|0, 12);
+    ctx.font='bold 13px ui-monospace,monospace';
+    if (f.phase==='casting'){
+      ctx.fillStyle='#7eddd7'; ctx.fillText('🎣 Waiting for bite…', x+14, y+24);
+      // Animated water line
+      const t=(performance.now?performance.now():Date.now())*0.003;
+      ctx.fillStyle='rgba(84,201,193,.4)';
+      for(let i=0;i<5;i++){
+        const wx=x+20+i*42, wy=y+50+Math.sin(t+i)*4;
+        ctx.fillRect(wx,wy,30,2);
+      }
+      ctx.font='10px ui-monospace,monospace'; ctx.fillStyle='rgba(255,255,255,.4)';
+      ctx.fillText('Bait: '+f.bait?.replace('_',' ')+'  Rod: '+(f.bait==='glowing_lure'?'✦':_rodTier()===2?'★':'☆'), x+14, y+74);
+    } else if (f.phase==='bite'){
+      ctx.fillStyle='#ffd54a'; ctx.fillText('⚡ BITE! Press A NOW!', x+14, y+24);
+      const ratio=Math.max(0,f.biteWindow/_biteWindow());
+      ctx.fillStyle='rgba(255,213,74,.15)'; ctx.fillRect(x+14,y+36,pw-28,16);
+      ctx.fillStyle=ratio>0.4?'#ffd54a':'#ff5555'; ctx.fillRect(x+14,y+36,((pw-28)*ratio)|0,16);
+      ctx.font='9px ui-monospace,monospace'; ctx.fillStyle='rgba(255,255,255,.5)';
+      ctx.fillText('Window closing!', x+14, y+68);
+    } else if (f.phase==='reeling'){
+      ctx.fillStyle='#a8e063'; ctx.fillText('Reel in! Keep pressing A!', x+14, y+22);
+      // Progress bar
+      const ratio=Math.min(1,f.reelProgress/100);
+      ctx.fillStyle='rgba(168,224,99,.15)'; ctx.fillRect(x+14,y+32,pw-28,18);
+      ctx.fillStyle='#a8e063'; ctx.fillRect(x+14,y+32,((pw-28)*ratio)|0,18);
+      // Fish silhouette swimming
+      const swim=Math.sin((performance.now?performance.now():Date.now())*0.008)*8;
+      ctx.fillStyle='rgba(126,221,215,.7)'; ctx.font='16px monospace';
+      ctx.fillText('🐟', x+14+((pw-50)*ratio)|0+swim, y+72);
+      ctx.font='9px ui-monospace,monospace'; ctx.fillStyle='rgba(255,255,255,.4)';
+      ctx.fillText('Mash A to reel faster!', x+14, y+88);
     }
-    ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = 'rgba(255,255,255,.3)';
-    ctx.fillText('B = cancel', x+14, y+ph-8);
+    ctx.font='9px ui-monospace,monospace'; ctx.fillStyle='rgba(255,255,255,.3)';
+    ctx.fillText('B = cancel', x+pw-60, y+ph-6);
   }
 
-  return { openCooking, startFishing, handleInput, draw, tick: _tick, _isOpen };
+  function _drawSeedPicker(ctx,w,h){
+    const seeds=Object.keys(CROPS).filter(id=>_has(id));
+    const pw=220, ph=Math.min(seeds.length*28+60, 200);
+    const x=(w-pw)>>1, y=(h-ph)>>1;
+    ctx.fillStyle='rgba(10,14,26,.97)'; ctx.fillRect(x,y,pw,ph);
+    ctx.strokeStyle='rgba(168,224,99,.5)'; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+.5,pw,ph);
+    ctx.font='bold 12px ui-monospace,monospace'; ctx.fillStyle='#a8e063';
+    ctx.fillText('🌱 Choose Seed to Plant', x+12, y+18);
+    ctx.font='11px ui-monospace,monospace';
+    for(let i=0;i<seeds.length;i++){
+      const hi=i===state.planting.seedIdx;
+      if(hi){ ctx.fillStyle='rgba(168,224,99,.15)'; ctx.fillRect(x+6,y+26+i*28-2,pw-12,26); }
+      ctx.fillStyle=hi?'#a8e063':'#cfe6ff';
+      const crop=CROPS[seeds[i]];
+      ctx.fillText((hi?'▶ ':' ')+crop.name, x+14,y+26+i*28+14);
+      ctx.fillStyle='rgba(255,255,255,.4)'; ctx.font='9px ui-monospace,monospace';
+      ctx.fillText(Math.ceil(crop.growTime/60)+'min grow', x+pw-70,y+26+i*28+14);
+      ctx.font='11px ui-monospace,monospace';
+    }
+    ctx.font='9px ui-monospace,monospace'; ctx.fillStyle='rgba(255,255,255,.3)';
+    ctx.fillText('↑↓ select   A plant   B cancel', x+12, y+ph-6);
+  }
+
+  function _drawFarmPlots(ctx,w,h){
+    const plots=_plots();
+    if(!plots.length) return;
+    const T=(typeof TILE!=='undefined'?TILE:32);
+    const vx=window._WP_vx||0, vy=window._WP_vy||0;
+    const STAGE_COLORS=['#4a3a1a','#6a5a2a','#7a8a2a','#a8e063','#ffd54a'];
+    ctx.save();
+    for(const p of plots){
+      const sx=(p.tx*T-vx)|0, sy=(p.ty*T-vy)|0;
+      // Skip if off-screen
+      if(sx<-T||sx>w+T||sy<-T||sy>h+T) continue;
+      // Plot base
+      ctx.fillStyle='rgba(74,58,26,.8)'; ctx.fillRect(sx+2,sy+2,T-4,T-4);
+      ctx.strokeStyle='rgba(168,224,99,.4)'; ctx.lineWidth=1; ctx.strokeRect(sx+2.5,sy+2.5,T-5,T-5);
+      if(p.seed){
+        const crop=CROPS[p.seed];
+        const stageColor=STAGE_COLORS[p.ready?4:p.stage]||STAGE_COLORS[0];
+        // Growing visual
+        const ph=Math.max(4,(p.stage+1)*5), pw2=Math.max(4,(p.stage+1)*6);
+        ctx.fillStyle=stageColor; ctx.fillRect(sx+T/2-pw2/2, sy+T-4-ph, pw2, ph);
+        if(p.ready){
+          // Sparkle when ready
+          ctx.fillStyle='rgba(255,213,74,.8)'; ctx.font='10px monospace';
+          ctx.fillText('✦', sx+T/2-4, sy+8);
+        }
+        // Water indicator
+        if(crop && p.waterCount<crop.waterNeeded && !p.ready){
+          ctx.fillStyle='rgba(84,201,193,.6)'; ctx.font='8px monospace';
+          ctx.fillText('💧', sx+2, sy+T-2);
+        }
+      } else {
+        // Empty plot indicator
+        ctx.fillStyle='rgba(168,224,99,.3)'; ctx.font='9px ui-monospace,monospace';
+        ctx.fillText('plant', sx+4, sy+T/2+4);
+      }
+    }
+    ctx.restore();
+  }
+
+  // ── Garden plot placement (called when player uses garden_plot item) ──
+  function tryPlacePlot(playerX, playerY){
+    const T=(typeof TILE!=='undefined'?TILE:32);
+    const tx=(playerX/T)|0, ty=(playerY/T)|0;
+    // Check tile is walkable ground (not water)
+    if(typeof tileIsWater==='function' && tileIsWater(tx,ty)) return _toast('Cannot place on water');
+    _use('garden_plot',1);
+    placePlot(tx,ty);
+  }
+
+  return { openCooking, startFishing, checkFarmInteract, tryPlacePlot, handleInput, tick, draw, _isOpen,
+           _plots, CROPS };
+
 })();
+
 
 //              player shop, chat bubbles + panel
 // ============================================================
