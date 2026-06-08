@@ -234,7 +234,8 @@ window.WP_Auth = {
   // Magic-link login
   async sendMagicLink(email) {
     const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
-    if (error) return showAuthMsg('Error: ' + error.message);
+    if (error) return showAuthError(error);
+    startMagicLinkCooldown();
     showAuthMsg('Check your email for the login link ✓');
   },
 
@@ -465,10 +466,47 @@ window.wpSignInWithGoogle = function(e) {
   showAuthMsg('Redirecting to Google…');
   WP_Auth.signInWithGoogle();
 };
+window.showAuthError = function(error) {
+  const msg = (error && error.message) ? error.message : String(error || 'Unknown error');
+  if (/rate limit/i.test(msg) || error?.status === 429) {
+    startMagicLinkCooldown();
+    return showAuthMsg('Too many login emails requested. Wait about a minute, then try again.');
+  }
+  const btn = document.getElementById('wpMagicLinkBtn');
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Send Magic Link';
+  }
+  showAuthMsg('Error: ' + msg);
+};
+window.startMagicLinkCooldown = function(seconds = 60) {
+  const btn = document.getElementById('wpMagicLinkBtn');
+  if (!btn) return;
+  clearInterval(window.__wpMagicLinkTimer);
+  let remaining = seconds;
+  btn.disabled = true;
+  btn.textContent = 'Try again in ' + remaining + 's';
+  window.__wpMagicLinkTimer = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(window.__wpMagicLinkTimer);
+      btn.disabled = false;
+      btn.textContent = 'Send Magic Link';
+    } else {
+      btn.textContent = 'Try again in ' + remaining + 's';
+    }
+  }, 1000);
+};
 window.wpSendMagicLink = function() {
   const email = document.getElementById('wpEmailInput').value.trim();
+  const btn = document.getElementById('wpMagicLinkBtn');
+  if (btn && btn.disabled) return;
   if (!email) return showAuthMsg('Enter your email address');
   showAuthMsg('Sending…');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+  }
   WP_Auth.sendMagicLink(email);
 };
 window.wpSubmitUsername = function() { WP_Auth.submitUsername(); };
@@ -987,7 +1025,14 @@ function drawNPC(ctx, vx, vy, n){
   const debugEl = document.getElementById('debug');
   function status(msg){ if(debugEl) debugEl.textContent = msg; }
   let toastMsg="", toastUntil=0;
-  function toast(msg, ms=1600){ toastMsg=msg; toastUntil=performance.now()+ms; }
+  const toastQueue = [];
+  function toast(msg, ms=1600){
+    const now = performance.now();
+    toastMsg = msg;
+    toastUntil = now + ms;
+    toastQueue.push({ msg:String(msg||''), until:now + ms });
+    if (toastQueue.length > 5) toastQueue.shift();
+  }
   // --- Stage 11e: Oasis resource spawner (reeds + herbs, clustered) ---
   function oasisSpawn(){
     try{
@@ -2593,6 +2638,9 @@ const ITEMS = {
   pot_heal_s:{cat:"consumable"},
   axe_basic:{cat:"tool"},
   weapon_stick:{cat:"weapon", chargesMax:10, dmg:8},
+  boar_tusk:{cat:"material", name:"Boar Tusk", desc:"A sturdy trophy from a rampaging boar."},
+  wild_meat:{cat:"food", name:"Wild Meat", desc:"Raw meat. Cook it at a campfire."},
+  cooked_meat:{cat:"consumable", name:"Cooked Meat", desc:"Restores 35 HP and 35 stamina."},
   relic_feather:{cat:"quest"},
   boots_desert:{cat:"armor"},
   sandstone_key:{cat:"quest"},
@@ -2729,6 +2777,7 @@ const RECIPES = [
   { out:"cooked_eel",    title:"Cooked Eel",     needs:[{id:"swamp_eel",qty:1},{id:"herb",qty:1}],         bench:"campfire" },
   { out:"golden_meal",   title:"Golden Meal",    needs:[{id:"golden_fish",qty:1},{id:"mushroom",qty:2}],   bench:"campfire" },
   { out:"fish_stew",     title:"Fish Stew",      needs:[{id:"raw_fish",qty:2},{id:"herb",qty:1}],          bench:"campfire" },
+  { out:"cooked_meat",   title:"Cooked Meat",    needs:[{id:"wild_meat",qty:1},{id:"wood",qty:1}],                    bench:"campfire" },
 
   // === Phase 2: Farming tools ===
   { out:"garden_plot",   title:"Garden Plot",    needs:[{id:"wood",qty:4},{id:"stone",qty:2},{id:"fiber",qty:3}], bench:"work" },
@@ -2786,7 +2835,8 @@ const RECIPES = [
   // Phase 2: Bait
   worm_bait:3, glowing_lure:8,
   // Phase 1: Food
-  roasted_berry:4, mushroom_soup:8, herb_tea:7, hearty_stew:18, trail_mix:6, berry_snack:3
+  roasted_berry:4, mushroom_soup:8, herb_tea:7, hearty_stew:18, trail_mix:6, berry_snack:3,
+  boar_tusk:12, wild_meat:5, cooked_meat:10
 };
 
   // Pals + passive perks (functional: speed, water_walk, forage_bonus, brush_break; glide is groundwork)
@@ -3028,6 +3078,24 @@ function endGuardianTrial(win){
 
 // === Boar miniboss combat ===
 const BoarBoss = { active:false, hp:60, hpMax:60, state:'idle', t:0, vx:0, vy:0, iframe:0, contactCD:0 };
+const Combat = {
+  dodgeT:0, dodgeCD:0, iframe:0, dx:0, dy:1,
+  block:false,
+  lastTap:{Up:0,Down:0,Left:0,Right:0}
+};
+function tryStartDodge(dir){
+  const now = performance.now();
+  const last = Combat.lastTap[dir] || 0;
+  Combat.lastTap[dir] = now;
+  if (now - last > 280 || Combat.dodgeCD > 0 || Combat.dodgeT > 0) return false;
+  if ((Game.stats.stam||0) < 15) { toast('Too tired to dodge'); return false; }
+  const map = {Up:[0,-1],Down:[0,1],Left:[-1,0],Right:[1,0]};
+  const v = map[dir] || [0,1];
+  Combat.dx = v[0]; Combat.dy = v[1];
+  Combat.dodgeT = 0.20; Combat.dodgeCD = 0.45; Combat.iframe = 0.32;
+  Game.stats.stam = Math.max(0, (Game.stats.stam||0) - 15);
+  return true;
+}
 function ensureBoarBoss(){
   if (Game.currentBiome!=='forest'){ BoarBoss.active=false; return; }
   if (!Game.flags.boar_miniboss_defeated && Game.flags.boarBossActive){
@@ -4204,6 +4272,89 @@ function drawPal(ctx, p, vx, vy){
     ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.strokeRect(ox-0.5, oy-0.5, mw+1, mh+1);
   }
 
+  function drawHudMinimap(ctx, x, y, size){
+    const scale = Math.max(1, Math.floor((size - 10) / Math.max(W,H)));
+    const mw = W * scale, mh = H * scale;
+    const ox = x + ((size - mw) >> 1), oy = y + ((size - mh) >> 1);
+    ctx.save();
+    ctx.fillStyle='rgba(0,0,0,0.52)';
+    roundRect(ctx, x, y, size, size, 6, true, false);
+    for(let ty=0; ty<H; ty++){
+      for(let tx=0; tx<W; tx++){
+        if (!seen[gi(tx,ty)]) {
+          ctx.fillStyle='rgba(0,0,0,0.72)';
+        } else if (Game.currentBiome==='desert') {
+          const g=ground[gi(tx,ty)];
+          ctx.fillStyle=(g===4) ? (COLORS[g]||'#3a78b8') : desertTone(tx,ty);
+        } else if (Game.currentBiome==='wetlands') {
+          ctx.fillStyle=(typeof wetlandsTone==='function') ? wetlandsTone(tx,ty) : (COLORS[ground[gi(tx,ty)]] || '#2f7a3f');
+        } else {
+          ctx.fillStyle=COLORS[ground[gi(tx,ty)]] || '#2f7a3f';
+        }
+        ctx.fillRect(ox+tx*scale, oy+ty*scale, scale, scale);
+      }
+    }
+    const ptx=(player.x/TILE)|0, pty=(player.y/TILE)|0;
+    ctx.fillStyle='#ffd54a';
+    ctx.fillRect(ox+ptx*scale-1, oy+pty*scale-1, Math.max(2,scale+2), Math.max(2,scale+2));
+    ctx.strokeStyle='rgba(255,255,255,0.22)';
+    ctx.strokeRect(x+0.5, y+0.5, size-1, size-1);
+    ctx.restore();
+  }
+
+  function drawPartyRow(ctx, x, y, maxW){
+    const party = Game.companions || [];
+    const active = activePal();
+    const cell = 18, gap = 4;
+    const maxCells = Math.max(1, Math.floor(maxW / (cell + gap)));
+    ctx.save();
+    ctx.font='9px ui-monospace, monospace';
+    for (let i=0; i<Math.min(party.length, maxCells); i++){
+      const p = party[i];
+      const px = x + i*(cell+gap);
+      const on = active && p && active.id===p.id && !!p.isActive;
+      ctx.fillStyle = on ? 'rgba(255,213,74,0.35)' : 'rgba(0,0,0,0.45)';
+      ctx.fillRect(px, y, cell, cell);
+      ctx.strokeStyle = on ? '#ffd54a' : 'rgba(255,255,255,0.18)';
+      ctx.strokeRect(px+0.5, y+0.5, cell-1, cell-1);
+      ctx.fillStyle = '#e9f1ff';
+      ctx.fillText((p?.id||'?').slice(0,1).toUpperCase(), px+6, y+12);
+    }
+    if (party.length > maxCells){
+      ctx.fillStyle='rgba(255,255,255,0.55)';
+      ctx.fillText('+'+(party.length-maxCells), x + maxCells*(cell+gap), y+12);
+    }
+    ctx.restore();
+  }
+
+  function drawToastQueue(ctx, w, h){
+    const now = performance.now();
+    for (let i=toastQueue.length-1; i>=0; i--){
+      if (toastQueue[i].until <= now) toastQueue.splice(i,1);
+    }
+    if (!toastQueue.length) return;
+    ctx.save();
+    if (typeof ctx.setTransform==='function') ctx.setTransform(1,0,0,1,0,0);
+    ctx.font = '14px ui-monospace, monospace';
+    const padX=12, padY=6, lineH=18, maxW=w-24;
+    let y = h - 14;
+    const visible = toastQueue.slice(-4);
+    for (let q=visible.length-1; q>=0; q--){
+      const lines = visible[q].msg.split("\n");
+      let textW = 0;
+      for (const line of lines) textW = Math.max(textW, ctx.measureText(line).width);
+      const boxW = Math.min(Math.max(textW + padX*2, 220), maxW);
+      const boxH = padY*2 + lineH*lines.length;
+      y -= boxH;
+      ctx.fillStyle='rgba(0,0,0,0.68)';
+      ctx.fillRect(12, y, boxW, boxH);
+      ctx.fillStyle='#e9f1ff';
+      for (let j=0;j<lines.length;j++) ctx.fillText(lines[j], 12+padX, y+padY+lineH*(j+0.7));
+      y -= 6;
+    }
+    ctx.restore();
+  }
+
   // Hint helper
   function isTouchDevice(){ return ('ontouchstart' in window) || navigator.maxTouchPoints>0 || navigator.msMaxTouchPoints>0; }
   function hintText(){ return isTouchDevice() ? 'Hold A: interact  •  Select: SELECT  •  Start: START'
@@ -4736,6 +4887,8 @@ const nowB = Date.now();
     if (Game.buffs && nowB < Game.buffs.defUntil){ ctx.fillStyle='rgba(43,60,43,0.65)'; ctx.fillRect(bx,by-12,84,16); ctx.fillStyle='#b7ffb7'; ctx.fillText('BUFF: DEF↑', bx+6, by); bx+=96; }
     if (Game.buffs && nowB < Game.buffs.speedUntil){ ctx.fillStyle='rgba(43,52,72,0.65)'; ctx.fillRect(bx,by-12,104,16); ctx.fillStyle='#9ec6ff'; ctx.fillText('BUFF: SPEED↑', bx+6, by); bx+=116; }
     if (Game.buffs && nowB < Game.buffs.partyUntil){ ctx.fillStyle='rgba(60,43,58,0.65)'; ctx.fillRect(bx,by-12,116,16); ctx.fillStyle='#ffb7d1'; ctx.fillText('PARTYTIME', bx+6, by); }
+    if (Combat && Combat.block){ ctx.fillStyle='rgba(60,52,32,0.72)'; ctx.fillRect(bx,by-12,72,16); ctx.fillStyle='#ffd54a'; ctx.fillText('BLOCK', bx+6, by); bx+=84; }
+    if (Combat && Combat.dodgeCD>0){ ctx.fillStyle='rgba(32,52,60,0.72)'; ctx.fillRect(bx,by-12,86,16); ctx.fillStyle='#9fe8ff'; ctx.fillText('DODGE '+(Math.ceil(Combat.dodgeCD*10)/10), bx+6, by); bx+=98; }
 ctx.restore(); /* BUFFME__FONT_FIX end */
 
 
@@ -4814,6 +4967,7 @@ ctx.restore(); /* BUFFME__FONT_FIX end */
     // active pal chip
     const ap = Game.companions.find(p=>p.isActive) || Game.companions[0];
     if (ap){ ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(260, 32, 120, 20); ctx.fillStyle='#e9f1ff'; ctx.fillText('Pal: '+ap.id, 266, 42); }
+    drawPartyRow(ctx, 386, 32, Math.max(80, w - 520));
 
     // Player HP bar
     { const hp=Game.stats.hp||0, hpm=Game.stats.hpMax||100;
@@ -5011,36 +5165,8 @@ function clampHUDSegments(ctx, segments, maxWidth, maxLines){
       if (bc){ ctx.save(); ctx.globalAlpha=0.95; ctx.fillStyle='#dfe8ff'; ctx.font='bold 14px ui-monospace'; ctx.fillText('Press A to calm', (bc.x-52)|0, (bc.y|0)); ctx.restore(); }
     }
 
-    // Toast
-    if (performance.now() < toastUntil) {
-
-      // Toast with dynamic background sizing (multi-line safe)
-      var padX = 12, padY = 6;
-      var maxW = w - 24;
-      var lines = (toastMsg && (""+toastMsg).split("\n")) || [""];
-      ctx.save();
-      if (typeof ctx.setTransform==='function') ctx.setTransform(1,0,0,1,0,0);
-      ctx.font = ctx.font || '14px ui-monospace';
-      var textW = 0;
-      for (var i=0;i<lines.length;i++){
-        var tw = (ctx.measureText? ctx.measureText(lines[i]).width : (12*lines[i].length));
-        if (tw > textW) textW = tw;
-      }
-      var boxW = Math.min(Math.max(textW + padX*2, 220), maxW);
-      var lineH = 18;
-      var boxH = padY*2 + lineH*lines.length;
-      var x = 12, y = h - (boxH + 14);
-
-      ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillRect(x, y, boxW, boxH);
-
-      ctx.fillStyle = '#e9f1ff';
-      for (var j=0;j<lines.length;j++){
-        ctx.fillText(lines[j], x + padX, y + padY + lineH*(j+0.7));
-      }
-      ctx.restore();
-
-    }
+    if (!UI.quick && !UI.start && !SlotsUI.open) drawHudMinimap(ctx, w-118, h-118, 106);
+    drawToastQueue(ctx, w, h);
 
     // Panels
     if (UI.quick) drawQuickPanel(ctx,w,h);
@@ -5148,18 +5274,28 @@ animT = t; // for portal animation
     }catch(_){}
 
     if (Game.currentBiome==='desert' && typeof DESERT!=='undefined' && DESERT && DESERT._trialUpdate) DESERT._trialUpdate(dt, state);
+    if (Combat.dodgeT > 0) Combat.dodgeT = Math.max(0, Combat.dodgeT - dt);
+    if (Combat.dodgeCD > 0) Combat.dodgeCD = Math.max(0, Combat.dodgeCD - dt);
+    if (Combat.iframe > 0) Combat.iframe = Math.max(0, Combat.iframe - dt);
 
     // Movement (water + brush checks)
     const _anyUIOpen = UI.start || UI.quick || ShopUI.open || SlotsUI.open
       || (typeof WP_Social !== 'undefined' && (WP_Social._isOpen?.() ?? false))
       || (typeof WP_Survival !== 'undefined' && (WP_Survival._isOpen?.() ?? false));
     if (!_anyUIOpen){
+      for (const dir of ['Up','Down','Left','Right']){
+        if (state.pressEdge.has(dir)) tryStartDodge(dir);
+      }
+      Combat.block = state.pressed.has('B') && Combat.dodgeT <= 0 && (Game.stats.stam||0) > 0;
       // Sprint: hold Z while moving (costs stamina)
       const isSprinting = state.pressed.has('Z') && (state.pressed.has('Up')||state.pressed.has('Down')||state.pressed.has('Left')||state.pressed.has('Right'));
       const sprintMult = (isSprinting && (Game.stats.stam||0) > 5) ? 1.65 : 1.0;
       let ax=0, ay=0; const p=state.pressed;
       if(p.has('Left')) ax-=1; if(p.has('Right')) ax+=1; if(p.has('Up')) ay-=1; if(p.has('Down')) ay+=1;
-      const sp = currentSpeed() * sprintMult;
+      if (Combat.dodgeT > 0){ ax = Combat.dx; ay = Combat.dy; }
+      const blockMult = Combat.block ? 0.45 : 1.0;
+      const dodgeMult = Combat.dodgeT > 0 ? 2.35 : 1.0;
+      const sp = currentSpeed() * sprintMult * blockMult * dodgeMult;
       const isMoving = (ax !== 0 || ay !== 0);
 
       const ap=activePal(); const perks=PALS[ap?.id]?.perks||{};
@@ -5184,7 +5320,9 @@ animT = t; // for portal animation
       try {
         const sm = Game.stats.stamMax||100;
         const hm = Game.stats.hungerMax||100;
-        if (isSprinting && isMoving) {
+        if (Combat.block) {
+          Game.stats.stam = Math.max(0, (Game.stats.stam||sm) - 8*dt);
+        } else if (isSprinting && isMoving) {
           Game.stats.stam = Math.max(0, (Game.stats.stam||sm) - 18*dt);
         } else if (isMoving) {
           Game.stats.stam = Math.max(0, (Game.stats.stam||sm) - 4*dt);
@@ -5205,6 +5343,8 @@ animT = t; // for portal animation
           Game.stats.hp = Math.min(Game.stats.hpMax||100, (Game.stats.hp||0) + 5*dt);
         }
       } catch(_) {}
+    } else {
+      Combat.block = false;
     }
 
     // Guardian Trial update (timer + collection)
@@ -5258,7 +5398,19 @@ if (GuardianTrial.collected >= 5){ endGuardianTrial(true); }
         }
         // Boss hits player on contact during charge
         if (BoarBoss.state==='charge' && Math.hypot(dx,dy) < 20 && BoarBoss.contactCD<=0){
-          const m=Game.stats.hpMax||100; Game.stats.hp=Math.max(0,(Game.stats.hp||m)-Math.max(1, 20 - (pal_defPlus ? pal_defPlus() : 0))); BoarBoss.contactCD=0.8;
+          const m=Game.stats.hpMax||100;
+          if (Combat.iframe > 0){
+            BoarBoss.contactCD=0.25;
+            toast('Dodged!');
+          } else {
+            let incoming = Math.max(1, 20 - (pal_defPlus ? pal_defPlus() : 0));
+            if (Combat.block && (Game.stats.stam||0) > 8){
+              Game.stats.stam = Math.max(0, (Game.stats.stam||0) - 8);
+              incoming = Math.max(1, Math.floor(incoming * 0.35));
+              toast('Blocked!');
+            }
+            Game.stats.hp=Math.max(0,(Game.stats.hp||m)-incoming); BoarBoss.contactCD=0.8;
+          }
           if (Game.stats.hp<=0){
             toast('You were knocked out!'); Game.stats.hp = Game.stats.hpMax||100;
             BoarBoss.hp = BoarBoss.hpMax; BoarBoss.state='idle'; BoarBoss.t=0; BoarBoss.vx=BoarBoss.vy=0; BoarBoss.iframe=0;
@@ -5272,7 +5424,9 @@ if (GuardianTrial.collected >= 5){ endGuardianTrial(true); }
             const idx = pals.findIndex(p=>p.id==='boar' && p.boss);
             if (idx!==-1) pals.splice(idx,1);
             Game.flags.boar_miniboss_defeated=true; Game.flags.boarBossActive=false; BoarBoss.active=false;
-            Game.companions.push({id:'boar'}); Game.discovered.add('boar'); toast('Boar joined your party!');
+            Game.companions.push({id:'boar'}); Game.discovered.add('boar');
+            addItem('boar_tusk',1); addItem('wild_meat',2); Game.coins=(Game.coins||0)+10;
+            toast('Boar joined your party! Loot: tusk, meat, +10c');
           }
         }
       }
@@ -5427,6 +5581,7 @@ toast('Cheats menu'); }
                   if (Game.buffs) Game.buffs.nightVisionUntil = Math.max(Game.buffs.nightVisionUntil||0, Date.now()+20000); }
                 else if (s.id==='golden_meal')     _eat(80,  80, '+80 HP, +80 stam — full restoration!');
                 else if (s.id==='fish_stew')       _eat(50,  50, '+50 HP, +50 stam');
+                else if (s.id==='cooked_meat')     _eat(35,  35, '+35 HP, +35 stam');
                 // Phase 2 farm meals
                 else if (s.id==='bread')           _eat(25,  40, '+25 HP, +40 stam');
                 else if (s.id==='potato_soup')     _eat(45,  45, '+45 HP, +45 stam');
@@ -5474,6 +5629,7 @@ toast('Cheats menu'); }
           if (!state.pressEdge.has('A')) aHoldCD = 0.40; // repeat every 400ms while held
   try{
   // ── Nearby player interaction (multiplayer) ──────────────────
+  let __handled = false;
   try{
     const nearPlayer = WP_Social.nearestOtherPlayer(player, 56);
     if (nearPlayer) { WP_Social.openRadial(nearPlayer); __handled = true; }
@@ -5483,7 +5639,6 @@ toast('Cheats menu'); }
   if (!__handled){ try{ if(WP_Survival.checkFarmInteract(player.x+player.w/2, player.y+player.h/2)) __handled=true; }catch(_){} }
 
   // Guardian Pedestal priority (forest)
-  let __handled = false;
   if (Game.currentBiome==='forest' && (!Game.flags.owl_trial_pass || !Game.flags.q_forest_main_done) && GuardianTrial.pedestal.x!=null){
     if (distToPlayer(GuardianTrial.pedestal.x, GuardianTrial.pedestal.y) <= 64){
       if (!GuardianTrial.active){
@@ -6706,7 +6861,7 @@ window.WP_Social = (function(){
 
   <input id="wpEmailInput" class="wp-input" type="email" placeholder="your@email.com" autocomplete="email"
     onkeydown="if(event.key==='Enter') wpSendMagicLink()"/>
-  <button class="wp-btn-ghost" onclick="wpSendMagicLink()">Send Magic Link</button>
+  <button id="wpMagicLinkBtn" class="wp-btn-ghost" onclick="wpSendMagicLink()">Send Magic Link</button>
   <div id="wpAuthMsg"></div>
   <button class="wp-btn-ghost" style="opacity:.5;font-size:11px;margin-top:4px" onclick="toggleAuthPanel()">Cancel — play offline</button>
 </div>
