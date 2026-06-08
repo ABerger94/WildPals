@@ -867,7 +867,7 @@ function drawNPC(ctx, vx, vy, n){
       return;
     }
     if(type==='fishing_spot'){
-      // Water ripples
+      // Shore fishing marker: ripples plus a small sign, not a portal.
       const t = (performance.now?performance.now():Date.now())*0.003;
       ctx.save(); ctx.globalAlpha=0.6;
       ctx.strokeStyle='#7eddd7'; ctx.lineWidth=1;
@@ -877,11 +877,25 @@ function drawNPC(ctx, vx, vy, n){
         ctx.beginPath(); ctx.arc(ax+14, ay+18, rad, 0, Math.PI*2); ctx.stroke();
       }
       ctx.restore();
-      // Fishing rod icon
-      ctx.strokeStyle='#a0785a'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(ax+8, ay+4); ctx.lineTo(ax+20, ay+14); ctx.stroke();
-      ctx.fillStyle='#7eddd7'; ctx.font='8px monospace';
-      ctx.fillText('🎣', ax+8, ay+5);
+      ctx.fillStyle='#7b4f2a';
+      ctx.fillRect(ax+12, ay+4, 3, 18);
+      ctx.fillStyle='#e8d6a7';
+      ctx.fillRect(ax+4, ay+3, 18, 10);
+      ctx.strokeStyle='#4e2f18';
+      ctx.strokeRect(ax+4.5, ay+3.5, 17, 9);
+      ctx.fillStyle='#2c5f73';
+      ctx.font='bold 8px ui-monospace, monospace';
+      ctx.fillText('FISH', ax+4, ay+11);
+      const cx=player.x+player.w/2, cy=player.y+player.h/2;
+      if (Math.hypot(cx-(n.x+n.w/2), cy-(n.y+n.h/2)) < 72){
+        ctx.font='11px ui-monospace, monospace';
+        const label='Fishing Spot';
+        const tw=ctx.measureText(label).width;
+        ctx.fillStyle='rgba(0,0,0,0.72)';
+        ctx.fillRect(ax+14-tw/2-6, ay-14, tw+12, 15);
+        ctx.fillStyle='#d7fbff';
+        ctx.fillText(label, ax+14-tw/2, ay-3);
+      }
       return;
     }
 
@@ -5827,6 +5841,7 @@ toast('Cheats menu'); }
               // Open cooking panel
               WP_Survival.openCooking();
             } else if (n.role==='fishing_spot'){
+              toast('Fishing Spot');
               WP_Survival.startFishing();
             } else if (n.role==='market'){
               UI.quick=true; openShop(n.shopId||'meadow_village');
