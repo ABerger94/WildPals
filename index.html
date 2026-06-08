@@ -1076,7 +1076,7 @@ function drawNPC(ctx, vx, vy, n){
       if (!bank.length && !fringe.length) return;
 
       // clustering utility
-      function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=a[i]; a[i]=a[j]; a[j]=t; } }
+      function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(RNG.f()*(i+1))|0; const t=a[i]; a[i]=a[j]; a[j]=t; } }
       shuffle(bank); shuffle(fringe);
 
       // Determine counts (boosted)
@@ -1087,10 +1087,10 @@ function drawNPC(ctx, vx, vy, n){
       for (let i=0;i<reedsCount && i<bank.length;i+=1){
         const t = bank[i];
         // spawn a small clump (1 + up to 3 neighbors)
-        const cluster = 1 + ((Math.random()*3)|0);
+        const cluster = 1 + ((RNG.f()*3)|0);
         for (let c=0;c<cluster;c++){
-          const dx = (Math.random()<0.5? -1:1) * ((Math.random()*2)|0);
-          const dy = (Math.random()<0.5? -1:1) * ((Math.random()*2)|0);
+          const dx = (RNG.f()<0.5? -1:1) * ((RNG.f()*2)|0);
+          const dy = (RNG.f()<0.5? -1:1) * ((RNG.f()*2)|0);
           const xx = Math.max(2, Math.min(W-3, t.x+dx));
           const yy = Math.max(2, Math.min(H-3, t.y+dy));
           // ensure still near water
@@ -1126,10 +1126,10 @@ function spawnWetlandsPals(){
       }catch(_){}
       if (nearWater){
         const pool = ['heron','wisp','gator','heron','wisp','gator','bogturtle','reedcat'];
-        return pool[(Math.random()*pool.length)|0];
+        return pool[(RNG.f()*pool.length)|0];
       }else{
         const pool = ['reedcat','bogturtle','reedcat','bogturtle','heron','wisp','gator'];
-        return pool[(Math.random()*pool.length)|0];
+        return pool[(RNG.f()*pool.length)|0];
       }
     }
     let wetCount = 0;
@@ -1141,8 +1141,8 @@ function spawnWetlandsPals(){
     const Wv = (typeof W==='number')?W:120;
     const Hv = (typeof H==='number')?H:80;
     for (let i=0;i<target;i++){
-      const tx = (Math.random()*Wv)|0;
-      const ty = (Math.random()*Hv)|0;
+      const tx = (RNG.f()*Wv)|0;
+      const ty = (RNG.f()*Hv)|0;
       try{ if (ground[ty*Wv+tx]===4) { i--; continue; } }catch(_){}
       /* proximity guard */
       let ok=true;
@@ -1189,14 +1189,15 @@ const WETLANDS = (function(){
   }
   function seedNPCs(){
     if (seeded() || Game.currentBiome!=='wetlands') return;
+    try{ reseedForBiome('wetlands','npcs'); }catch(_){}
     const T = (typeof TILE==='number')?TILE:32;
     // pick 4 tiles roughly around player, bias to shore
     const pts=[];
     let tries=0;
     while(pts.length<4 && tries<300){
       tries++;
-      const tx=((player.x/T)|0)+Math.floor((Math.random()*16)-8);
-      const ty=((player.y/T)|0)+Math.floor((Math.random()*16)-8);
+      const tx=((player.x/T)|0)+Math.floor((RNG.f()*16)-8);
+      const ty=((player.y/T)|0)+Math.floor((RNG.f()*16)-8);
       if (tx<=1||ty<=1||tx>=W-2||ty>=H-2) continue;
       const g=ground[ty*W+tx];
       if (g===BRUSH) continue;
@@ -1220,7 +1221,7 @@ for(let i=0;i<roles.length;i++){
             const dx=nn.x-px, dy=nn.y-py; if ((dx*dx+dy*dy) < (T*2)*(T*2)) ok=false;
           }
           if (ok) break;
-          const jx=((Math.random()*7)|0)-3, jy=((Math.random()*7)|0)-3;
+          const jx=((RNG.f()*7)|0)-3, jy=((RNG.f()*7)|0)-3;
           const ntx=Math.max(2,Math.min(W-3,p.tx+jx));
           const nty=Math.max(2,Math.min(H-3,p.ty+jy));
           const gg=ground[nty*W+ntx];
@@ -2478,6 +2479,22 @@ function drawQuickPanel(ctx,w,h){
     i(a,b){ return a + ((this.f()*((b+1)-a))|0); },
     chance(p){ return this.f() < p; }
   };
+  function hashSeedText(s){
+    let h = 2166136261 >>> 0;
+    s = String(s || '');
+    for(let i=0;i<s.length;i++){
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h >>> 0;
+  }
+  function worldSeed(){
+    if (Game && Game.worldSeed == null) Game.worldSeed = 0xC0FFEE;
+    return ((Game && Game.worldSeed) || 0xC0FFEE) >>> 0;
+  }
+  function reseedForBiome(biome, phase){
+    RNG.reseed((worldSeed() ^ hashSeedText((biome||'meadow') + ':' + (phase||'terrain'))) >>> 0);
+  }
 
   // ---------- Map / Terrain ----------
   const TILE=32, W=128, H=96; // world tiles
@@ -2559,6 +2576,7 @@ function wetlandsTone(tx,ty){
   // Forest gen (adds BRUSH)
   
 function regenMeadow(){
+  reseedForBiome('meadow','terrain');
   ground.fill(0); deco.fill(0); seen.fill(0);
   // gentle grass bands
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
@@ -2581,6 +2599,7 @@ function regenMeadow(){
 }
 
 function regenForest(){
+  reseedForBiome('forest','terrain');
   ground.fill(1); deco.fill(0); seen.fill(0);
   // mix of grass tones
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
@@ -2613,6 +2632,7 @@ function regenForest(){
 }
 
 function regenDesert(){
+  reseedForBiome('desert','terrain');
   ground.fill(0); deco.fill(0); seen.fill(0);
   // Place 1-2 oases
   const ponds = 1 + (RNG.f()<0.35?1:0);
@@ -2923,6 +2943,7 @@ const SPAWNS = {
     stats:{hpMax:100,hp:100,stamMax:100,stam:100,hungerMax:100,hunger:100,atk:5,def:2,crit:0.05,speed:1.0,speedMult:1.0},
     quests:{}, flags:{}, unlocked:{meadow:true}, discovered:new Set(),
     settings:{seedEnabled:true,music:false,sfx:true},
+    worldSeed:0xC0FFEE,
     currentBiome:'meadow',
     dayCount: 1  // tracks in-game days for hunger pacing
   };
@@ -3188,6 +3209,7 @@ function ensurePlayerOnLand(){
 
   // Biome seeding wrappers
   function seedByBiome(){
+    reseedForBiome(Game.currentBiome || 'meadow','entities');
     items.length=0; npcs.length=0; pals.length=0; portals.length=0; chests.length=0; particles.length=0;
     // Reset wetlands seeding flag so pals respawn on every visit
     __wetlandsSeeded = false;
@@ -3206,6 +3228,7 @@ function ensurePlayerOnLand(){
 // === Regen: Wetlands (marsh / fen) ===
 
 function regenWetlands(){
+  reseedForBiome('wetlands','terrain');
   try{ ground.fill(1); deco.fill(0); seen.fill(0); }catch(_){}
 
   // Tiles: 0=bare,1=grass,2=mud,3=brush,4=water
@@ -3219,7 +3242,7 @@ function regenWetlands(){
   const half = Math.max(3, (W>>5));          // half-width of channel
   const f = (Math.PI*2) / Math.max(28, W);   // meander frequency
   for (let x=0; x<W; x++){
-    const cy = (H>>1) + Math.floor(Math.sin((x + (Game.seed||1)*7)*f) * amp);
+    const cy = (H>>1) + Math.floor(Math.sin((x + (worldSeed()||1)*7)*f) * amp);
     for (let y=cy - half; y<=cy + half; y++){
       if (y<0||y>=H) continue;
       ground[gi(x,y)] = 4; // water
@@ -3235,9 +3258,9 @@ function regenWetlands(){
   // 3) Oxbow ponds sprinkled around
   const ponds = 18;
   for (let i=0;i<ponds;i++){
-    const px = (i*37 + ((Game.seed||1)*53)) % W;
-    const py = (i*71 + ((Game.seed||1)*19)) % H;
-    const r  = 3 + ((i*(Game.seed||3)) % 4); // radius 3..6
+    const px = (i*37 + ((worldSeed()||1)*53)) % W;
+    const py = (i*71 + ((worldSeed()||1)*19)) % H;
+    const r  = 3 + ((i*(worldSeed()||3)) % 4); // radius 3..6
     for (let y=py-r; y<=py+r; y++){
       for (let x=px-r; x<=px+r; x++){
         if (x<0||y<0||x>=W||y>=H) continue;
@@ -3261,7 +3284,7 @@ function regenWetlands(){
 
   // 5) Sparse brush on drier grass patches, avoid water
   for (let y=2;y<H-2;y++) for (let x=2;x<W-2;x++){
-    if (ground[gi(x,y)]===1 && Math.random()<0.045){
+    if (ground[gi(x,y)]===1 && RNG.f()<0.045){
       for (let yy=-1; yy<=1; yy++) for (let xx=-1; xx<=1; xx++){
         const gx=x+xx, gy=y+yy;
         if (gx>1&&gy>1&&gx<W-2&&gy<H-2 && ground[gi(gx,gy)]!==4) ground[gi(gx,gy)] = 3;
@@ -3273,7 +3296,7 @@ function regenWetlands(){
   for (let y=2; y<H-2; y++) for (let x=2; x<W-2; x++){
     if (ground[gi(x,y)]===4){
       const n4=(ground[gi(x+1,y)]===4?1:0)+(ground[gi(x-1,y)]===4?1:0)+(ground[gi(x,y+1)]===4?1:0)+(ground[gi(x,y-1)]===4?1:0);
-      if (n4<=2 && Math.random()<0.08) deco[gi(x,y)] = 9;
+      if (n4<=2 && RNG.f()<0.08) deco[gi(x,y)] = 9;
     }
   }
 }
@@ -3292,7 +3315,7 @@ function regenWetlands(){
       // convert stray meadow/forest forage to desert mats
       for (let i=0;i<items.length;i++){
         if (['wood','stone','berry','mushroom','fiber'].includes(items[i].id)){
-          const roll = Math.random();
+          const roll = RNG.f();
           items[i].id = roll<0.5 ? 'sandstone' : (roll<0.85 ? 'cactus' : 'aloe');
         }
       }
@@ -3300,6 +3323,7 @@ function regenWetlands(){
   }
 
 function seedMeadow(){
+    reseedForBiome('meadow','entities');
     Game.flags = Game.flags || {};
     const center = { tx:(W/2)|0, ty:(H/2)|0 };
     const oldAnchor = Game.flags.meadow_camp_anchor;
@@ -3385,6 +3409,7 @@ function seedMeadow(){
   }
 
   function seedDesert(){
+    reseedForBiome('desert','entities');
     const px=(player.x/TILE|0), py=(player.y/TILE|0);
     // Starter desert materials near landing
     [{dx:2,dy:-1,id:'sandstone'},{dx:-1,dy:1,id:'cactus'}]
@@ -3405,7 +3430,7 @@ function seedMeadow(){
         const tx=RNG.i(3,W-4), ty=RNG.i(3,H-4);
         if (isWater(tx,ty)) continue;
         const touch = isWater(tx+1,ty)||isWater(tx-1,ty)||isWater(tx,ty+1)||isWater(tx,ty-1);
-        if (touch && Math.random()<0.6){
+        if (touch && RNG.f()<0.6){
           items.push({x:tx*TILE+4, y:ty*TILE+4, w:24,h:24, id:'reed'}); placedR++;
         }
       }
@@ -3427,7 +3452,7 @@ function seedMeadow(){
           const nx=tx+dx, ny=ty+dy; if(nx<1||ny<1||nx>=W-1||ny>=H-1) continue;
           if (isWater(nx,ny)) near=true;
         }
-        if (near && Math.random()<0.4){
+        if (near && RNG.f()<0.4){
           items.push({x:tx*TILE+4, y:ty*TILE+4, w:24,h:24, id:'herb'}); placedH++;
         }
       }
@@ -3515,6 +3540,7 @@ function seedMeadow(){
 }
 
 function seedForest(){
+  reseedForBiome('forest','entities');
   // --- Reset any per-biome local caches if needed (global arrays cleared by seedByBiome) ---
 
   // 1) Scatter forage items (avoid water; fiber more likely near brush)
@@ -3618,6 +3644,7 @@ function seedForest(){
 
 // === Seed: Wetlands (flora + ambience) ===
 function seedWetlands(){
+  reseedForBiome('wetlands','entities');
   const T = (typeof TILE==='number')?TILE:32;
   const isWater = (tx,ty)=> ground[gi(tx,ty)]===4;
 
@@ -3691,6 +3718,7 @@ function findOasisPortalSpot(){
   return null;
 }
 
+const SECRET_BIOMES = ['volcano','glacier','mystic','skyrealm','undersea'];
 function portalUnlocked(to){
     Game.unlocked = Game.unlocked || {meadow:true};
     Game.flags = Game.flags || {};
@@ -3708,6 +3736,8 @@ function portalUnlocked(to){
   function portalAllowedHere(pt){
     if (!pt) return false;
     if (Game.currentBiome==='meadow' && pt.to==='forest') return portalUnlocked('forest');
+    if (Game.currentBiome==='meadow' && SECRET_BIOMES.includes(pt.to)) return portalUnlocked(pt.to);
+    if (SECRET_BIOMES.includes(Game.currentBiome) && pt.to==='meadow') return true;
     if (Game.currentBiome==='meadow') return false;
     return true;
   }
@@ -3723,6 +3753,7 @@ function portalUnlocked(to){
     if (pt.to==='forest') return 'The bridge is still broken. Finish the Elder quest.';
     if (pt.to==='desert') return 'The desert route is sealed. Finish the Ranger errand and Great Owl Trial.';
     if (pt.to==='wetlands') return 'The wetlands portal is sealed. Bring the Relic Feather to the Sand Lynx.';
+    if (SECRET_BIOMES.includes(pt.to)) return 'This secret portal has not been unlocked yet.';
     return 'This portal is sealed.';
   }
 
@@ -3732,6 +3763,11 @@ function portalUnlocked(to){
     if (Game.currentBiome==='meadow'){
       if (portalUnlocked('forest')){
         pushPortal((W-10)*TILE, trackY*TILE, 28, 28, 'forest', false);
+      }
+      const secretOpen = SECRET_BIOMES.filter(b=>portalUnlocked(b));
+      for(let i=0; i<secretOpen.length; i++){
+        const tx = Math.max(6, Math.min(W-8, 22 + i*8));
+        pushPortal(tx*TILE, (trackY+6)*TILE, 28, 28, secretOpen[i], false);
       }
     } else if (Game.currentBiome==='forest'){
       pushPortal(10*TILE, trackY*TILE, 28, 28, 'meadow', false);
@@ -3759,6 +3795,9 @@ function portalUnlocked(to){
     else if (Game.currentBiome==='wetlands'){
       const trackY=(H*0.575)|0;
       pushPortal(162, 2014, 28, 28, 'desert', false);
+    }
+    else if (SECRET_BIOMES.includes(Game.currentBiome)){
+      pushPortal(10*TILE, trackY*TILE, 28, 28, 'meadow', false);
     }
   }
 
@@ -4097,7 +4136,7 @@ try{ if (typeof window!=='undefined') window.buildQuestProgress = window.buildQu
   function resetPartyToStarter(){ Game.companions=[{id:'rabbit', isActive:true}]; }
   function newWorld(){
     try{
-      { const L=Math.max(60, Game.dayLength||300); Game.dayClock=0.5*L; Game.light=1.0; Game.isNight=false; Game._dayInitDone=true; Game._lt=(performance&&performance.now)?performance.now():0; } if (Game.settings.seedEnabled) RNG.reseed(0xC0FFEE); else RNG.reseed((Math.random()*0xFFFFFFFF)>>>0);Game.currentBiome='meadow';
+      { const L=Math.max(60, Game.dayLength||300); Game.dayClock=0.5*L; Game.light=1.0; Game.isNight=false; Game._dayInitDone=true; Game._lt=(performance&&performance.now)?performance.now():0; } Game.worldSeed = Game.settings.seedEnabled ? 0xC0FFEE : ((Math.random()*0xFFFFFFFF)>>>0); RNG.reseed(Game.worldSeed);Game.currentBiome='meadow';
       regenMeadow();
       Game.coins=0; Game.inventory.length=0; Game.quests={}; Game.flags={}; Game.unlocked={meadow:true};
       Game.discovered = new Set();
@@ -4109,54 +4148,190 @@ try{ if (typeof window!=='undefined') window.buildQuestProgress = window.buildQu
   }
 
   // ---------- Cheats ----------
+  function _cheatToast(msg){ toast(msg); return msg; }
+  function _cheatEnsureState(){
+    Game.flags = Game.flags || {};
+    Game.unlocked = Game.unlocked || {meadow:true};
+    Game.buffs = Game.buffs || {defUntil:0, speedUntil:0, partyUntil:0, regenUntil:0};
+    Game.stats = Game.stats || {};
+    Game.inventory = Game.inventory || [];
+  }
+  function _cheatRebuildWorld(){
+    try{ rebuildPortals(); }catch(_){}
+    try{ ensureDesertReturnPortal(); }catch(_){}
+  }
+  function _cheatUnlockMain(which){
+    _cheatEnsureState();
+    if (which==='forest' || which==='all'){
+      Game.unlocked.forest = true;
+      Game.flags.bridgeFixed = true;
+    }
+    if (which==='desert' || which==='all'){
+      Game.unlocked.forest = true;
+      Game.unlocked.desert = true;
+      Game.flags.bridgeFixed = true;
+      Game.flags.q_forest_main_done = true;
+      Game.flags.owl_trial_pass = true;
+      Game.flags.owl_trial_passed = true;
+    }
+    if (which==='wetlands' || which==='all'){
+      Game.unlocked.forest = true;
+      Game.unlocked.desert = true;
+      Game.unlocked.wetlands = true;
+      Game.flags.bridgeFixed = true;
+      Game.flags.q_forest_main_done = true;
+      Game.flags.owl_trial_pass = true;
+      Game.flags.owl_trial_passed = true;
+      Game.flags.desert_shrine_wind_done = true;
+      Game.flags.desert_shrine_sun_done = true;
+      Game.flags.desert_shrine_sand_done = true;
+      Game.flags.desert_oasis_guardian_awake = true;
+      Game.flags.desert_guardian_portal_ready = true;
+    }
+    _cheatRebuildWorld();
+  }
+  function _cheatUnlockSecret(which){
+    _cheatEnsureState();
+    Game.unlocked[which] = true;
+    Game.flags['portal_'+which+'_open'] = true;
+    _cheatRebuildWorld();
+  }
+  function _cheatSpawnChest(px,py){
+    chests.push({x:px|0, y:py|0, w:(TILE-12), h:(TILE-12), opened:false});
+    for(let i=0;i<10;i++) particles.push({x:px+(TILE>>1), y:py+(TILE>>1), vx:(Math.random()*2-1)*70, vy:(-30-Math.random()*50), life:500+((Math.random()*300)|0)});
+  }
+  function _cheatSpawnRarity(rarity){
+    const pool = RARITY_POOLS[rarity] || [];
+    if (!pool.length) return null;
+    const id = pool[(Math.random()*pool.length)|0];
+    const x = (player.x + player.w/2 + (lastDir.x||0)*TILE*2 - 13)|0;
+    const y = (player.y + player.h/2 + (lastDir.y||1)*TILE*2 - 13)|0;
+    spawnPalAt(Math.max(2, Math.min(W*TILE-30, x)), Math.max(2, Math.min(H*TILE-30, y)), id);
+    if (Game.discovered) Game.discovered.add(id);
+    return id;
+  }
+  function _cheatGiveStarterKit(){
+    ['wood','stone','fiber','berry','mushroom','herb','raw_fish','wild_meat'].forEach(id=>addItem(id,5));
+    ['fishing_rod','net_basic','garden_plot','watering_can'].forEach(id=>addItem(id,1));
+  }
+
   function applyCheat(code){
   if(!code){
     // If called without code (e.g., from Start menu), open Quick Panel to Cheats tab
     if (typeof UI!=='undefined'){ UI.quick = true; }
     if (typeof quickTab!=='undefined'){ quickTab = QUICK_TABS.indexOf('Cheats') >= 0 ? QUICK_TABS.indexOf('Cheats') : quickTab; }
-    toast('Open Quick Panel → Cheats');
+    toast('Open Quick Panel -> Cheats');
     return;
   }
-  switch(code){
-    case 'CHESTHERE': chests.push({x:(player.x|0), y:(player.y|0), w:(TILE-12), h:(TILE-12), opened:false}); break;
-    case 'CHESTME': { const cx=(player.x|0)+(player.w>>1), cy=(player.y|0)+(player.h>>1); const ax=cx+TILE*lastDir.x, ay=cy+TILE*lastDir.y; chests.push({x:(ax-((TILE-12)>>1))|0, y:(ay-((TILE-12)>>1))|0, w:(TILE-12), h:(TILE-12), opened:false}); } break;
-    case 'RICHIE': Game.coins = (Game.coins||0)+1000; break;
-    case 'MONEYRAIN': Game.coins = (Game.coins||0)+5000; break;
-    case 'BUFFME': if (Game.buffs) Game.buffs.defUntil=Date.now()+60000; break;
-    case 'ULTRASPEED':
-      if (Game.buffs) Game.buffs.speedUntil=Date.now()+20000;
-      if (Game.stats) Game.stats.speedMult=2.5;
+  _cheatEnsureState();
+  let msg = '';
+  switch(String(code).toUpperCase()){
+    case 'CHESTHERE':
+      _cheatSpawnChest(player.x, player.y);
+      msg = 'Chest spawned here';
       break;
-    case 'PARTYTIME': if (Game.buffs) Game.buffs.partyUntil=Date.now()+20000; break;
-    case 'FORESTOPEN': if (Game.unlocked) Game.unlocked.forest=true; if (Game.flags) Game.flags.bridgeFixed=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Forest unlocked'); break;
-    case 'DESERTOPEN': if (Game.unlocked) Game.unlocked.desert=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Desert unlocked'); break;
-    case 'WETLANDSOPEN': if (Game.unlocked) Game.unlocked.wetlands=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Wetlands unlocked'); break;
-    case 'VOLCANOOPEN': if (Game.unlocked) Game.unlocked.volcano=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Volcano unlocked'); break;
-    case 'GLACIEROPEN': if (Game.unlocked) Game.unlocked.glacier=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Glacier unlocked'); break;
-    case 'MYSTICOPEN': if (Game.unlocked) Game.unlocked.mystic=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Mystic unlocked'); break;
-    case 'SKYREALMOPEN': if (Game.unlocked) Game.unlocked.skyrealm=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Sky Realm unlocked'); break;
-    case 'UNDERSEAOPEN': if (Game.unlocked) Game.unlocked.undersea=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Undersea unlocked'); break;
-    case 'MYTHIC': /* stub: spawn mythic pal */ break;
-    case 'LEGENDARY': /* stub: spawn legendary pal */ break;
-    case 'RARE': /* stub: spawn rare pal */ break;
+    case 'CHESTME': {
+      const cx=(player.x|0)+(player.w>>1), cy=(player.y|0)+(player.h>>1);
+      const ax=cx+TILE*(lastDir.x||0), ay=cy+TILE*(lastDir.y||1);
+      _cheatSpawnChest(ax-((TILE-12)>>1), ay-((TILE-12)>>1));
+      msg = 'Chest spawned ahead';
+      break;
+    }
+    case 'RICHIE':
+      Game.coins = (Game.coins||0)+1000;
+      msg = '+1000 coins';
+      break;
+    case 'MONEYRAIN':
+      Game.coins = (Game.coins||0)+5000;
+      _cheatGiveStarterKit();
+      msg = '+5000 coins and a survival kit';
+      break;
+    case 'BUFFME':
+      Game.buffs.defUntil=Date.now()+120000;
+      Game.buffs.regenUntil=Date.now()+60000;
+      Game.stats.hp = Game.stats.hpMax || 100;
+      Game.stats.stam = Game.stats.stamMax || 100;
+      msg = 'Defense, regen, HP, and stamina boosted';
+      break;
+    case 'ULTRASPEED':
+      Game.buffs.speedUntil=Date.now()+60000;
+      Game.stats.speedMult=2.5;
+      msg = 'Ultra speed for 60s';
+      break;
+    case 'PARTYTIME':
+      Game.buffs.partyUntil=Date.now()+30000;
+      msg = 'Party time';
+      break;
+    case 'FORESTOPEN':
+      _cheatUnlockMain('forest');
+      msg = 'Forest unlocked';
+      break;
+    case 'DESERTOPEN':
+      _cheatUnlockMain('desert');
+      msg = 'Desert unlocked with prerequisites';
+      break;
+    case 'WETLANDSOPEN':
+      _cheatUnlockMain('wetlands');
+      msg = 'Wetlands unlocked with guardian path';
+      break;
+    case 'VOLCANOOPEN':
+    case 'GLACIEROPEN':
+    case 'MYSTICOPEN':
+    case 'SKYREALMOPEN':
+    case 'UNDERSEAOPEN': {
+      const biome = code.toLowerCase().replace('open','');
+      _cheatUnlockSecret(biome);
+      msg = biome.charAt(0).toUpperCase()+biome.slice(1)+' unlocked';
+      break;
+    }
+    case 'MYTHIC': {
+      const id = _cheatSpawnRarity('MYTHIC');
+      msg = id ? 'Mythic '+id+' spawned' : 'No mythic pool';
+      break;
+    }
+    case 'LEGENDARY': {
+      const id = _cheatSpawnRarity('LEGENDARY');
+      msg = id ? 'Legendary '+id+' spawned' : 'No legendary pool';
+      break;
+    }
+    case 'RARE': {
+      const id = _cheatSpawnRarity('RARE');
+      msg = id ? 'Rare '+id+' spawned' : 'No rare pool';
+      break;
+    }
     case 'ALLOPEN':
-      if (Game.unlocked){
-        Object.assign(Game.unlocked, {meadow:true,forest:true,desert:true,wetlands:true});
-        toast('All main biomes unlocked');
-      }
-       rebuildPortals(); ensureDesertReturnPortal(); toast('Portals updated'); break;
+      _cheatUnlockMain('all');
+      msg = 'All main biomes unlocked';
+      break;
     case 'SECRETSOPEN':
-      if (Game.unlocked){
-        Object.assign(Game.unlocked, {volcano:true,glacier:true,mystic:true,skyrealm:true,undersea:true});
-        toast('All secret biomes unlocked');
-      }
-       rebuildPortals(); ensureDesertReturnPortal(); toast('Portals updated'); break;
+      ['volcano','glacier','mystic','skyrealm','undersea'].forEach(_cheatUnlockSecret);
+      msg = 'All secret biomes unlocked';
+      break;
+    case 'SPRITEHERE':
+      spawnPalAt(player.x|0, player.y|0, 'sprite');
+      if (Game.discovered) Game.discovered.add('sprite');
+      msg = 'Sprite spawned';
+      break;
+    case 'CLEARSPRITE':
+      for(let i=pals.length-1; i>=0; i--) if (pals[i] && pals[i].id==='sprite') pals.splice(i,1);
+      msg = 'Sprites cleared';
+      break;
+    case 'CLEARBOSS':
+      for(let i=pals.length-1; i>=0; i--) if (pals[i] && pals[i].id==='boar' && pals[i].boss) pals.splice(i,1);
+      Game.flags.boarBossActive = false;
+      Game.flags.boar_miniboss_defeated = true;
+      if (typeof BoarBoss!=='undefined') BoarBoss.active = false;
+      msg = 'Boar boss cleared';
+      break;
+    default:
+      msg = 'Unknown cheat: '+code;
+      break;
   }
   if (typeof CheatsHistory!=='undefined'){
-    CheatsHistory.unshift(code);
+    CheatsHistory.unshift(String(code).toUpperCase());
     if (CheatsHistory.length>20) CheatsHistory.length=20;
   }
-  toast('Cheat: '+code);
+  _cheatToast(msg);
 }
     // ---------- UI Panels ----------
   const UI = { start:false, quick:false, startIdx:0 };
@@ -6037,13 +6212,13 @@ window.WP_Survival = (function(){
 
   // ── State ────────────────────────────────────────────────────
   const state = {
-    cooking:  { open: false },
+    cooking:  { open: false, idx: 0 },
     fishing:  { open:false, phase:'idle', biteTimer:0, biteWindow:0, reelTimer:0, reelProgress:0, fish:null },
     farming:  { open:false, plots:[], selectedPlot:null, idx:0 },
     planting: { open:false, plotIdx:-1, seedIdx:0 },
   };
 
-  function _isOpen(){ return state.fishing.open || state.planting.open || state.farming.open; }
+  function _isOpen(){ return state.cooking.open || state.fishing.open || state.planting.open || state.farming.open; }
 
   // ── Helpers ──────────────────────────────────────────────────
   function _G(){ return window._WP_Game; }
@@ -6268,13 +6443,41 @@ window.WP_Survival = (function(){
   }
 
   // ── Cooking ─────────────────────────────────────────────────
+  function _cookingRecipes(){
+    try{
+      return RECIPES.filter(r=>{
+        if (r.bench !== 'campfire') return false;
+        if (r.requiresFlag && !(Game.flags && Game.flags[r.requiresFlag])) return false;
+        if (r.biome && r.biome !== Game.currentBiome) return false;
+        return true;
+      });
+    }catch(_){ return []; }
+  }
+
   function openCooking(){
-    if (typeof UI!=='undefined') UI.quick=true;
-    try{ if(typeof quickTab!=='undefined') quickTab=1; }catch(_){}
+    state.cooking.open = true;
+    state.cooking.idx = 0;
+    if (typeof UI!=='undefined') UI.quick=false;
+    try{ if(typeof ShopUI!=='undefined') ShopUI.open=false; }catch(_){}
   }
 
   // ── Input handler ────────────────────────────────────────────
   function handleInput(st){
+    // Cooking
+    if (state.cooking.open){
+      const list = _cookingRecipes();
+      if (state.cooking.idx >= list.length) state.cooking.idx = Math.max(0, list.length-1);
+      if (st.pressEdge.has('Up'))   state.cooking.idx=(state.cooking.idx+list.length-1)%(list.length||1);
+      if (st.pressEdge.has('Down')) state.cooking.idx=(state.cooking.idx+1)%(list.length||1);
+      if (st.pressEdge.has('A')){
+        const r = list[state.cooking.idx] || null;
+        if (!r) _toast('No cooking recipes');
+        else if (typeof hasItems==='function' && !hasItems(r.needs)) _toast('Need mats');
+        else if (typeof craft==='function') craft(r.out);
+      }
+      if (st.pressEdge.has('B')||st.pressEdge.has('Start')) state.cooking.open=false;
+      return true;
+    }
     // Fishing
     if (state.fishing.open){
       if (state.fishing.phase==='idle'){ state.fishing.open=false; return false; }
@@ -6308,9 +6511,45 @@ window.WP_Survival = (function(){
 
   // ── Draw ─────────────────────────────────────────────────────
   function draw(ctx, w, h){
+    if (state.cooking.open) _drawCooking(ctx,w,h);
     if (state.fishing.open && state.fishing.phase!=='idle') _drawFishing(ctx,w,h);
     if (state.planting.open) _drawSeedPicker(ctx,w,h);
     _drawFarmPlots(ctx,w,h);
+  }
+
+  function _drawCooking(ctx,w,h){
+    const list = _cookingRecipes();
+    const visible = Math.min(10, Math.max(1, list.length));
+    const pw = Math.min(440, Math.max(300, w - 32));
+    const ph = Math.min(h - 80, 58 + visible*34 + 22);
+    const x = (w-pw)>>1, y = (h-ph)>>1;
+    ctx.fillStyle='rgba(10,14,26,.97)'; ctx.fillRect(x,y,pw,ph);
+    ctx.strokeStyle='rgba(255,152,64,.6)'; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+.5,pw,ph);
+    ctx.font='bold 14px ui-monospace,monospace'; ctx.fillStyle='#ffb85c';
+    ctx.fillText('Campfire Cooking', x+14, y+24);
+    ctx.font='10px ui-monospace,monospace'; ctx.fillStyle='rgba(255,255,255,.45)';
+    ctx.fillText('Up/Down select   A cook   B close', x+14, y+42);
+
+    if (!list.length){
+      ctx.font='12px ui-monospace,monospace'; ctx.fillStyle='#cfe6ff';
+      ctx.fillText('No cooking recipes available.', x+14, y+72);
+      return;
+    }
+
+    const start = Math.max(0, Math.min(list.length-visible, state.cooking.idx - Math.floor(visible/2)));
+    ctx.font='12px ui-monospace,monospace';
+    for(let row=0; row<visible; row++){
+      const i = start + row, r = list[i];
+      if (!r) break;
+      const yy = y + 62 + row*34;
+      const hi = i===state.cooking.idx;
+      const ok = typeof hasItems==='function' ? hasItems(r.needs) : false;
+      if (hi){ ctx.fillStyle='rgba(255,184,92,.16)'; ctx.fillRect(x+8, yy-13, pw-16, 30); }
+      ctx.fillStyle = hi ? '#ffd54a' : '#e9f1ff';
+      ctx.fillText((hi?'> ':'  ')+(r.title||r.out), x+14, yy);
+      ctx.fillStyle = ok ? '#b7ffb7' : '#9ec6ff';
+      ctx.fillText('needs: '+r.needs.map(n=>n.id+' x'+n.qty).join(', '), x+28, yy+14);
+    }
   }
 
   function _drawFishing(ctx,w,h){
