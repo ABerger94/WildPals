@@ -221,14 +221,13 @@ window.WP_Auth = {
     const { data } = await sb.from('profiles').select('*').eq('id', this.user.id).single();
     this.profile = data;
     if (!this.profile) {
-      // First login — show username picker
       this._showUsernamePicker();
     } else {
       this._updateHUD();
-      await this._loadCloudSave();
-      // Join realtime presence for current biome
+      this._loadCloudSave().catch(e => console.error('[WP] cloud load failed', e));
+      // Fire-and-forget — never blocks game start
       const biome = window._WP_Game?.currentBiome || 'meadow';
-      await this.joinBiome(biome);
+      this.joinBiome(biome).catch(e => console.error('[WP] joinBiome failed', e));
     }
   },
 
@@ -281,8 +280,8 @@ window.WP_Auth = {
     this.profile = data;
     document.getElementById('wpUsernamePanel').style.display = 'none';
     this._updateHUD();
-    await this._loadCloudSave();
-    await this.joinBiome(window._WP_Game?.currentBiome || 'meadow');
+    this._loadCloudSave().catch(()=>{});
+    this.joinBiome(window._WP_Game?.currentBiome || 'meadow').catch(()=>{});
   },
 
   // ── Cloud Save ───────────────────────────────────────────────
@@ -320,9 +319,11 @@ window.WP_Auth = {
   _ablyReady: false,
 
   async _initAbly() {
-    if (this._ablyReady) return;
+    if (this._ablyReady) return true;
+    if (this._ablyInitializing) return false;
+    this._ablyInitializing = true;
     const key = window.WP_CONFIG?.ABLY_KEY;
-    if (!key) { console.warn('[WP Ably] No key in WP_CONFIG'); return; }
+    if (!key) { console.warn('[WP Ably] No key'); this._ablyInitializing = false; return false; }
     try {
       if (!window.Ably) {
         console.log('[WP Ably] Loading SDK…');
@@ -333,16 +334,21 @@ window.WP_Auth = {
           document.head.appendChild(s);
         });
       }
-      const clientId = (this.profile?.username || this.user?.id || 'anon_' + Math.random().toString(36).slice(2));
+      const clientId = this.profile?.username || ('guest_' + Math.random().toString(36).slice(2,8));
       this._ablyClient = new Ably.Realtime({ key, clientId });
-      await new Promise((res, rej) => {
-        this._ablyClient.connection.once('connected', res);
-        this._ablyClient.connection.once('failed', rej);
-        setTimeout(rej, 8000); // 8s timeout
-      });
-      this._ablyReady = true;
-      console.log('[WP Ably] connected, clientId:', clientId);
-    } catch(e) { console.error('[WP Ably] init failed:', e); }
+      // Non-blocking connection wait — 5s max, never throws
+      await Promise.race([
+        new Promise(res => this._ablyClient.connection.once('connected', res)),
+        new Promise(res => setTimeout(res, 5000))
+      ]);
+      this._ablyReady = (this._ablyClient.connection.state === 'connected');
+      console.log('[WP Ably]', this._ablyReady ? 'connected ✓' : 'timeout — presence disabled', 'clientId:', clientId);
+    } catch(e) {
+      console.error('[WP Ably] init error:', e);
+      this._ablyReady = false;
+    }
+    this._ablyInitializing = false;
+    return this._ablyReady;
   },
 
   async joinBiome(biomeName) {
@@ -467,8 +473,10 @@ window.wpSendMagicLink = function() {
 };
 window.wpSubmitUsername = function() { WP_Auth.submitUsername(); };
 
-// Boot
-document.addEventListener('DOMContentLoaded', () => WP_Auth.init());
+// Boot — fire and forget, never blocks page load
+document.addEventListener('DOMContentLoaded', () => {
+  WP_Auth.init().catch(e => console.error('[WP] auth init error:', e));
+});
 </script>
 
 <!-- Auth + Presence overlay styles -->
@@ -5386,7 +5394,7 @@ status(['mode: '+state.mode,'biome: '+Game.currentBiome,'pressed: ['+(Array.from
   const _origTravelTo = travelTo;
   travelTo = function(targetBiome) {
     _origTravelTo(targetBiome);
-    if (window.WP_Auth?.user) WP_Auth.joinBiome(targetBiome).catch(()=>{});
+    if (window.WP_Auth?.profile) WP_Auth.joinBiome(targetBiome).catch(()=>{});
   };
 
   // Auto-save to cloud every 90 seconds
