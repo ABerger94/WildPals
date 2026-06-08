@@ -175,8 +175,8 @@
 <!-- ===== SUPABASE CONFIG — paste your project values here ===== -->
 <script>
 window.WP_CONFIG = {
-  SUPABASE_URL: 'https://uyfaumobkgnzioklrqdb.supabase.co',       // e.g. https://xxxx.supabase.co
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5ZmF1bW9ia2duemlva2xycWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MjI3NzksImV4cCI6MjA5NjQ5ODc3OX0.N9eURKmQ9m3mYwAigGP9o6HJYxWhlWPPWpaeN0baVJQ'
+  SUPABASE_URL: 'YOUR_SUPABASE_URL',       // e.g. https://xxxx.supabase.co
+  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY'
 };
 </script>
 
@@ -226,6 +226,9 @@ window.WP_Auth = {
     } else {
       this._updateHUD();
       await this._loadCloudSave();
+      // Join realtime presence for current biome
+      const biome = window._WP_Game?.currentBiome || 'meadow';
+      await this.joinBiome(biome);
     }
   },
 
@@ -279,6 +282,7 @@ window.WP_Auth = {
     document.getElementById('wpUsernamePanel').style.display = 'none';
     this._updateHUD();
     await this._loadCloudSave();
+    await this.joinBiome(window._WP_Game?.currentBiome || 'meadow');
   },
 
   // ── Cloud Save ───────────────────────────────────────────────
@@ -314,41 +318,55 @@ window.WP_Auth = {
     if (!sb || !this.profile) return;
     this._leavePresence();
 
-    this.channel = sb.channel('biome:' + biomeName, {
+    const channelName = 'biome:' + biomeName;
+    this.channel = sb.channel(channelName, {
       config: { presence: { key: this.user.id } }
     });
 
     this.channel
       .on('presence', { event: 'sync' }, () => {
-        const state = this.channel.presenceState();
-        window._WP_OtherPlayers = {};
-        for (const uid in state) {
-          if (uid === this.user.id) continue;
-          const p = state[uid][0];
-          if (p) window._WP_OtherPlayers[uid] = p;
-        }
+        try {
+          const state = this.channel.presenceState();
+          const next = {};
+          for (const key in state) {
+            if (key === this.user.id) continue;
+            const p = state[key][0];
+            if (p) next[key] = p;
+          }
+          window._WP_OtherPlayers = next;
+          console.log('[WP presence] others:', Object.keys(next).length);
+        } catch(e) { console.error('[WP presence sync]', e); }
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        if (key === this.user.id) return;
+        if (newPresences?.[0]) window._WP_OtherPlayers[key] = newPresences[0];
+      })
+      .on('presence', { event: 'leave' }, ({ key }) => {
+        delete window._WP_OtherPlayers[key];
       })
       .subscribe(async (status) => {
+        console.log('[WP channel]', channelName, status);
         if (status === 'SUBSCRIBED') {
           await this._broadcastPosition();
         }
       });
 
-    // Broadcast position every 200ms
-    this._presenceTimer = setInterval(() => this._broadcastPosition(), 200);
+    // Broadcast position every 250ms
+    this._presenceTimer = setInterval(() => this._broadcastPosition(), 250);
   },
 
   async _broadcastPosition() {
     if (!this.channel || !this.profile || !window._WP_Player) return;
     try {
       const ap = window._WP_Game?.companions?.find(p => p.isActive) || window._WP_Game?.companions?.[0];
+      const biome = window._WP_Game?.currentBiome || 'meadow';
       await this.channel.track({
         uid: this.user.id,
         username: this.profile.username,
         x: window._WP_Player.x | 0,
         y: window._WP_Player.y | 0,
         pal: ap?.id || 'rabbit',
-        biome: window._WP_Game?.currentBiome || 'meadow'
+        biome
       });
     } catch(e) {}
   },
@@ -4396,38 +4414,47 @@ drawPlayer(ctx, px, py);
     // ── Other players (realtime presence) ──────────────────────
     try{
       const others = window._WP_OtherPlayers;
-      if (others) {
+      const otherKeys = others ? Object.keys(others) : [];
+      // Debug: show player count in corner
+      ctx.save();
+      ctx.font = '10px ui-monospace, monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillText('online: ' + otherKeys.length, 6, h - 6);
+      ctx.restore();
+
+      if (others && otherKeys.length > 0) {
         ctx.save();
-        for (const uid in others) {
+        for (const uid of otherKeys) {
           const op = others[uid];
-          if (!op || op.biome !== Game.currentBiome) continue;
+          if (!op) continue;
+          // biome check — only render if same biome (or biome missing from payload)
+          if (op.biome && op.biome !== Game.currentBiome) continue;
           const ox = (op.x - vx) | 0, oy = (op.y - vy) | 0;
-          // Color derived from username hash
+          // skip if off-screen
+          if (ox < -40 || ox > w + 40 || oy < -40 || oy > h + 40) continue;
+          // Color from username hash
           let hue = 0;
           for (let ci = 0; ci < (op.username||'').length; ci++) hue = (hue * 31 + (op.username||'').charCodeAt(ci)) & 0xFFFF;
           hue = (hue % 360 + 360) % 360;
-          // Draw tinted player silhouette
-          ctx.globalAlpha = 0.85;
-          // head
-          ctx.fillStyle = `hsl(${hue},70%,78%)`; ctx.fillRect(ox+8, oy+6, 8, 8);
-          // torso
-          ctx.fillStyle = `hsl(${hue},60%,50%)`; ctx.fillRect(ox+6, oy+14, 12, 8);
-          // legs
-          ctx.fillStyle = `hsl(${hue},40%,30%)`; ctx.fillRect(ox+6, oy+22, 5, 2); ctx.fillRect(ox+13, oy+22, 5, 2);
-          // name tag
+          // Sprite
+          ctx.globalAlpha = 0.88;
+          ctx.fillStyle = `hsl(${hue},70%,78%)`; ctx.fillRect(ox+8, oy+6, 8, 8);   // head
+          ctx.fillStyle = `hsl(${hue},60%,50%)`; ctx.fillRect(ox+6, oy+14, 12, 8); // torso
+          ctx.fillStyle = `hsl(${hue},40%,30%)`; ctx.fillRect(ox+6, oy+22, 5, 2); ctx.fillRect(ox+13, oy+22, 5, 2); // legs
+          // Name tag
           ctx.globalAlpha = 0.95;
           ctx.font = 'bold 9px ui-monospace, monospace';
           const tag = (op.username || '?').slice(0, 10);
           const tw = ctx.measureText(tag).width;
-          ctx.fillStyle = 'rgba(0,0,0,0.55)';
-          ctx.fillRect(ox + 12 - tw/2 - 3, oy - 2, tw + 6, 12);
-          ctx.fillStyle = `hsl(${hue},90%,85%)`;
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(ox + 12 - tw/2 - 3, oy - 3, tw + 6, 13);
+          ctx.fillStyle = `hsl(${hue},90%,88%)`;
           ctx.fillText(tag, ox + 12 - tw/2, oy + 8);
           ctx.globalAlpha = 1;
         }
         ctx.restore();
       }
-    } catch(_){}
+    } catch(e){ console.error('[WP render others]', e); }
 
     // hint
     // Zero-allocation nearest check across all entity arrays (avoids concat GC pressure)
@@ -5313,11 +5340,6 @@ status(['mode: '+state.mode,'biome: '+Game.currentBiome,'pressed: ['+(Array.from
   setInterval(() => {
     if (window.WP_Auth?.user) WP_Auth._saveToCloud(1).catch(()=>{});
   }, 90000);
-
-  // Initial presence join
-  setTimeout(() => {
-    if (window.WP_Auth?.user) WP_Auth.joinBiome(Game.currentBiome || 'meadow').catch(()=>{});
-  }, 2000);
 
   // Expose hooks (debug)
   window.WildPals = { items, npcs, pals, portals, player, Game, toast, saveGame, loadGame, newWorld, RNG,
