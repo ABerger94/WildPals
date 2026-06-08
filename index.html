@@ -4149,7 +4149,7 @@ try{ if (typeof window!=='undefined') window.buildQuestProgress = window.buildQu
   }
 
   const ShopUI = { open:false, idx:0, shopId:null, mode:'buy' }; // mode: 'buy' | 'sell'
-  function openShop(shopId){ ShopUI.open=true; ShopUI.idx=0; ShopUI.shopId=shopId; ShopUI.mode='buy'; toast('Market open'); }
+  function openShop(shopId){ ShopUI.open=true; ShopUI.idx=0; shopScroll=0; ShopUI.shopId=shopId; ShopUI.mode='buy'; toast('Market open'); }
   function closeShop(){ ShopUI.open=false; }
   function shopItems(){
     if (ShopUI.mode==='buy'){
@@ -4157,6 +4157,16 @@ try{ if (typeof window!=='undefined') window.buildQuestProgress = window.buildQu
     } else {
       return Game.inventory.filter(s=> SELL_VALUE[s.id]>0).map(s=>({id:s.id, qty:s.qty, price:SELL_VALUE[s.id]}));
     }
+  }
+  function getCraftingRecipes(){
+    const nearFire = npcs && npcs.some(n=>n.role==='campfire' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<80);
+    return RECIPES.filter(r=>{
+      if (r.requiresFlag && !Game.flags[r.requiresFlag]) return false;
+      if (r.biome && r.biome !== Game.currentBiome) return false;
+      if (r.bench === 'campfire') return nearFire;
+      if (r.bench === 'work') return true;
+      return false;
+    });
   }
   function buySelected(){
     if (ShopUI.mode!=='buy') return;
@@ -4500,7 +4510,7 @@ function drawSlotsMenu(ctx,w,h){
 const JournalUI = { idx: 0 };
   const START_ITEMS = ['Resume','Save/Load','New World','Settings','Cheats','Close'];
   const QUICK_TABS=['Inventory','Crafting','Journal','Minimap', 'Cheats']; let quickTab=0, craftIdx=0;
-let invIdx=0;
+let invIdx=0, invScroll=0, craftScroll=0, shopScroll=0;
 
   // Journal stats + perks list
   function journalStats(){
@@ -4811,26 +4821,77 @@ const y = 70, ph = h - 140;
       if(!list.length){ ctx.fillText('(bag empty)', x+14, yy); }
       else{
         if(invIdx>=list.length) invIdx=list.length-1; if(invIdx<0) invIdx=0;
-        for(let i=0;i<list.length;i++){
+        const listTop = yy;
+        const rowH = 34;
+        const listHeight = Math.max(rowH, (y+ph - 34) - listTop);
+        const visible = Math.max(1, Math.floor(listHeight / rowH));
+        invScroll = Math.max(0, Math.min(invScroll, Math.max(0, list.length - visible)));
+        if (invIdx < invScroll) invScroll = invIdx;
+        if (invIdx >= invScroll + visible) invScroll = invIdx - visible + 1;
+        invScroll = Math.max(0, Math.min(invScroll, Math.max(0, list.length - visible)));
+        const end = Math.min(list.length, invScroll + visible);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x+10, listTop - 14, panelW - 20, visible * rowH + 4);
+        ctx.clip();
+        for(let i=invScroll;i<end;i++){
           const s=list[i], hi=(i===invIdx);
           const slot=slotForItemId(s.id);
           const eq = slot? (equippedId(slot)===s.id) : false;
+          const rowY = listTop + (i - invScroll) * rowH;
+          if (hi){ ctx.fillStyle='rgba(255,213,74,0.14)'; ctx.fillRect(x+10, rowY-14, panelW-24, rowH-2); }
           ctx.fillStyle = hi? '#ffd54a' : '#e9f1ff';
           const suffix = eq? '  [E]' : '';
-          ctx.fillText((hi?'> ':'  ')+`${s.id} ×${s.qty}`+suffix, x+14, yy); yy+=18;
-          if (ITEMS[s.id]?.chargesMax){ ctx.fillStyle='#9fe8ff'; ctx.fillText(`   equip: ${s.id} has ${ITEMS[s.id].chargesMax} charges`, x+14, yy); yy+=16; }
+          ctx.fillText((hi?'> ':'  ')+`${s.id} ×${s.qty}`+suffix, x+14, rowY);
+          if (ITEMS[s.id]?.chargesMax){ ctx.fillStyle='#9fe8ff'; ctx.fillText(`   equip: ${s.id} has ${ITEMS[s.id].chargesMax} charges`, x+14, rowY+15); }
         }
-        yy+=8; ctx.fillStyle='#9fe8ff';
-        ctx.fillText('A: Equip/Unequip  Left/Right: switch tab  B/Start: close', x+14, yy); yy+=16;
+        ctx.restore();
+        if (list.length > visible){
+          const trackX = x + panelW - 12, trackY = listTop - 12, trackH = visible * rowH;
+          ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(trackX, trackY, 2, trackH);
+          const thumbH = Math.max(18, trackH * (visible/list.length));
+          const thumbY = trackY + (invScroll / Math.max(1, list.length - visible)) * (trackH - thumbH);
+          ctx.fillStyle='#ffd54a'; ctx.fillRect(trackX-1, thumbY, 4, thumbH);
+        }
+        ctx.fillStyle='#9fe8ff';
+        ctx.fillText('Up/Down: scroll  A: Equip/Use  B/Start: close', x+14, y+ph-12);
       }
     } else if(quickTab===1){
-      const list = RECIPES.filter(r=>!r.requiresFlag || Game.flags[r.requiresFlag]); if(craftIdx>=list.length) craftIdx=list.length-1; if(craftIdx<0) craftIdx=0;
-      for(let i=0;i<list.length;i++){
+      const list = getCraftingRecipes(); if(craftIdx>=list.length) craftIdx=list.length-1; if(craftIdx<0) craftIdx=0;
+      if(!list.length){ ctx.fillText('(no recipes available)', x+14, yy); }
+      else{
+      const listTop = yy;
+      const rowH = 36;
+      const listHeight = Math.max(rowH, (y+ph - 18) - listTop);
+      const visible = Math.max(1, Math.floor(listHeight / rowH));
+      craftScroll = Math.max(0, Math.min(craftScroll, Math.max(0, list.length - visible)));
+      if (craftIdx < craftScroll) craftScroll = craftIdx;
+      if (craftIdx >= craftScroll + visible) craftScroll = craftIdx - visible + 1;
+      craftScroll = Math.max(0, Math.min(craftScroll, Math.max(0, list.length - visible)));
+      const end = Math.min(list.length, craftScroll + visible);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x+10, listTop - 14, panelW - 20, visible * rowH + 4);
+      ctx.clip();
+      for(let i=craftScroll;i<end;i++){
         const r=list[i], ok=hasItems(r.needs);
+        const rowY = listTop + (i - craftScroll) * rowH;
+        if (i===craftIdx){ ctx.fillStyle='rgba(255,213,74,0.14)'; ctx.fillRect(x+10, rowY-14, panelW-24, rowH-2); }
         ctx.fillStyle = (i===craftIdx)? '#ffd54a' : '#e9f1ff';
-        ctx.fillText((i===craftIdx?'> ':'  ')+r.out, x+14, yy); yy+=16;
+        ctx.fillText((i===craftIdx?'> ':'  ')+r.out, x+14, rowY);
         ctx.fillStyle = ok? '#b7ffb7' : '#9ec6ff';
-        ctx.fillText('needs: '+r.needs.map(n=>`${n.id}×${n.qty}`).join(', ') + (ok?'   [A craft]':'   (need mats)'), x+28, yy); yy+=18;
+        ctx.fillText('needs: '+r.needs.map(n=>`${n.id}×${n.qty}`).join(', ') + (ok?'   [A craft]':'   (need mats)'), x+28, rowY+16);
+      }
+      ctx.restore();
+      if (list.length > visible){
+        const trackX = x + panelW - 12, trackY = listTop - 12, trackH = visible * rowH;
+        ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(trackX, trackY, 2, trackH);
+        const thumbH = Math.max(18, trackH * (visible/list.length));
+        const thumbY = trackY + (craftScroll / Math.max(1, list.length - visible)) * (trackH - thumbH);
+        ctx.fillStyle='#ffd54a'; ctx.fillRect(trackX-1, thumbY, 4, thumbH);
+      }
       }
     } else if(quickTab===2){
       const j=journalStats();
@@ -4977,15 +5038,36 @@ else if (quickTab === 4) {
       const list=shopItems(); let y2=sy+48;
       if(!list.length){ ctx.fillText(ShopUI.mode==='buy'?'(no stock)':'(nothing to sell)', sx+14, y2); }
       else{
-        for(let i=0;i<list.length;i++){
+        const rowH = 18;
+        const listTop = y2;
+        const listHeight = sh - 76;
+        const visible = Math.max(1, Math.floor(listHeight / rowH));
+        shopScroll = Math.max(0, Math.min(shopScroll, Math.max(0, list.length - visible)));
+        if (ShopUI.idx < shopScroll) shopScroll = ShopUI.idx;
+        if (ShopUI.idx >= shopScroll + visible) shopScroll = ShopUI.idx - visible + 1;
+        shopScroll = Math.max(0, Math.min(shopScroll, Math.max(0, list.length - visible)));
+        const end = Math.min(list.length, shopScroll + visible);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(sx+10, listTop - 14, sw - 20, visible * rowH + 4);
+        ctx.clip();
+        for(let i=shopScroll;i<end;i++){
           const it=list[i], hi=i===ShopUI.idx;
           ctx.fillStyle=hi?'#ffd54a':'#e9f1ff';
           const label = ShopUI.mode==='buy'
             ? ((hi?'> ':'  ')+it.id+'  —  '+it.price+'c')
             : ((hi?'> ':'  ')+it.id+'  —  '+(SELL_VALUE[it.id]||0)+'c  (×'+it.qty+')');
-          ctx.fillText(label, sx+14, y2); y2+=18;
+          ctx.fillText(label, sx+14, listTop + (i - shopScroll) * rowH);
         }
-        y2+=10; ctx.fillStyle='#9fe8ff';
+        ctx.restore();
+        if (list.length > visible){
+          const trackX = sx + sw - 12, trackY = listTop - 12, trackH = visible * rowH;
+          ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(trackX, trackY, 2, trackH);
+          const thumbH = Math.max(18, trackH * (visible/list.length));
+          const thumbY = trackY + (shopScroll / Math.max(1, list.length - visible)) * (trackH - thumbH);
+          ctx.fillStyle='#ffd54a'; ctx.fillRect(trackX-1, thumbY, 4, thumbH);
+        }
+        y2 = listTop + visible * rowH + 10; ctx.fillStyle='#9fe8ff';
         ctx.fillText(ShopUI.mode==='buy' ? 'A: buy   Left/Right: switch tab   B/Start: close'
                                          : 'A: sell  Left/Right: switch tab   B/Start: close', sx+14, y2);
       }
@@ -5904,8 +5986,8 @@ toast('Cheats menu'); }
       if (UI.quick){
         if (ShopUI.open){
           const list=shopItems();
-          if (state.pressEdge.has('Left'))  ShopUI.mode = (ShopUI.mode==='buy'?'sell':'buy'), ShopUI.idx=0;
-          if (state.pressEdge.has('Right')) ShopUI.mode = (ShopUI.mode==='buy'?'sell':'buy'), ShopUI.idx=0;
+          if (state.pressEdge.has('Left'))  ShopUI.mode = (ShopUI.mode==='buy'?'sell':'buy'), ShopUI.idx=0, shopScroll=0;
+          if (state.pressEdge.has('Right')) ShopUI.mode = (ShopUI.mode==='buy'?'sell':'buy'), ShopUI.idx=0, shopScroll=0;
           if (state.pressEdge.has('Up'))   ShopUI.idx=(ShopUI.idx+(list.length||1)-1)%(list.length||1);
           if (state.pressEdge.has('Down')) ShopUI.idx=(ShopUI.idx+1)%(list.length||1);
           if (state.pressEdge.has('A')){ ShopUI.mode==='buy' ? buySelected() : sellSelected(); }
@@ -5980,13 +6062,7 @@ toast('Cheats menu'); }
             const nearWB = npcs && npcs.some(n=>n.role==='workbench' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<64);
             const nearFire = npcs && npcs.some(n=>n.role==='campfire' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<80);
             // Show workbench recipes if near bench, campfire recipes if near fire, or all if neither (with prompt)
-            const list = RECIPES.filter(r=>{
-              if (r.requiresFlag && !Game.flags[r.requiresFlag]) return false;
-              if (r.biome && r.biome !== Game.currentBiome) return false;
-              if (r.bench === 'campfire') return nearFire;
-              if (r.bench === 'work') return true; // show always, prompt if not near bench
-              return false;
-            });
+            const list = getCraftingRecipes();
             if (state.pressEdge.has('Up')) craftIdx = (craftIdx+list.length-1)%(list.length||1);
             if (state.pressEdge.has('Down')) craftIdx = (craftIdx+1)%(list.length||1);
             if (state.pressEdge.has('A')){
