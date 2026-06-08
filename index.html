@@ -814,6 +814,39 @@ function drawNPC(ctx, vx, vy, n){
       return;
     }
 
+    if(type==='campfire'){
+      const t = (performance.now?performance.now():Date.now())*0.006;
+      // Campfire base: stones
+      ctx.fillStyle = '#555'; ctx.fillRect(ax+6, ay+18, 16, 6);
+      // Logs
+      ctx.fillStyle = '#7b4a1a'; ctx.fillRect(ax+8, ay+16, 12, 4);
+      // Flames — animated
+      const f1 = Math.abs(Math.sin(t))*6, f2 = Math.abs(Math.sin(t+1))*5;
+      ctx.fillStyle = 'rgba(255,140,0,0.9)'; ctx.beginPath(); ctx.ellipse(ax+14, ay+14-f1, 4, 6+f1, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,0,0.8)'; ctx.beginPath(); ctx.ellipse(ax+14, ay+13-f2, 2, 4+f2, 0, 0, Math.PI*2); ctx.fill();
+      // Label
+      ctx.fillStyle='#ffcc44'; ctx.font='8px monospace'; ctx.fillText('🔥', ax+10, ay+6);
+      return;
+    }
+    if(type==='fishing_spot'){
+      // Water ripples
+      const t = (performance.now?performance.now():Date.now())*0.003;
+      ctx.save(); ctx.globalAlpha=0.6;
+      ctx.strokeStyle='#7eddd7'; ctx.lineWidth=1;
+      for(let r=0;r<3;r++){
+        const rad = 6 + r*5 + (t%1)*5;
+        ctx.globalAlpha = 0.5 - r*0.15;
+        ctx.beginPath(); ctx.arc(ax+14, ay+18, rad, 0, Math.PI*2); ctx.stroke();
+      }
+      ctx.restore();
+      // Fishing rod icon
+      ctx.strokeStyle='#a0785a'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(ax+8, ay+4); ctx.lineTo(ax+20, ay+14); ctx.stroke();
+      ctx.fillStyle='#7eddd7'; ctx.font='8px monospace';
+      ctx.fillText('🎣', ax+8, ay+5);
+      return;
+    }
+
     if(type==='market'){
       if (typeof TILE === 'number') { ctx.fillStyle = '#5a3b7a'; ctx.fillRect(ax, ay, TILE, TILE); }
       ctx.fillStyle = '#f2d3a0'; ctx.fillRect(ax+8, ay+6, 8, 8);
@@ -2575,7 +2608,22 @@ const ITEMS = {
 
   sandstone_blade:{ name:'Sandstone Blade', cat:'weapon', dmg:12, desc:'Rough but sharp desert blade.', chargesMax:20},
   aloe_bundle:{ name:'Aloe Bundle', cat:'material', desc:'Bundle of desert aloe leaves.' },
-  reed_bundle:{ name:'Reed Bundle', cat:'material', desc:'Bundle of desert reeds.' }
+  reed_bundle:{ name:'Reed Bundle', cat:'material', desc:'Bundle of desert reeds.' },
+  // === Phase 1: Food & Cooking ===
+  raw_fish:     { name:'Raw Fish',       cat:'food', desc:'A fresh catch. Cook it first.' },
+  cooked_fish:  { name:'Cooked Fish',    cat:'consumable', desc:'Restores 30 HP and 25 stamina.' },
+  berry_snack:  { name:'Berry Snack',    cat:'consumable', desc:'Restores 10 HP and 15 stamina.' },
+  roasted_berry:{ name:'Roasted Berry',  cat:'consumable', desc:'Restores 20 HP and 20 stamina.' },
+  mushroom_soup:{ name:'Mushroom Soup',  cat:'consumable', desc:'Restores 35 HP and 40 stamina.' },
+  herb_tea:     { name:'Herb Tea',       cat:'consumable', desc:'Restores 15 HP, 30 stamina. Grants regen for 30s.' },
+  hearty_stew:  { name:'Hearty Stew',    cat:'consumable', desc:'Restores 60 HP and 60 stamina. Full meal.' },
+  trail_mix:    { name:'Trail Mix',      cat:'consumable', desc:'Restores 20 HP and 35 stamina.' },
+  campfire_ash: { name:'Campfire Ash',   cat:'material',   desc:'Left after a campfire burns out.' },
+  torch:        { name:'Torch',          cat:'tool',       desc:'Lights the dark. Lasts 3 minutes.' },
+  fishing_rod:  { name:'Fishing Rod',    cat:'tool',       desc:'For catching fish at water edges.' },
+  basic_bait:   { name:'Basic Bait',     cat:'material',   desc:'Attracts common fish.' },
+  wooden_axe:   { name:'Wooden Axe',     cat:'tool',       desc:'Chops wood faster. 20 uses.' },
+  wooden_pick:  { name:'Wooden Pick',    cat:'tool',       desc:'Breaks stone faster. 20 uses.' },
 };
 
 // Crafting recipes
@@ -2625,12 +2673,35 @@ const RECIPES = [
     title:"Reed Bundle",
     needs:[{id:"reed",qty:5}],
     bench:"work"
-  }
+  },
+
+  // === Phase 1: Cooking (campfire bench) ===
+  { out:"roasted_berry",  title:"Roasted Berry",  needs:[{id:"berry",qty:3}],                              bench:"campfire" },
+  { out:"cooked_fish",    title:"Cooked Fish",    needs:[{id:"raw_fish",qty:1}],                           bench:"campfire" },
+  { out:"mushroom_soup",  title:"Mushroom Soup",  needs:[{id:"mushroom",qty:2},{id:"wood",qty:1}],         bench:"campfire" },
+  { out:"herb_tea",       title:"Herb Tea",       needs:[{id:"herb",qty:2},{id:"berry",qty:1}],            bench:"campfire" },
+  { out:"hearty_stew",    title:"Hearty Stew",    needs:[{id:"mushroom",qty:2},{id:"berry",qty:2},{id:"raw_fish",qty:1}], bench:"campfire" },
+  { out:"trail_mix",      title:"Trail Mix",      needs:[{id:"berry",qty:3},{id:"mushroom",qty:1}],        bench:"campfire" },
+  { out:"berry_snack",    title:"Berry Snack",    needs:[{id:"berry",qty:2}],                              bench:"campfire" },
+
+  // === Phase 1: Basic tools ===
+  { out:"torch",          title:"Torch",          needs:[{id:"wood",qty:2},{id:"fiber",qty:1}],            bench:"work" },
+  { out:"fishing_rod",    title:"Fishing Rod",    needs:[{id:"wood",qty:3},{id:"fiber",qty:3}],            bench:"work" },
+  { out:"basic_bait",     title:"Basic Bait",     needs:[{id:"berry",qty:2}],                              bench:"work" },
+  { out:"wooden_axe",     title:"Wooden Axe",     needs:[{id:"wood",qty:4},{id:"stone",qty:2}],            bench:"work" },
+  { out:"wooden_pick",    title:"Wooden Pick",    needs:[{id:"wood",qty:4},{id:"stone",qty:3}],            bench:"work" },
 ];
 
   const SHOPS = {
-    meadow_village:{ items:[{id:"net_reed",price:45},{id:"pot_heal_s",price:10}] },
-    forest_camp:{   items:[{id:"net_reed",price:45},{id:"pot_heal_s",price:14}]},
+    meadow_village:{ items:[
+      {id:"net_basic",price:20},{id:"pot_heal_s",price:10},
+      {id:"basic_bait",price:5},{id:"berry_snack",price:8},
+      {id:"torch",price:12},{id:"fishing_rod",price:30}
+    ]},
+    forest_camp:{   items:[
+      {id:"net_reed",price:45},{id:"pot_heal_s",price:14},
+      {id:"trail_mix",price:15},{id:"herb_tea",price:18}
+    ]},
     
     wetlands_camp:{ items:[
       {id:"net_reed",price:45},
@@ -2718,15 +2789,18 @@ const SPAWNS = {
   const Game = {
     coins:0, inventory:[], companions:[],
     equipped:{ tool:null, weapon:null, armor:null },
-    stats:{hpMax:100,hp:100,stamMax:100,stam:100,atk:5,def:2,crit:0.05,speed:1.0,speedMult:1.0},
+    stats:{hpMax:100,hp:100,stamMax:100,stam:100,hungerMax:100,hunger:100,atk:5,def:2,crit:0.05,speed:1.0,speedMult:1.0},
     quests:{}, flags:{}, unlocked:{meadow:true}, discovered:new Set(),
     settings:{seedEnabled:true,music:false,sfx:true},
-    currentBiome:'meadow'
+    currentBiome:'meadow',
+    dayCount: 1  // tracks in-game days for hunger pacing
   };
 // === Patch: ensure Game.buffs/stats after Game is declared ===
-if (!Game.buffs) Game.buffs = {defUntil:0, speedUntil:0, partyUntil:0};
+if (!Game.buffs) Game.buffs = {defUntil:0, speedUntil:0, partyUntil:0, regenUntil:0};
 if (!Game.stats) Game.stats = {};
 if (Game.stats.speedMult == null) Game.stats.speedMult = 1;
+if (Game.stats.hunger    == null) Game.stats.hunger    = 100;
+if (Game.stats.stam      == null) Game.stats.stam      = 100;
 
   
 // --- Defense bonus helper (prevents ReferenceError and centralizes calc) ---
@@ -3082,6 +3156,20 @@ function seedMeadow(){
     npcs.push({x:(px+5)*TILE, y:(py+0)*TILE, w:28,h:28, name:'Elder', role:'elder'});
     npcs.push({x:(px+3)*TILE, y:(py+2)*TILE, w:28,h:28, name:'Craftsman', role:'workbench'});
     npcs.push({x:(px-5)*TILE, y:(py-1)*TILE, w:28,h:28, name:'Market', role:'market', shopId:'meadow_village'});
+    // Campfire — always at starting camp, acts as cooking bench
+    npcs.push({x:(px+0)*TILE, y:(py+2)*TILE, w:28,h:28, name:'Campfire', role:'campfire'});
+    // Fishing spot — find a water-adjacent tile near player start
+    let fishTx = px-3, fishTy = py+4;
+    for(let attempt=0; attempt<40; attempt++){
+      const tx=RNG.i(px-8,px+8), ty=RNG.i(py-8,py+8);
+      if (!tileIsWater(tx,ty) && (tileIsWater(tx+1,ty)||tileIsWater(tx-1,ty)||tileIsWater(tx,ty+1)||tileIsWater(tx,ty-1))){
+        fishTx=tx; fishTy=ty; break;
+      }
+    }
+    npcs.push({x:fishTx*TILE, y:fishTy*TILE, w:28,h:28, name:'Fishing Spot', role:'fishing_spot'});
+    // Starter food drop so player isn't immediately starving
+    items.push({x:(px+1)*TILE+4, y:(py+1)*TILE+4, w:24,h:24, id:'berry_snack'});
+    items.push({x:(px-1)*TILE+4, y:(py+1)*TILE+4, w:24,h:24, id:'berry'});
   }
 
   function seedDesert(){
@@ -3239,6 +3327,7 @@ function seedForest(){
   const trackY=(H*0.575)|0;
   npcs.push({x:(12*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Ranger', role:'ranger'});
   npcs.push({x:(16*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Trader', role:'market', shopId:'forest_camp'});
+  npcs.push({x:(14*TILE), y:(trackY-1)*TILE, w:26,h:26, name:'Campfire', role:'campfire'});
 
   // 3) Forest pals — guarantee at least two of each species (sprite handled below)
   (function(){
@@ -3852,8 +3941,8 @@ function getSlotInstr(){
     }
     const isMobileUI = mcVisible || gbaVisible;
     return isMobileUI
-      ? 'A: Load    B: Save/Overwrite    Z: Delete    Start:Close'
-      : 'E: Load    Q:Save/Overwrite    Z: Delete    Enter:Close';
+      ? 'A: Action    B: Cancel/Cycle pal    Z: Attack/Sprint    Start: Menu'
+      : 'E/J: Action    Q/K: Cancel    Z: Attack/Sprint    Enter: Menu';
   }catch(_){
     // Safe default for desktops
     return 'E: Load    Q:Save/Overwrite    Z: Delete    Enter:Close';
@@ -4576,8 +4665,8 @@ const nowB = Date.now();
 ctx.restore(); /* BUFFME__FONT_FIX end */
 
 
-// HUD band (expanded height to prevent overlap)
-    const bandX=8, bandY=8, bandW=w-16, bandH=96;
+// HUD band (expanded height for survival bars)
+    const bandX=8, bandY=8, bandW=w-16, bandH=108;
     ctx.fillStyle='rgba(0,0,0,0.55)'; roundRect(ctx, bandX, bandY, bandW, bandH, 10, true, false);
     ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.beginPath();
     ctx.moveTo(150, bandY+12); ctx.lineTo(150, bandY+bandH-12);
@@ -4653,11 +4742,34 @@ ctx.restore(); /* BUFFME__FONT_FIX end */
     if (ap){ ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(260, 32, 120, 20); ctx.fillStyle='#e9f1ff'; ctx.fillText('Pal: '+ap.id, 266, 42); }
 
     // Player HP bar
-    { const hp=Game.stats.hp||Game.stats.hpMax||100, hpm=Game.stats.hpMax||100;
+    { const hp=Game.stats.hp||0, hpm=Game.stats.hpMax||100;
       const ratio = Math.max(0, Math.min(1, hp/hpm));
-      ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(12,54,180,10);
-      ctx.fillStyle='#54C9C1'; ctx.fillRect(12,54, (180*ratio)|0, 10);
-      ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.strokeRect(12.5,56.5,179,9);
+      ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(12,54,120,8);
+      ctx.fillStyle= hp < hpm*0.3 ? '#ff5555' : '#54C9C1';
+      ctx.fillRect(12,54, (120*ratio)|0, 8);
+      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.strokeRect(12.5,54.5,119,7);
+      ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='8px ui-monospace,monospace';
+      ctx.fillText('HP', 136, 61);
+    }
+    // Stamina bar
+    { const st=Game.stats.stam||0, sm=Game.stats.stamMax||100;
+      const ratio = Math.max(0, Math.min(1, st/sm));
+      ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(12,65,120,8);
+      ctx.fillStyle= '#ffd54a';
+      ctx.fillRect(12,65, (120*ratio)|0, 8);
+      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.strokeRect(12.5,65.5,119,7);
+      ctx.fillStyle='rgba(255,255,255,0.6)';
+      ctx.fillText('ST', 136, 72);
+    }
+    // Hunger bar
+    { const hu=Game.stats.hunger||0, hum=Game.stats.hungerMax||100;
+      const ratio = Math.max(0, Math.min(1, hu/hum));
+      ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(12,76,120,8);
+      ctx.fillStyle= hu < hum*0.25 ? '#ff8855' : '#a8e063';
+      ctx.fillRect(12,76, (120*ratio)|0, 8);
+      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.strokeRect(12.5,76.5,119,7);
+      ctx.fillStyle='rgba(255,255,255,0.6)';
+      ctx.fillText('HN', 136, 83);
     }
 
     // === Quest / Progress line (full row, wraps) ===
@@ -4965,11 +5077,16 @@ animT = t; // for portal animation
 
     // Movement (water + brush checks)
     const _anyUIOpen = UI.start || UI.quick || ShopUI.open || SlotsUI.open
-      || (typeof WP_Social !== 'undefined' && (WP_Social._isOpen?.() ?? false));
+      || (typeof WP_Social !== 'undefined' && (WP_Social._isOpen?.() ?? false))
+      || (typeof WP_Survival !== 'undefined' && (WP_Survival._isOpen?.() ?? false));
     if (!_anyUIOpen){
+      // Sprint: hold Z while moving (costs stamina)
+      const isSprinting = state.pressed.has('Z') && (state.pressed.has('Up')||state.pressed.has('Down')||state.pressed.has('Left')||state.pressed.has('Right'));
+      const sprintMult = (isSprinting && (Game.stats.stam||0) > 5) ? 1.65 : 1.0;
       let ax=0, ay=0; const p=state.pressed;
       if(p.has('Left')) ax-=1; if(p.has('Right')) ax+=1; if(p.has('Up')) ay-=1; if(p.has('Down')) ay+=1;
-      const sp=currentSpeed();
+      const sp = currentSpeed() * sprintMult;
+      const isMoving = (ax !== 0 || ay !== 0);
 
       const ap=activePal(); const perks=PALS[ap?.id]?.perks||{};
       const allowWater = !!(perks.water_walk || perks.flying); const canFly = !!perks.flying;
@@ -4988,6 +5105,32 @@ animT = t; // for portal animation
       const gxY = ground[gi(cxY,cyY)];
       const canY = ((gxY!==4 || allowWater) && (gxY!==BRUSH || allowBrush));
       if (canY) player.y = ny;
+
+      // ── Stamina & hunger drain ────────────────────────────────
+      try {
+        const sm = Game.stats.stamMax||100;
+        const hm = Game.stats.hungerMax||100;
+        if (isSprinting && isMoving) {
+          Game.stats.stam = Math.max(0, (Game.stats.stam||sm) - 18*dt);
+        } else if (isMoving) {
+          Game.stats.stam = Math.max(0, (Game.stats.stam||sm) - 4*dt);
+        } else {
+          // resting — regen stamina
+          Game.stats.stam = Math.min(sm, (Game.stats.stam||0) + 12*dt);
+        }
+        // Hunger drains slowly over time (one full day = ~100 hunger lost)
+        const dayLen = Math.max(60, Game.dayLength||300);
+        Game.stats.hunger = Math.max(0, (Game.stats.hunger||hm) - (hm/dayLen)*dt);
+        // Starving: slowly lose HP
+        if ((Game.stats.hunger||0) <= 0) {
+          Game.stats.hp = Math.max(1, (Game.stats.hp||1) - 3*dt);
+          if (Math.random() < dt * 0.5) toast('Starving! Eat something.');
+        }
+        // HP regen from herb_tea buff
+        if (Game.buffs?.regenUntil > Date.now()) {
+          Game.stats.hp = Math.min(Game.stats.hpMax||100, (Game.stats.hp||0) + 5*dt);
+        }
+      } catch(_) {}
     }
 
     // Guardian Trial update (timer + collection)
@@ -5112,6 +5255,7 @@ if (state.pressed.has('Down'))  lastDir.x =  0, lastDir.y = 1;
     if (state.pressEdge.has('B') && UI.start){ UI.start=false; }
 
     // ── WP_Social UI input ───────────────────────────────────────
+    try{ if (WP_Survival.handleInput(state)) { state.pressEdge.clear(); } }catch(_){}
     try{ if (WP_Social.handleInput(state)) { state.pressEdge.clear(); } }catch(_){}
 
       if (SlotsUI.open){
@@ -5180,32 +5324,56 @@ toast('Cheats menu'); }
             if (state.pressEdge.has('A')){
               const s=Game.inventory[invIdx];
               if (s && ITEMS[s.id]?.cat==='consumable'){
-                if (s.id==='pot_heal_s'){
-                  const m=Game.stats.hpMax||100; Game.stats.hp=Math.min(m,(Game.stats.hp||m)+15);
-                  s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); }
-                  toast('Healed +15');
-                } else if (s.id==='pot_heal_s_plus'){
-                  const m=Game.stats.hpMax||100; Game.stats.hp=Math.min(m,(Game.stats.hp||m)+30);
-                  s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); }
-                  toast('Healed +30');
-                } else if (s.id==='desert_rations'){
-                  // Restore 20 HP and grant a brief speed buff (sustenance in harsh terrain)
-                  const m=Game.stats.hpMax||100; Game.stats.hp=Math.min(m,(Game.stats.hp||m)+20);
+                const _eat = (hp, stam, msg, regenSec) => {
+                  const hm = Game.stats.hpMax||100, sm = Game.stats.stamMax||100;
+                  if (hp)   Game.stats.hp   = Math.min(hm, (Game.stats.hp||hm) + hp);
+                  if (stam) Game.stats.stam = Math.min(sm, (Game.stats.stam||sm) + stam);
+                  // Hunger restore (food fills hunger)
+                  Game.stats.hunger = Math.min(Game.stats.hungerMax||100, (Game.stats.hunger||100) + Math.max(hp,stam)*0.6);
+                  if (regenSec && Game.buffs) Game.buffs.regenUntil = Math.max(Game.buffs.regenUntil||0, Date.now() + regenSec*1000);
+                  s.qty -= 1; if (s.qty <= 0) Game.inventory = Game.inventory.filter(x=>x.qty>0);
+                  toast(msg);
+                };
+                if      (s.id==='pot_heal_s')      _eat(15,  0,  'Healed +15 HP');
+                else if (s.id==='pot_heal_s_plus')  _eat(30,  0,  'Healed +30 HP');
+                else if (s.id==='desert_rations') {
+                  _eat(20, 20, 'Rations: +20 HP, +20 stam, speed↑');
                   if (Game.buffs) Game.buffs.speedUntil = Math.max(Game.buffs.speedUntil||0, Date.now()+8000);
                   if (Game.stats) Game.stats.speedMult = 1.3;
-                  s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); }
-                  toast('Rations eaten: +20 HP, speed↑ (8s)');
-                } else { toast('Used '+s.id); s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); } }
+                }
+                else if (s.id==='berry_snack')     _eat(10,  15, '+10 HP, +15 stam');
+                else if (s.id==='roasted_berry')   _eat(20,  20, '+20 HP, +20 stam');
+                else if (s.id==='cooked_fish')     _eat(30,  25, '+30 HP, +25 stam');
+                else if (s.id==='mushroom_soup')   _eat(35,  40, '+35 HP, +40 stam');
+                else if (s.id==='herb_tea')        _eat(15,  30, '+15 HP, +30 stam, regen↑', 30);
+                else if (s.id==='hearty_stew')     _eat(60,  60, '+60 HP, +60 stam — full meal!');
+                else if (s.id==='trail_mix')       _eat(20,  35, '+20 HP, +35 stam');
+                else { toast('Used '+s.id); s.qty-=1; if(s.qty<=0){ Game.inventory=Game.inventory.filter(x=>x.qty>0); } }
               } else {
                 equipFromInventory(invIdx);
               }
             }
           } else if (quickTab===1){ // Crafting
             const nearWB = npcs && npcs.some(n=>n.role==='workbench' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<64);
-const list = RECIPES.filter(r=>(!r.requiresFlag || Game.flags[r.requiresFlag]) && (r.bench==='work') && (!r.biome || r.biome===Game.currentBiome));
+            const nearFire = npcs && npcs.some(n=>n.role==='campfire' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<80);
+            // Show workbench recipes if near bench, campfire recipes if near fire, or all if neither (with prompt)
+            const list = RECIPES.filter(r=>{
+              if (r.requiresFlag && !Game.flags[r.requiresFlag]) return false;
+              if (r.biome && r.biome !== Game.currentBiome) return false;
+              if (r.bench === 'campfire') return nearFire;
+              if (r.bench === 'work') return true; // show always, prompt if not near bench
+              return false;
+            });
             if (state.pressEdge.has('Up')) craftIdx = (craftIdx+list.length-1)%(list.length||1);
             if (state.pressEdge.has('Down')) craftIdx = (craftIdx+1)%(list.length||1);
-            if (state.pressEdge.has('A')){ const r = list[craftIdx]||null; if(!r){/* no-op */}else if(!nearWB){ toast('Find a workbench'); } else if (hasItems(r.needs)) craft(r.out); else toast('Need mats'); }
+            if (state.pressEdge.has('A')){
+              const r = list[craftIdx]||null;
+              if (!r){ /* no-op */ }
+              else if (r.bench==='campfire' && !nearFire){ toast('Find a campfire to cook'); }
+              else if (r.bench==='work' && !nearWB){ toast('Find a workbench to craft'); }
+              else if (hasItems(r.needs)) craft(r.out);
+              else toast('Need mats');
+            }
           }
         }
       } else {
@@ -5278,13 +5446,21 @@ const list = RECIPES.filter(r=>(!r.requiresFlag || Game.flags[r.requiresFlag]) &
             if (n.role==='elder'){
               if (questState('q_meadow_main')==='locked') beginQuest('q_meadow_main');
               else if (questState('q_meadow_main')==='active') tryTurnIn('q_meadow_main');
-              else toast('Elder: "Good work!"');
+              else toast('Elder: "Good work! Find the campfire to cook food and restore stamina."');
             } else if (n.role==='ranger'){
               if (questState('q_forest_main')==='locked') beginQuest('q_forest_main');
               else if (questState('q_forest_main')==='active') tryTurnIn('q_forest_main');
               else toast('Ranger: "Trails are clear. Thanks."');
-            } else if (n.role==='workbench'){ toast('Craft via Select → Crafting'); }
-            else if (n.role==='market'){ UI.quick=true; openShop(n.shopId||'meadow_village'); }
+            } else if (n.role==='workbench'){
+              toast('Craft via Select → Crafting');
+            } else if (n.role==='campfire'){
+              // Open cooking panel
+              WP_Survival.openCooking();
+            } else if (n.role==='fishing_spot'){
+              WP_Survival.startFishing();
+            } else if (n.role==='market'){
+              UI.quick=true; openShop(n.shopId||'meadow_village');
+            }
           }
           
 else if ((function(){
@@ -5357,12 +5533,14 @@ else if ((function(){
 
     // ── Player interaction tick (chat bubble decay) ──────────────
     try{ WP_Social.tick(dt); }catch(_){}
+    try{ WP_Survival.tick(dt); }catch(_){}
 
     // Render
     const ctx = activeCtx(); const w=activeCanvas().width, h=activeCanvas().height;
     drawShell(ctx,w,h); drawWorld(ctx,w,h);
     // Draw social overlays on top of world
     try{ WP_Social.draw(ctx,w,h,player,window._WP_vx||0,window._WP_vy||0); }catch(_){}
+    try{ WP_Survival.draw(ctx,w,h); }catch(_){}
 
 // Flush deferred actions (apply after render)
 try{ if(DefQ.length){ const q=DefQ.splice(0); for(const fn of q){ try{ fn(); }catch(e){} } } }catch(e){}
@@ -5462,7 +5640,164 @@ function maybeToastNoInteract(){ if (!window.__AHandledPedestal) toast('Nothing 
 </script>
 <script>
 // ============================================================
-//  WP_Social — Player interaction: radial menu, trade,
+//  WP_Survival — Phase 1: Campfire cooking + fishing minigame
+// ============================================================
+window.WP_Survival = (function(){
+  const state = {
+    cooking: { open: false, idx: 0 },
+    fishing: { open: false, phase: 'idle', timer: 0, biteTimer: 0, biteWindow: 0, result: null }
+  };
+
+  function _isOpen() { return state.cooking.open || (state.fishing.open && state.fishing.phase !== 'idle'); }
+
+  // ── Cooking ─────────────────────────────────────────────────
+  function openCooking() {
+    state.cooking.open = true;
+    state.cooking.idx  = 0;
+    if (typeof toast === 'function') toast('Campfire: Select → Crafting to cook');
+    // Just flag that we're near a campfire — the crafting panel handles the rest
+    if (typeof UI !== 'undefined') { UI.quick = true; }
+    if (typeof quickTab !== 'undefined') { quickTab = 1; } // jump to crafting tab
+    state.cooking.open = false; // close immediately, panel takes over
+  }
+
+  // ── Fishing ─────────────────────────────────────────────────
+  const FISH_TABLE = [
+    { id:'raw_fish', name:'Common Fish',  weight:55, minRod:0 },
+    { id:'raw_fish', name:'River Trout',  weight:30, minRod:0 },
+    { id:'raw_fish', name:'Rare Catch',   weight:10, minRod:1, bonus:'mushroom' },
+    { id:'raw_fish', name:'Golden Fish',  weight:5,  minRod:1, bonus:'herb' },
+  ];
+
+  function _hasBait() {
+    const G = window._WP_Game;
+    return G && G.inventory && G.inventory.some(s => s.id === 'basic_bait' && s.qty > 0);
+  }
+  function _hasRod() {
+    const G = window._WP_Game;
+    return G && G.equipped && G.equipped.tool && G.equipped.tool.id === 'fishing_rod';
+  }
+  function _useBait() {
+    const G = window._WP_Game;
+    if (!G) return;
+    const slot = G.inventory.find(s => s.id === 'basic_bait');
+    if (slot) { slot.qty--; if (slot.qty <= 0) G.inventory = G.inventory.filter(s => s.qty > 0); }
+  }
+  function _addItem(id, qty) {
+    const G = window._WP_Game;
+    if (!G) return;
+    const ex = G.inventory.find(s => s.id === id);
+    if (ex) ex.qty += qty; else G.inventory.push({ id, qty });
+  }
+
+  function startFishing() {
+    if (!_hasRod()) return typeof toast === 'function' ? toast('You need a Fishing Rod! Craft one at a workbench.') : null;
+    if (!_hasBait()) return typeof toast === 'function' ? toast('You need Basic Bait! Craft from berries at a workbench.') : null;
+    _useBait();
+    state.fishing.phase = 'casting';
+    state.fishing.open  = true;
+    state.fishing.timer = 0;
+    state.fishing.biteTimer  = 1.5 + Math.random() * 3.0; // 1.5–4.5s wait for bite
+    state.fishing.biteWindow = 0;
+    state.fishing.result = null;
+    if (typeof toast === 'function') toast('Cast! Wait for a bite…');
+  }
+
+  function _tick(dt) {
+    const f = state.fishing;
+    if (!f.open || f.phase === 'idle') return;
+    f.timer += dt;
+    if (f.phase === 'casting') {
+      f.biteTimer -= dt;
+      if (f.biteTimer <= 0) {
+        f.phase = 'bite';
+        f.biteWindow = 1.2; // 1.2s to press A
+        if (typeof toast === 'function') toast('BITE! Press A!');
+      }
+    } else if (f.phase === 'bite') {
+      f.biteWindow -= dt;
+      if (f.biteWindow <= 0) {
+        // Missed
+        f.phase = 'idle'; f.open = false;
+        if (typeof toast === 'function') toast('It got away! Try again.');
+      }
+    } else if (f.phase === 'reeling') {
+      f.timer += dt;
+      if (f.timer > 1.0) {
+        // Give fish
+        const fish = _pickFish();
+        _addItem(fish.id, 1);
+        if (fish.bonus) _addItem(fish.bonus, 1);
+        if (typeof toast === 'function') toast('Caught a ' + fish.name + '!');
+        if (typeof Game !== 'undefined') Game.discovered?.add(fish.id);
+        f.phase = 'idle'; f.open = false;
+      }
+    }
+  }
+
+  function _pickFish() {
+    let sum = 0;
+    for (const f of FISH_TABLE) sum += f.weight;
+    let r = Math.random() * sum;
+    for (const f of FISH_TABLE) { r -= f.weight; if (r <= 0) return f; }
+    return FISH_TABLE[0];
+  }
+
+  function handleInput(st) {
+    if (!state.fishing.open) return false;
+    if (state.fishing.phase === 'bite' && st.pressEdge.has('A')) {
+      state.fishing.phase = 'reeling';
+      state.fishing.timer = 0;
+      if (typeof toast === 'function') toast('Got it! Reeling in…');
+      return true;
+    }
+    if (st.pressEdge.has('B') || st.pressEdge.has('Start')) {
+      state.fishing.phase = 'idle'; state.fishing.open = false;
+      return true;
+    }
+    return state.fishing.open;
+  }
+
+  function draw(ctx, w, h) {
+    if (!state.fishing.open || state.fishing.phase === 'idle') return;
+    const f = state.fishing;
+    const pw = 220, ph = 90;
+    const x = (w - pw) >> 1, y = h - ph - 70;
+
+    ctx.fillStyle = 'rgba(10,14,26,.95)';
+    ctx.fillRect(x, y, pw, ph);
+    ctx.strokeStyle = 'rgba(84,201,193,.5)'; ctx.lineWidth = 1;
+    ctx.strokeRect(x+.5, y+.5, pw, ph);
+
+    ctx.font = 'bold 13px ui-monospace, monospace';
+    ctx.fillStyle = '#7eddd7';
+    if (f.phase === 'casting') {
+      ctx.fillText('🎣 Waiting for bite…', x+14, y+24);
+      // Animated dots
+      const dots = '.'.repeat(((f.timer*2)|0) % 4);
+      ctx.fillStyle = '#cfe6ff'; ctx.font = '11px ui-monospace, monospace';
+      ctx.fillText('Line in water' + dots, x+14, y+44);
+    } else if (f.phase === 'bite') {
+      ctx.fillStyle = '#ffd54a';
+      ctx.fillText('⚡ BITE! Press A NOW!', x+14, y+24);
+      // Countdown bar
+      const ratio = Math.max(0, f.biteWindow / 1.2);
+      ctx.fillStyle = 'rgba(255,213,74,.2)'; ctx.fillRect(x+14, y+34, pw-28, 12);
+      ctx.fillStyle = ratio > 0.4 ? '#ffd54a' : '#ff5555';
+      ctx.fillRect(x+14, y+34, ((pw-28)*ratio)|0, 12);
+    } else if (f.phase === 'reeling') {
+      ctx.fillText('Reeling in…', x+14, y+24);
+      const ratio = Math.min(1, f.timer / 1.0);
+      ctx.fillStyle = 'rgba(84,201,193,.2)'; ctx.fillRect(x+14, y+34, pw-28, 12);
+      ctx.fillStyle = '#54C9C1'; ctx.fillRect(x+14, y+34, ((pw-28)*ratio)|0, 12);
+    }
+    ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.fillText('B = cancel', x+14, y+ph-8);
+  }
+
+  return { openCooking, startFishing, handleInput, draw, tick: _tick, _isOpen };
+})();
+
 //              player shop, chat bubbles + panel
 // ============================================================
 window.WP_Social = (function(){
