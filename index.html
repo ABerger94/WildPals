@@ -380,6 +380,12 @@ window.wpSendMagicLink = function() {
   WP_Auth.sendMagicLink(email);
 };
 window.wpSubmitUsername = function() { WP_Auth.submitUsername(); };
+window.wpIsTextEntryTarget = function(target) {
+  if (!target) return false;
+  if (target.closest && target.closest('#wpAuthPanel, #wpUsernamePanel')) return true;
+  const tag = (target.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
+};
 
 // Boot
 document.addEventListener('DOMContentLoaded', () => WP_Auth.init());
@@ -2220,8 +2226,8 @@ let particles = Array.isArray(globalThis.particles) ? globalThis.particles : [];
     Space:'Select', Tab:'Select',
     KeyZ:'Z'
   };
-  addEventListener('keydown', e=>{ const n=keyMap[e.code]; if(n){ e.preventDefault(); if(!state.pressed.has(n)) state.pressEdge.add(n); state.pressed.add(n); pulse(n);} });
-  addEventListener('keyup',   e=>{ const n=keyMap[e.code]; if(n){ e.preventDefault(); state.pressed.delete(n);} });
+  addEventListener('keydown', e=>{ if(window.wpIsTextEntryTarget && window.wpIsTextEntryTarget(e.target)) return; const n=keyMap[e.code]; if(n){ e.preventDefault(); if(!state.pressed.has(n)) state.pressEdge.add(n); state.pressed.add(n); pulse(n);} });
+  addEventListener('keyup',   e=>{ if(window.wpIsTextEntryTarget && window.wpIsTextEntryTarget(e.target)) return; const n=keyMap[e.code]; if(n){ e.preventDefault(); state.pressed.delete(n);} });
 
   function bindBtn(id, name){
     const el=document.getElementById(id); if(!el) return;
@@ -5359,7 +5365,7 @@ function maybeToastNoInteract(){ if (!window.__AHandledPedestal) toast('Nothing 
 
   // Fallback on document (in case overlay misses an event)
   ['pointerdown','pointerup','touchstart','touchend','click','mousedown','mouseup'].forEach(function(ev){
-    window.addEventListener(ev, function(e){ if (introActive()){ stop(e); startGame(); } }, {passive:false});
+    window.addEventListener(ev, function(e){ if (window.wpIsTextEntryTarget && window.wpIsTextEntryTarget(e.target)) return; if (introActive()){ stop(e); startGame(); } }, {passive:false});
   });
 
   // Buttons present in your shell (portrait + landscape) — click to start
@@ -5377,6 +5383,7 @@ function maybeToastNoInteract(){ if (!window.__AHandledPedestal) toast('Nothing 
       e.code==='Enter' || e.code==='Space' ||
       e.code==='ArrowUp' || e.code==='ArrowDown' || e.code==='ArrowLeft' || e.code==='ArrowRight'
     );
+    if (window.wpIsTextEntryTarget && window.wpIsTextEntryTarget(e.target)) return;
     if (ok && introActive()){ stop(e); startGame(); }
   }, {passive:false});
   // Safety auto-dismiss
