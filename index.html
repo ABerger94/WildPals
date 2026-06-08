@@ -3263,7 +3263,26 @@ function regenWetlands(){
   }
 
 function seedMeadow(){
-    const px=(player.x/TILE|0), py=(player.y/TILE|0);
+    Game.flags = Game.flags || {};
+    if (!Game.flags.meadow_camp_anchor){
+      const center = { tx:(W/2)|0, ty:(H/2)|0 };
+      let spot = null;
+      for(let r=0; r<=14 && !spot; r++){
+        for(let dy=-r; dy<=r && !spot; dy++){
+          for(let dx=-r; dx<=r; dx++){
+            if (Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
+            const tx=center.tx+dx, ty=center.ty+dy;
+            if (tx>4 && ty>4 && tx<W-5 && ty<H-5 && !tileIsWater(tx,ty) && !tileIsBrush(tx,ty)){ spot={tx,ty}; break; }
+          }
+        }
+      }
+      Game.flags.meadow_camp_anchor = spot || center;
+    }
+    const px=Game.flags.meadow_camp_anchor.tx|0, py=Game.flags.meadow_camp_anchor.ty|0;
+    for(let yy=-3; yy<=3; yy++) for(let xx=-6; xx<=6; xx++){
+      const tx=px+xx, ty=py+yy;
+      if (tx>1 && ty>1 && tx<W-2 && ty<H-2){ ground[gi(tx,ty)]=3; deco[gi(tx,ty)]=0; }
+    }
     // starter drops near spawn
     [{dx:-3,dy:-1,id:'berry'},{dx:2,dy:-2,id:'stone'},{dx:-2,dy:2,id:'wood'},{dx:1,dy:1,id:'wood'}]
       .forEach(d=> items.push({x:(px+d.dx)*TILE+4, y:(py+d.dy)*TILE+4, w:24,h:24, id:d.id}));
@@ -4162,6 +4181,16 @@ let invIdx=0;
     for(let i=0;i<list.length;i++){ const o=list[i], d=dist2(cx,cy,o.x+o.w/2,o.y+o.h/2); if(d<bd){bd=d; best=i;} }
     return best;
   }
+  function nearestNpcRole(role, r=64){
+    let best=-1, bd=r*r, cx=player.x+player.w/2, cy=player.y+player.h/2;
+    for(let i=0;i<npcs.length;i++){
+      const o=npcs[i];
+      if (!o || o.role!==role) continue;
+      const d=dist2(cx,cy,o.x+o.w/2,o.y+o.h/2);
+      if(d<bd){bd=d; best=i;}
+    }
+    return best;
+  }
   function rectOutline(ctx,x,y,w,h,fill,stroke){ ctx.fillStyle=fill; ctx.fillRect(x|0,y|0,w,h); ctx.lineWidth=2; ctx.strokeStyle=stroke; ctx.strokeRect((x|0)+0.5,(y|0)+0.5,w,h); }
 
 function drawPal(ctx, p, vx, vy){
@@ -4406,6 +4435,20 @@ function drawPal(ctx, p, vx, vy){
     ctx.beginPath();
     ctx.arc(x, y, baseR*0.55, t*1.8, t*1.8 + Math.PI*1.4);
     ctx.stroke();
+
+    const pcx = player.x + player.w/2, pcy = player.y + player.h/2;
+    const tcx = pt.x + pt.w/2, tcy = pt.y + pt.h/2;
+    if (dist2(pcx,pcy,tcx,tcy) <= 72*72){
+      const label = 'Portal to ' + pt.to;
+      ctx.save();
+      ctx.font = '11px ui-monospace, monospace';
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+      roundRect(ctx, x - tw/2 - 7, y - 34, tw + 14, 18, 5, true, false);
+      ctx.fillStyle = '#efe6ff';
+      ctx.fillText(label, x - tw/2, y - 21);
+      ctx.restore();
+    }
   }
 
   // Quick Panel (+Shop overlay buy/sell)
@@ -5649,12 +5692,18 @@ toast('Cheats menu'); }
   }
   if (!__handled){
 
-          // nearest portal?
-          let idx = nearest(portals,60);
+          // Campfires should win over nearby portals so the return portal cannot steal cooking input.
+          let idx = nearestNpcRole('campfire',72);
           if (idx!==-1){
-            const to = portals[idx].to; travelTo(to);
+            WP_Survival.openCooking();
+            toast('Campfire: cooking recipes');
           }
-          
+          // nearest portal?
+          else if ((idx = nearest(portals,60))!==-1){
+            const to = portals[idx].to;
+            toast('Portal to '+to);
+            travelTo(to);
+          }
           else if ((idx=nearest(chests,36))!==-1){
             const c = chests[idx];
             if (!c.opened){
