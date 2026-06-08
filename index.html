@@ -4964,7 +4964,9 @@ animT = t; // for portal animation
     if (Game.currentBiome==='desert' && typeof DESERT!=='undefined' && DESERT && DESERT._trialUpdate) DESERT._trialUpdate(dt, state);
 
     // Movement (water + brush checks)
-    if (!UI.start){
+    const _anyUIOpen = UI.start || UI.quick || ShopUI.open || SlotsUI.open
+      || (typeof WP_Social !== 'undefined' && (WP_Social._isOpen?.() ?? false));
+    if (!_anyUIOpen){
       let ax=0, ay=0; const p=state.pressed;
       if(p.has('Left')) ax-=1; if(p.has('Right')) ax+=1; if(p.has('Up')) ay-=1; if(p.has('Down')) ay+=1;
       const sp=currentSpeed();
@@ -5952,7 +5954,10 @@ window.WP_Social = (function(){
     }, 2000);
   } catch(_){}
 
-  return { nearestOtherPlayer, openRadial, closeAll, handleInput, tick, draw };
+  return {
+    nearestOtherPlayer, openRadial, closeAll, handleInput, tick, draw,
+    _isOpen: () => state.radial.open || state.trade.open || state.shop.open || state.chat.open
+  };
 
 })();
 </script>
