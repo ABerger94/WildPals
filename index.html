@@ -3264,8 +3264,12 @@ function regenWetlands(){
 
 function seedMeadow(){
     Game.flags = Game.flags || {};
+    const center = { tx:(W/2)|0, ty:(H/2)|0 };
+    const oldAnchor = Game.flags.meadow_camp_anchor;
+    if (oldAnchor && Math.hypot((oldAnchor.tx|0)-center.tx, (oldAnchor.ty|0)-center.ty) > 18){
+      delete Game.flags.meadow_camp_anchor;
+    }
     if (!Game.flags.meadow_camp_anchor){
-      const center = { tx:(W/2)|0, ty:(H/2)|0 };
       let spot = null;
       for(let r=0; r<=14 && !spot; r++){
         for(let dy=-r; dy<=r && !spot; dy++){
@@ -3324,6 +3328,35 @@ function seedMeadow(){
     // Starter food drop so player isn't immediately starving
     items.push({x:(px+1)*TILE+4, y:(py+1)*TILE+4, w:24,h:24, id:'berry_snack'});
     items.push({x:(px-1)*TILE+4, y:(py+1)*TILE+4, w:24,h:24, id:'berry'});
+  }
+
+  function repairMeadowCampEntities(){
+    if (Game.currentBiome!=='meadow') return;
+    Game.flags = Game.flags || {};
+    if (!Game.flags.meadow_camp_anchor){
+      const oldItems = items.slice(), oldPals = pals.slice(), oldChests = chests.slice();
+      seedMeadow();
+      items.length=0; items.push(...oldItems);
+      pals.length=0; pals.push(...oldPals);
+      chests.length=0; chests.push(...oldChests);
+    }
+    const px=Game.flags.meadow_camp_anchor.tx|0, py=Game.flags.meadow_camp_anchor.ty|0;
+    for(let i=npcs.length-1; i>=0; i--){
+      const r=npcs[i] && npcs[i].role;
+      if (r==='elder'||r==='workbench'||r==='market'||r==='campfire'||r==='fishing_spot') npcs.splice(i,1);
+    }
+    npcs.push({x:(px+5)*TILE, y:(py+0)*TILE, w:28,h:28, name:'Elder', role:'elder'});
+    npcs.push({x:(px+3)*TILE, y:(py+2)*TILE, w:28,h:28, name:'Craftsman', role:'workbench'});
+    npcs.push({x:(px-5)*TILE, y:(py-1)*TILE, w:28,h:28, name:'Market', role:'market', shopId:'meadow_village'});
+    npcs.push({x:(px+0)*TILE, y:(py+2)*TILE, w:28,h:28, name:'Campfire', role:'campfire'});
+    let fishTx = px-3, fishTy = py+4;
+    for(let attempt=0; attempt<40; attempt++){
+      const tx=RNG.i(px-8,px+8), ty=RNG.i(py-8,py+8);
+      if (!tileIsWater(tx,ty) && (tileIsWater(tx+1,ty)||tileIsWater(tx-1,ty)||tileIsWater(tx,ty+1)||tileIsWater(tx,ty-1))){
+        fishTx=tx; fishTy=ty; break;
+      }
+    }
+    npcs.push({x:fishTx*TILE, y:fishTy*TILE, w:28,h:28, name:'Fishing Spot', role:'fishing_spot'});
   }
 
   function seedDesert(){
@@ -3637,28 +3670,46 @@ function findOasisPortalSpot(){
   return null;
 }
 
-function rebuildPortals(){
+function portalUnlocked(to){
+    Game.unlocked = Game.unlocked || {meadow:true};
+    Game.flags = Game.flags || {};
+    if (to==='meadow') return true;
+    if (to==='forest') return !!(Game.flags.bridgeFixed || Game.unlocked.forest);
+    if (to==='desert') return !!(Game.unlocked.desert && (Game.flags.owl_trial_pass||Game.flags.owl_trial_passed) && Game.flags.q_forest_main_done);
+    if (to==='wetlands') return !!(Game.unlocked.wetlands || Game.flags.desert_guardian_portal_ready);
+    return !!Game.unlocked[to];
+  }
+
+  function pushPortal(x,y,w,h,to,locked){
+    portals.push({x,y,w,h,to, locked: locked==null ? !portalUnlocked(to) : !!locked});
+  }
+
+  function lockedPortalMessage(pt){
+    if (!pt) return 'This portal is sealed.';
+    if (pt.to==='forest') return 'The bridge is still broken. Finish the Elder quest.';
+    if (pt.to==='desert') return 'The desert route is sealed. Finish the Ranger errand and Great Owl Trial.';
+    if (pt.to==='wetlands') return 'The wetlands portal is sealed. Bring the Relic Feather to the Sand Lynx.';
+    return 'This portal is sealed.';
+  }
+
+  function rebuildPortals(){
     portals.length=0;
     const trackY=(H*0.575)|0;
     if (Game.currentBiome==='meadow'){
-      if (Game.flags.bridgeFixed){
-        portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'forest'});
-      }
+      pushPortal((W-10)*TILE, trackY*TILE, 28, 28, 'forest', !portalUnlocked('forest'));
     } else if (Game.currentBiome==='forest'){
-      portals.push({x:10*TILE, y:trackY*TILE, w:28, h:28, to:'meadow'});
-      if ((Game.flags.owl_trial_pass||Game.flags.owl_trial_passed) && Game.flags.q_forest_main_done){
-        portals.push({x:(W-10)*TILE, y:trackY*TILE, w:28, h:28, to:'desert'});
+      pushPortal(10*TILE, trackY*TILE, 28, 28, 'meadow', false);
+      if (portalUnlocked('desert')){
+        pushPortal((W-10)*TILE, trackY*TILE, 28, 28, 'desert', false);
         Game.unlocked.desert = true;
       }
     } else if (Game.currentBiome==='desert'){
       const ptx=(player.x/TILE|0), py = trackY;
       let px = Math.max(3, Math.min(W-4, ptx-3));
       if (ground[gi(px,py)]===4){ if (px < W-5) px += 2; else px -= 2; }
-      portals.push({x:(W-12)*TILE, y:trackY*TILE, w:32, h:32, to:'forest'});
+      pushPortal((W-12)*TILE, trackY*TILE, 32, 32, 'forest', false);
       // Wetlands portal (appears after relic feather is given to the guardian) — LEFT edge
-      if ((Game.flags && Game.flags.desert_guardian_portal_ready) || (Game.unlocked && Game.unlocked.wetlands)){
-        portals.push({x:10*TILE, y:trackY*TILE, w:32, h:32, to:'wetlands'});
-      }
+      pushPortal(10*TILE, trackY*TILE, 32, 32, 'wetlands', !portalUnlocked('wetlands'));
 // carve a clear 3x3 corridor around the portal
       for(let yy=-1; yy<=1; yy++) for(let xx=-1; xx<=1; xx++){
         const gx=px+xx, gy=py+yy;
@@ -3671,7 +3722,7 @@ function rebuildPortals(){
   
     else if (Game.currentBiome==='wetlands'){
       const trackY=(H*0.575)|0;
-      portals.push({x:162, y:2014, w:28, h:28, to:'desert'});
+      pushPortal(162, 2014, 28, 28, 'desert', false);
     }
   }
 
@@ -3998,10 +4049,12 @@ try{ if (typeof window!=='undefined') window.buildQuestProgress = window.buildQu
       Object.assign(Game, d.Game||{}); Game.discovered=new Set((d.Game?.discovered)||[]);
       try{ const L=Math.max(60, Game.dayLength||300); if(typeof Game.dayClock!=='number'){ Game.dayClock=0.5*L; } Game._dayInitDone=true; Game._lt=(performance&&performance.now)?performance.now():0; const __phase=Game.dayClock/L; const __day=0.3+0.7*Math.max(0, Math.cos((__phase*2*Math.PI)-Math.PI)); Game.light=__day; Game.isNight=(__day<0.55);}catch(__){} Object.assign(player, d.player||{});
       items.length=0; npcs.length=0; pals.length=0; portals.length=0; chests.length=0; particles.length=0;
-      items.push(...(d.items||[])); npcs.push(...(d.npcs||[])); pals.push(...(d.pals||[])); portals.push(...(d.portals||[]));
+      items.push(...(d.items||[])); npcs.push(...(d.npcs||[])); pals.push(...(d.pals||[]));
       if(Array.isArray(d.ground) && d.ground.length===ground.length) ground.set(d.ground); // includes BRUSH
       if(Array.isArray(d.deco)   && d.deco.length===deco.length)     deco.set(d.deco);
       if(Array.isArray(d.seen)   && d.seen.length===seen.length)     seen.set(d.seen);
+      repairMeadowCampEntities();
+      rebuildPortals(); ensureDesertReturnPortal();
       toast('Loaded (Slot '+slot+')');
     }catch(e){ toast('Load failed'); }
   }
@@ -4039,14 +4092,14 @@ try{ if (typeof window!=='undefined') window.buildQuestProgress = window.buildQu
       if (Game.stats) Game.stats.speedMult=2.5;
       break;
     case 'PARTYTIME': if (Game.buffs) Game.buffs.partyUntil=Date.now()+20000; break;
-    case 'FORESTOPEN': if (Game.unlocked) Game.unlocked.forest=true; toast('Forest unlocked'); break;
-    case 'DESERTOPEN': if (Game.unlocked) Game.unlocked.desert=true; toast('Desert unlocked'); break;
-    case 'WETLANDSOPEN': if (Game.unlocked) Game.unlocked.wetlands=true; toast('Wetlands unlocked'); break;
-    case 'VOLCANOOPEN': if (Game.unlocked) Game.unlocked.volcano=true; toast('Volcano unlocked'); break;
-    case 'GLACIEROPEN': if (Game.unlocked) Game.unlocked.glacier=true; toast('Glacier unlocked'); break;
-    case 'MYSTICOPEN': if (Game.unlocked) Game.unlocked.mystic=true; toast('Mystic unlocked'); break;
-    case 'SKYREALMOPEN': if (Game.unlocked) Game.unlocked.skyrealm=true; toast('Sky Realm unlocked'); break;
-    case 'UNDERSEAOPEN': if (Game.unlocked) Game.unlocked.undersea=true; toast('Undersea unlocked'); break;
+    case 'FORESTOPEN': if (Game.unlocked) Game.unlocked.forest=true; if (Game.flags) Game.flags.bridgeFixed=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Forest unlocked'); break;
+    case 'DESERTOPEN': if (Game.unlocked) Game.unlocked.desert=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Desert unlocked'); break;
+    case 'WETLANDSOPEN': if (Game.unlocked) Game.unlocked.wetlands=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Wetlands unlocked'); break;
+    case 'VOLCANOOPEN': if (Game.unlocked) Game.unlocked.volcano=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Volcano unlocked'); break;
+    case 'GLACIEROPEN': if (Game.unlocked) Game.unlocked.glacier=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Glacier unlocked'); break;
+    case 'MYSTICOPEN': if (Game.unlocked) Game.unlocked.mystic=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Mystic unlocked'); break;
+    case 'SKYREALMOPEN': if (Game.unlocked) Game.unlocked.skyrealm=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Sky Realm unlocked'); break;
+    case 'UNDERSEAOPEN': if (Game.unlocked) Game.unlocked.undersea=true; rebuildPortals(); ensureDesertReturnPortal(); toast('Undersea unlocked'); break;
     case 'MYTHIC': /* stub: spawn mythic pal */ break;
     case 'LEGENDARY': /* stub: spawn legendary pal */ break;
     case 'RARE': /* stub: spawn rare pal */ break;
@@ -4410,17 +4463,17 @@ function drawPal(ctx, p, vx, vy){
 
     // outer glow
     const g = ctx.createRadialGradient(x, y, baseR*0.2, x, y, glowR);
-    g.addColorStop(0, 'rgba(185,120,255,0.55)');
-    g.addColorStop(1, 'rgba(185,120,255,0.0)');
+    g.addColorStop(0, pt.locked ? 'rgba(120,128,148,0.42)' : 'rgba(185,120,255,0.55)');
+    g.addColorStop(1, pt.locked ? 'rgba(120,128,148,0.0)' : 'rgba(185,120,255,0.0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(x,y,glowR,0,Math.PI*2); ctx.fill();
 
     // portal disk
-    ctx.fillStyle='#8238ff';
+    ctx.fillStyle=pt.locked ? '#475061' : '#8238ff';
     ctx.beginPath(); ctx.arc(x,y, baseR, 0, Math.PI*2); ctx.fill();
 
     // swirling rings
-    ctx.strokeStyle='#caa8ff'; ctx.lineWidth=2;
+    ctx.strokeStyle=pt.locked ? '#aeb7c8' : '#caa8ff'; ctx.lineWidth=2;
     const ringCount=3;
     for(let i=0;i<ringCount;i++){
       const r = baseR - 4*i;
@@ -4430,7 +4483,7 @@ function drawPal(ctx, p, vx, vy){
     }
 
     // inner swirl
-    ctx.strokeStyle='#ffffff';
+    ctx.strokeStyle=pt.locked ? '#d6dde8' : '#ffffff';
     ctx.lineWidth=1.5;
     ctx.beginPath();
     ctx.arc(x, y, baseR*0.55, t*1.8, t*1.8 + Math.PI*1.4);
@@ -4439,7 +4492,7 @@ function drawPal(ctx, p, vx, vy){
     const pcx = player.x + player.w/2, pcy = player.y + player.h/2;
     const tcx = pt.x + pt.w/2, tcy = pt.y + pt.h/2;
     if (dist2(pcx,pcy,tcx,tcy) <= 72*72){
-      const label = 'Portal to ' + pt.to;
+      const label = (pt.locked ? 'Sealed portal: ' : 'Portal to ') + pt.to;
       ctx.save();
       ctx.font = '11px ui-monospace, monospace';
       const tw = ctx.measureText(label).width;
@@ -5700,9 +5753,14 @@ toast('Cheats menu'); }
           }
           // nearest portal?
           else if ((idx = nearest(portals,60))!==-1){
-            const to = portals[idx].to;
+            const pt = portals[idx], to = pt.to;
+            if (pt.locked || !portalUnlocked(to)){
+              pt.locked = true;
+              toast(lockedPortalMessage(pt));
+            } else {
             toast('Portal to '+to);
             travelTo(to);
+            }
           }
           else if ((idx=nearest(chests,36))!==-1){
             const c = chests[idx];
