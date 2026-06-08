@@ -627,6 +627,15 @@ document.addEventListener('DOMContentLoaded', () => {
   <div id="debug">booting…</div>
 
 <script>
+// === Player sprite (defined early so drawWorld can always call it) ===
+function drawPlayer(ctx, px, py){
+  if (typeof playerInvisible !== 'undefined' && playerInvisible) return;
+  ctx.fillStyle = '#eaeaea'; ctx.fillRect(px+8,  py+6,  8, 8);  // head
+  ctx.fillStyle = '#3a75c4'; ctx.fillRect(px+6,  py+14, 12, 8); // torso
+  ctx.fillStyle = '#2b2b2b'; ctx.fillRect(px+6,  py+22,  5, 2); // legs
+  ctx.fillStyle = '#2b2b2b'; ctx.fillRect(px+13, py+22,  5, 2);
+  ctx.fillStyle = '#000000'; ctx.fillRect(px+11, py+9,   2, 2);  // eye
+}
 
 // === Ground-blended, individualized icons for Items & Pals ====================
 function R(ctx,x,y,w,h,c){ ctx.fillStyle=c; ctx.fillRect(x|0,y|0,w|0,h|0); }
@@ -4470,7 +4479,8 @@ function drawGuardianLayer(ctx, vx, vy){
 
     // player
 const px = player.x - vx, py = player.y - vy;
-drawPlayer(ctx, px, py);
+if (typeof drawPlayer === 'function') drawPlayer(ctx, px, py);
+else { ctx.fillStyle='#ffd86b'; ctx.fillRect((px+8)|0,(py+6)|0,8,8); ctx.fillStyle='#e9eef7'; ctx.fillRect((px+6)|0,(py+14)|0,12,8); }
 
     // ── Other players (realtime presence) ──────────────────────
     try{
@@ -5425,22 +5435,7 @@ function _shade(hex, k){
 }
 </script>
 <script>
-// === Player sprite ===
-// Uses the same blocky style as your shopHUD code, but with the local canvas ctx.
-function drawPlayer(ctx, px, py){
-  // Keep the cheat/invisibility behavior if you want it:
-  if (typeof playerInvisible !== 'undefined' && playerInvisible) return;
-
-  // head
-  ctx.fillStyle = '#eaeaea'; ctx.fillRect(px+8,  py+6,  8, 8);
-  // torso
-  ctx.fillStyle = '#3a75c4'; ctx.fillRect(px+6,  py+14, 12, 8);
-  // legs
-  ctx.fillStyle = '#2b2b2b'; ctx.fillRect(px+6,  py+22,  5, 2);
-  ctx.fillStyle = '#2b2b2b'; ctx.fillRect(px+13, py+22,  5, 2);
-  // eye
-  ctx.fillStyle = '#000000'; ctx.fillRect(px+11, py+9,   2, 2);
-}
+// (drawPlayer defined earlier in main script block)
 
 </script>
 <script>
