@@ -4159,7 +4159,7 @@ try{ if (typeof window!=='undefined') window.buildQuestProgress = window.buildQu
     }
   }
   function getCraftingRecipes(){
-    const nearFire = npcs && npcs.some(n=>n.role==='campfire' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<80);
+    const nearFire = npcs && npcs.some(n=>n.role==='campfire' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<40);
     return RECIPES.filter(r=>{
       if (r.requiresFlag && !Game.flags[r.requiresFlag]) return false;
       if (r.biome && r.biome !== Game.currentBiome) return false;
@@ -4537,6 +4537,16 @@ let invIdx=0, invScroll=0, craftScroll=0, shopScroll=0;
       if (!o || o.role!==role) continue;
       const d=dist2(cx,cy,o.x+o.w/2,o.y+o.h/2);
       if(d<bd){bd=d; best=i;}
+    }
+    return best;
+  }
+  function nearestNpcInteract(r=64){
+    let best=-1, bd=r*r, cx=player.x+player.w/2, cy=player.y+player.h/2;
+    for(let i=0;i<npcs.length;i++){
+      const o=npcs[i]; if(!o) continue;
+      const rr = o.role==='campfire' ? 40 : r;
+      const d=dist2(cx,cy,o.x+o.w/2,o.y+o.h/2);
+      if(d<rr*rr && d<bd){bd=d; best=i;}
     }
     return best;
   }
@@ -6060,7 +6070,7 @@ toast('Cheats menu'); }
             }
           } else if (quickTab===1){ // Crafting
             const nearWB = npcs && npcs.some(n=>n.role==='workbench' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<64);
-            const nearFire = npcs && npcs.some(n=>n.role==='campfire' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<80);
+            const nearFire = npcs && npcs.some(n=>n.role==='campfire' && Math.hypot((n.x+13)-(player.x+13),(n.y+13)-(player.y+13))<40);
             // Show workbench recipes if near bench, campfire recipes if near fire, or all if neither (with prompt)
             const list = getCraftingRecipes();
             if (state.pressEdge.has('Up')) craftIdx = (craftIdx+list.length-1)%(list.length||1);
@@ -6115,7 +6125,7 @@ toast('Cheats menu'); }
             WP_Survival.startFishing();
           }
           // Campfires should win over nearby portals so the return portal cannot steal cooking input.
-          else if ((idx = nearestNpcRole('campfire',72))!==-1){
+          else if ((idx = nearestNpcRole('campfire',40))!==-1){
             WP_Survival.openCooking();
             toast('Campfire: cooking recipes');
           }
@@ -6162,7 +6172,7 @@ toast('Cheats menu'); }
             if (typeof perk.forage_bonus==='number' && RNG.chance(perk.forage_bonus)) addItem(gotId,1);
             items.splice(idx,1); toast('Picked up');
           }
-          else if ((idx=nearest(npcs,64))!==-1){
+          else if ((idx=nearestNpcInteract(64))!==-1){
             const n=npcs[idx];
             if (n.role==='elder'){
               if (questState('q_meadow_main')==='locked') beginQuest('q_meadow_main');
@@ -6369,7 +6379,7 @@ window.WP_Survival = (function(){
   // ── State ────────────────────────────────────────────────────
   const state = {
     cooking:  { open: false, idx: 0 },
-    fishing:  { open:false, phase:'idle', biteTimer:0, biteWindow:0, reelTimer:0, reelProgress:0, fish:null },
+    fishing:  { open:false, phase:'idle', biteTimer:0, biteWindow:0, reelTimer:0, reelProgress:0, reelPulse:0, fish:null },
     farming:  { open:false, plots:[], selectedPlot:null, idx:0 },
     planting: { open:false, plotIdx:-1, seedIdx:0 },
   };
@@ -6480,7 +6490,7 @@ window.WP_Survival = (function(){
     const f = state.fishing;
     f.open=true; f.phase='casting'; f.bait=usedBait ? bait : 'none';
     f.biteTimer=_biteTime(f.bait); f.biteWindowMax=_biteWindow(f.bait); f.biteWindow=f.biteWindowMax;
-    f.reelTimer=0; f.reelProgress=0; f.fish=null;
+    f.reelTimer=0; f.reelProgress=0; f.reelPulse=0; f.fish=null;
     _toast('Cast! Bait: '+(f.bait.replace('_',' '))+'. Wait for BITE, press A, then mash A.');
   }
 
@@ -6519,16 +6529,21 @@ window.WP_Survival = (function(){
     const f = state.fishing;
     if (f.phase==='bite'){
       f.fish = _pickFish(f.bait);
-      f.phase='reeling'; f.reelTimer=0; f.reelProgress=20;
+      f.phase='reeling'; f.reelTimer=0; f.reelPulse=0; f.reelProgress=35;
       _toast('Got it! Reel in — keep pressing A!');
       return true;
     }
     if (f.phase==='reeling'){
-      const baitBoost = f.bait==='basic_bait' ? 2 : f.bait==='worm_bait' ? 4 : f.bait==='glowing_lure' ? 5 : 0;
-      f.reelProgress = Math.min(100, f.reelProgress + 18 + baitBoost + (_rodTier()===2 ? 4 : 0));
+      _addReelProgress();
       return true;
     }
     return false;
+  }
+
+  function _addReelProgress(mult=1){
+    const f = state.fishing;
+    const baitBoost = f.bait==='basic_bait' ? 2 : f.bait==='worm_bait' ? 4 : f.bait==='glowing_lure' ? 5 : 0;
+    f.reelProgress = Math.min(100, f.reelProgress + (18 + baitBoost + (_rodTier()===2 ? 4 : 0)) * mult);
   }
 
   // ── Farming system ───────────────────────────────────────────
@@ -6653,6 +6668,12 @@ window.WP_Survival = (function(){
     if (state.fishing.open){
       if (state.fishing.phase==='idle'){ state.fishing.open=false; return false; }
       if (st.pressEdge.has('A')) _fishingPressA();
+      if (state.fishing.phase==='reeling' && st.pressed && st.pressed.has('A')){
+        state.fishing.reelPulse = (state.fishing.reelPulse||0) + 1;
+        if (state.fishing.reelPulse >= 8){ state.fishing.reelPulse = 0; _addReelProgress(0.65); }
+      } else if (state.fishing.phase==='reeling') {
+        state.fishing.reelPulse = 0;
+      }
       if (st.pressEdge.has('B')||st.pressEdge.has('Start')){ state.fishing.open=false; state.fishing.phase='idle'; return true; }
       return true;
     }
