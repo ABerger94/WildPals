@@ -1317,7 +1317,7 @@ markSeeded();
 
     if (n.role==='heron_scout'){
       if (!f.minnow_started){ toast('Scout: The Hermit guides palbonding — speak with him first'); return true; }
-      if (!f.minnow_done){ addItem('bait',1); f.minnow_done=true; toast('Scout: Take this bait. Let’s test your bond in the waters.'); return true; }
+      if (!f.minnow_done){ addItem('basic_bait',3); f.minnow_done=true; toast('Scout: Take this bait. Let’s test your bond in the waters.'); return true; }
       return true;
     }
 
@@ -6032,9 +6032,14 @@ toast('Cheats menu'); }
   }
   if (!__handled){
 
-          // Campfires should win over nearby portals so the return portal cannot steal cooking input.
-          let idx = nearestNpcRole('campfire',72);
+          // Fishing spots should win over nearby campfires/portals when the player is on the shore marker.
+          let idx = nearestNpcRole('fishing_spot',72);
           if (idx!==-1){
+            toast('Fishing Spot');
+            WP_Survival.startFishing();
+          }
+          // Campfires should win over nearby portals so the return portal cannot steal cooking input.
+          else if ((idx = nearestNpcRole('campfire',72))!==-1){
             WP_Survival.openCooking();
             toast('Campfire: cooking recipes');
           }
@@ -6351,10 +6356,11 @@ window.WP_Survival = (function(){
     const biome  = _biome();
     const table  = (FISH[biome] || FISH.meadow)[_isNight() ? 'night' : 'day'];
     const rodTier = _rodTier();
+    const hasBait = !!(bait && bait !== 'none');
     // Filter by rod and bait requirements
     const eligible = table.filter(f => {
       if (f.rodMin && rodTier < f.rodMin) return false;
-      if (f.bait !== 'any' && bait !== f.bait) return false;
+      if (f.bait !== 'any' && (!hasBait || bait !== f.bait)) return false;
       return true;
     });
     const pool = eligible.length ? eligible : table.filter(f => f.bait === 'any');
@@ -6365,7 +6371,7 @@ window.WP_Survival = (function(){
   }
 
   // bite speed: fine rod = wider window, worm bait = slightly longer wait
-  function _biteTime(bait){ return 2.0 + Math.random()*3.5 + (bait==='worm_bait'?0.5:0) - (_rodTier()===2?0.5:0); }
+  function _biteTime(bait){ return 2.0 + Math.random()*3.5 + (bait==='worm_bait'?0.5:0) + (bait==='none'?0.8:0) - (_rodTier()===2?0.5:0); }
   function _biteWindow(){ return _rodTier()===2 ? 2.0 : 1.2; }
 
   function _hasBait(type){ return type ? _has(type) : (_has('basic_bait')||_has('worm_bait')||_has('glowing_lure')); }
@@ -6380,13 +6386,12 @@ window.WP_Survival = (function(){
   function startFishing(){
     if (_rodTier()===0) return _toast('Need a Fishing Rod! Craft at workbench.');
     const bait = _bestBait();
-    if (!bait) return _toast('Need bait! Craft Basic Bait from berries.');
-    _use(bait);
+    if (bait) _use(bait);
     const f = state.fishing;
-    f.open=true; f.phase='casting'; f.bait=bait;
-    f.biteTimer=_biteTime(bait); f.biteWindow=_biteWindow();
+    f.open=true; f.phase='casting'; f.bait=bait || 'none';
+    f.biteTimer=_biteTime(f.bait); f.biteWindow=_biteWindow();
     f.reelTimer=0; f.reelProgress=0; f.fish=null;
-    _toast('Cast! ('+(bait.replace('_',' '))+') Wait for a bite…');
+    _toast('Cast! ('+(f.bait.replace('_',' '))+') Wait for a bite...');
   }
 
   // ── Fishing tick ─────────────────────────────────────────────
