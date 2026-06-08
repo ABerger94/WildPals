@@ -6377,10 +6377,18 @@ window.WP_Survival = (function(){
   function _isOpen(){ return state.cooking.open || state.fishing.open || state.planting.open || state.farming.open; }
 
   // ── Helpers ──────────────────────────────────────────────────
-  function _G(){ return window._WP_Game; }
+  function _G(){ return window._WP_Game || (typeof Game!=='undefined' ? Game : null); }
   function _inv(){ return _G()?.inventory || []; }
-  function _has(id,qty=1){ const s=_inv().find(s=>s.id===id); return s && s.qty>=qty; }
-  function _use(id,qty=1){ const G=_G(); if(!G) return; const s=G.inventory.find(s=>s.id===id); if(s){ s.qty-=qty; if(s.qty<=0) G.inventory=G.inventory.filter(x=>x.qty>0); } }
+  function _itemId(v){ return String(v||'').trim().toLowerCase(); }
+  function _stack(id){ const want=_itemId(id); return _inv().find(s=>_itemId(s&&s.id)===want); }
+  function _has(id,qty=1){ const s=_stack(id); return !!(s && (Number(s.qty)||0)>=qty); }
+  function _use(id,qty=1){
+    const G=_G(); if(!G) return false;
+    const s=_stack(id); if(!s) return false;
+    s.qty=(Number(s.qty)||0)-qty;
+    if(s.qty<=0) G.inventory=G.inventory.filter(x=>x!==s && (Number(x.qty)||0)>0);
+    return true;
+  }
   function _give(id,qty=1){ const G=_G(); if(!G) return; const ex=G.inventory.find(s=>s.id===id); if(ex) ex.qty+=qty; else G.inventory.push({id,qty}); }
   function _toast(msg){ try{ if(typeof toast==='function') toast(msg); }catch(_){} }
   function _rod(){ const G=_G(); const t=G?.equipped?.tool; return t?.id; }
@@ -6446,9 +6454,15 @@ window.WP_Survival = (function(){
     return pool[pool.length-1];
   }
 
-  // bite speed: fine rod = wider window, worm bait = slightly longer wait
-  function _biteTime(bait){ return 2.0 + Math.random()*3.5 + (bait==='worm_bait'?0.5:0) + (bait==='none'?0.8:0) - (_rodTier()===2?0.5:0); }
-  function _biteWindow(){ return _rodTier()===2 ? 2.0 : 1.2; }
+  // Better bait shortens the wait and gives a more forgiving hook window.
+  function _biteTime(bait){
+    const baitBonus = bait==='basic_bait' ? -0.4 : bait==='worm_bait' ? -0.7 : bait==='glowing_lure' ? -0.9 : 0.8;
+    return Math.max(0.8, 2.0 + Math.random()*3.5 + baitBonus - (_rodTier()===2?0.5:0));
+  }
+  function _biteWindow(bait){
+    const baitBonus = bait==='basic_bait' ? 0.45 : bait==='worm_bait' ? 0.65 : bait==='glowing_lure' ? 0.75 : 0;
+    return (_rodTier()===2 ? 2.0 : 1.2) + baitBonus;
+  }
 
   function _hasBait(type){ return type ? _has(type) : (_has('basic_bait')||_has('worm_bait')||_has('glowing_lure')); }
   function _bestBait(){
@@ -6462,12 +6476,12 @@ window.WP_Survival = (function(){
   function startFishing(){
     if (_rodTier()===0) return _toast('Need a Fishing Rod! Craft at workbench.');
     const bait = _bestBait();
-    if (bait) _use(bait);
+    const usedBait = bait && _use(bait);
     const f = state.fishing;
-    f.open=true; f.phase='casting'; f.bait=bait || 'none';
-    f.biteTimer=_biteTime(f.bait); f.biteWindow=_biteWindow();
+    f.open=true; f.phase='casting'; f.bait=usedBait ? bait : 'none';
+    f.biteTimer=_biteTime(f.bait); f.biteWindowMax=_biteWindow(f.bait); f.biteWindow=f.biteWindowMax;
     f.reelTimer=0; f.reelProgress=0; f.fish=null;
-    _toast('Cast! ('+(f.bait.replace('_',' '))+') Wait for a bite...');
+    _toast('Cast! Bait: '+(f.bait.replace('_',' '))+'. Wait for BITE, press A, then mash A.');
   }
 
   // ── Fishing tick ─────────────────────────────────────────────
@@ -6510,7 +6524,8 @@ window.WP_Survival = (function(){
       return true;
     }
     if (f.phase==='reeling'){
-      f.reelProgress = Math.min(100, f.reelProgress + 18);
+      const baitBoost = f.bait==='basic_bait' ? 2 : f.bait==='worm_bait' ? 4 : f.bait==='glowing_lure' ? 5 : 0;
+      f.reelProgress = Math.min(100, f.reelProgress + 18 + baitBoost + (_rodTier()===2 ? 4 : 0));
       return true;
     }
     return false;
@@ -6710,7 +6725,7 @@ window.WP_Survival = (function(){
 
   function _drawFishing(ctx,w,h){
     const f = state.fishing;
-    const pw=260, ph=100;
+    const pw=300, ph=112;
     const x=(w-pw)>>1, y=h-ph-70;
     ctx.fillStyle='rgba(10,14,26,.96)'; ctx.fillRect(x,y,pw,ph);
     ctx.strokeStyle='rgba(84,201,193,.5)'; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+.5,pw,ph);
@@ -6726,10 +6741,12 @@ window.WP_Survival = (function(){
         ctx.fillRect(wx,wy,30,2);
       }
       ctx.font='10px ui-monospace,monospace'; ctx.fillStyle='rgba(255,255,255,.4)';
-      ctx.fillText('Bait: '+f.bait?.replace('_',' ')+'  Rod: '+(f.bait==='glowing_lure'?'✦':_rodTier()===2?'★':'☆'), x+14, y+74);
+      const rodName = _rodTier()===2 ? 'fine rod' : 'fishing rod';
+      ctx.fillText('Bait: '+f.bait?.replace('_',' ')+'  Rod: '+rodName, x+14, y+74);
+      ctx.fillText('When BITE appears: press A, then mash A', x+14, y+88);
     } else if (f.phase==='bite'){
       ctx.fillStyle='#ffd54a'; ctx.fillText('⚡ BITE! Press A NOW!', x+14, y+24);
-      const ratio=Math.max(0,f.biteWindow/_biteWindow());
+      const ratio=Math.max(0,f.biteWindow/(f.biteWindowMax||_biteWindow(f.bait)));
       ctx.fillStyle='rgba(255,213,74,.15)'; ctx.fillRect(x+14,y+36,pw-28,16);
       ctx.fillStyle=ratio>0.4?'#ffd54a':'#ff5555'; ctx.fillRect(x+14,y+36,((pw-28)*ratio)|0,16);
       ctx.font='9px ui-monospace,monospace'; ctx.fillStyle='rgba(255,255,255,.5)';
