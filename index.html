@@ -175,8 +175,8 @@
 <!-- ===== SUPABASE + ABLY CONFIG ===== -->
 <script>
 window.WP_CONFIG = {
-  SUPABASE_URL: 'https://uyfaumobkgnzioklrqdb.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5ZmF1bW9ia2duemlva2xycWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MjI3NzksImV4cCI6MjA5NjQ5ODc3OX0.N9eURKmQ9m3mYwAigGP9o6HJYxWhlWPPWpaeN0baVJQ',
+  SUPABASE_URL: 'YOUR_SUPABASE_URL',
+  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
   ABLY_KEY: 'DEsPig.FgkI4w:3lcw2PSXe8qWvz7z3odBcfHIA3hl9mH4gPlIVEXhmIE'
 };
 </script>
@@ -317,14 +317,15 @@ window.WP_Auth = {
   _ablyClient: null,
   _ablyChannel: null,
   _presenceTimer: null,
+  _ablyReady: false,
 
   async _initAbly() {
-    if (this._ablyClient) return;
+    if (this._ablyReady) return;
     const key = window.WP_CONFIG?.ABLY_KEY;
-    if (!key) return console.warn('[WP] No Ably key configured');
+    if (!key) { console.warn('[WP Ably] No key in WP_CONFIG'); return; }
     try {
-      // Load Ably SDK
       if (!window.Ably) {
+        console.log('[WP Ably] Loading SDK…');
         await new Promise((res, rej) => {
           const s = document.createElement('script');
           s.src = 'https://cdn.ably.com/lib/ably.min-2.js';
@@ -332,72 +333,84 @@ window.WP_Auth = {
           document.head.appendChild(s);
         });
       }
-      const clientId = this.profile?.username || this.user?.id || 'anon';
+      const clientId = (this.profile?.username || this.user?.id || 'anon_' + Math.random().toString(36).slice(2));
       this._ablyClient = new Ably.Realtime({ key, clientId });
-      console.log('[WP Ably] initialized, clientId:', clientId);
-    } catch(e) { console.error('[WP Ably] init failed', e); }
+      await new Promise((res, rej) => {
+        this._ablyClient.connection.once('connected', res);
+        this._ablyClient.connection.once('failed', rej);
+        setTimeout(rej, 8000); // 8s timeout
+      });
+      this._ablyReady = true;
+      console.log('[WP Ably] connected, clientId:', clientId);
+    } catch(e) { console.error('[WP Ably] init failed:', e); }
   },
 
   async joinBiome(biomeName) {
-    if (!this.profile) return;
+    if (!this.profile) { console.warn('[WP Ably] joinBiome called without profile'); return; }
     await this._initAbly();
-    if (!this._ablyClient) return;
+    if (!this._ablyReady) { console.warn('[WP Ably] not ready, skipping joinBiome'); return; }
 
-    // Leave old channel
     this._leavePresence();
 
     const channelName = 'wildpals:biome:' + biomeName;
     this._ablyChannel = this._ablyClient.channels.get(channelName);
 
-    // Subscribe to presence updates
-    await this._ablyChannel.presence.subscribe((msg) => {
-      try {
-        const { action, clientId, data } = msg;
-        if (clientId === (this.profile?.username || this.user?.id)) return;
-        if (action === 'leave' || action === 'absent') {
-          delete window._WP_OtherPlayers[clientId];
-        } else {
-          window._WP_OtherPlayers[clientId] = { ...data, username: clientId };
-        }
-      } catch(e) {}
+    // Subscribe to presence events
+    this._ablyChannel.presence.subscribe('enter', (msg) => {
+      if (msg.clientId === this._ablyClient.auth.clientId) return;
+      console.log('[WP Ably] enter:', msg.clientId, msg.data);
+      window._WP_OtherPlayers[msg.clientId] = { ...msg.data, username: msg.clientId };
+    });
+    this._ablyChannel.presence.subscribe('update', (msg) => {
+      if (msg.clientId === this._ablyClient.auth.clientId) return;
+      window._WP_OtherPlayers[msg.clientId] = { ...msg.data, username: msg.clientId };
+    });
+    this._ablyChannel.presence.subscribe('leave', (msg) => {
+      console.log('[WP Ably] leave:', msg.clientId);
+      delete window._WP_OtherPlayers[msg.clientId];
     });
 
-    // Get current members
+    // Enter presence (required before update)
+    const myData = this._presencePayload(biomeName);
+    await this._ablyChannel.presence.enter(myData);
+    console.log('[WP Ably] entered', channelName, myData);
+
+    // Fetch existing members
     try {
       const members = await this._ablyChannel.presence.get();
       window._WP_OtherPlayers = {};
-      const myId = this.profile?.username || this.user?.id;
+      const myId = this._ablyClient.auth.clientId;
       for (const m of members) {
         if (m.clientId === myId) continue;
         window._WP_OtherPlayers[m.clientId] = { ...m.data, username: m.clientId };
       }
-      console.log('[WP Ably] joined', channelName, 'peers:', Object.keys(window._WP_OtherPlayers).length);
-    } catch(e) {}
+      console.log('[WP Ably] current peers:', Object.keys(window._WP_OtherPlayers).length);
+    } catch(e) { console.error('[WP Ably] presence.get failed:', e); }
 
-    // Enter presence with current position
-    await this._broadcastPosition();
-
-    // Broadcast every 250ms
+    // Broadcast position every 250ms via presence update
     this._presenceTimer = setInterval(() => this._broadcastPosition(), 250);
   },
 
+  _presencePayload(biome) {
+    const ap = window._WP_Game?.companions?.find(p => p.isActive) || window._WP_Game?.companions?.[0];
+    return {
+      x: (window._WP_Player?.x | 0) || 0,
+      y: (window._WP_Player?.y | 0) || 0,
+      pal: ap?.id || 'rabbit',
+      biome: biome || window._WP_Game?.currentBiome || 'meadow'
+    };
+  },
+
   async _broadcastPosition() {
-    if (!this._ablyChannel || !this.profile || !window._WP_Player) return;
+    if (!this._ablyChannel || !this._ablyReady || !window._WP_Player) return;
     try {
-      const ap = window._WP_Game?.companions?.find(p => p.isActive) || window._WP_Game?.companions?.[0];
-      await this._ablyChannel.presence.update({
-        x: window._WP_Player.x | 0,
-        y: window._WP_Player.y | 0,
-        pal: ap?.id || 'rabbit',
-        biome: window._WP_Game?.currentBiome || 'meadow'
-      });
+      await this._ablyChannel.presence.update(this._presencePayload());
     } catch(e) {}
   },
 
   _leavePresence() {
     if (this._presenceTimer) { clearInterval(this._presenceTimer); this._presenceTimer = null; }
-    try { if (this._ablyChannel) { this._ablyChannel.presence.leave(); this._ablyChannel.presence.unsubscribe(); } } catch(e) {}
-    this._ablyChannel = null;
+    try { if (this._ablyChannel) { this._ablyChannel.presence.leave(); this._ablyChannel.presence.unsubscribe(); this._ablyChannel = null; } } catch(e) {}
     window._WP_OtherPlayers = {};
   },
 
@@ -426,9 +439,14 @@ window.toggleAuthPanel = function() {
   const isHidden = (p.style.display === 'none' || p.style.display === '');
   p.style.display = isHidden ? 'flex' : 'none';
   if (isHidden) {
-    // clear old messages
     const msg = document.getElementById('wpAuthMsg');
     if (msg) msg.textContent = '';
+  } else {
+    // Closing — refocus canvas so keys work again
+    setTimeout(() => {
+      const cv = document.getElementById('game') || document.getElementById('gameLandscape');
+      if (cv) { cv.setAttribute('tabindex','0'); cv.focus({preventScroll:true}); }
+    }, 50);
   }
 };
 window.showAuthMsg = function(msg) {
@@ -2305,6 +2323,17 @@ let particles = Array.isArray(globalThis.particles) ? globalThis.particles : [];
     KeyZ:'Z'
   };
   const _isTyping = () => { const t = document.activeElement?.tagName; return t === 'INPUT' || t === 'TEXTAREA'; };
+
+  // Make canvas keyboard-focusable and focus it so arrow keys work immediately
+  const _focusCanvas = () => {
+    const cv = document.getElementById('game') || document.getElementById('gameLandscape');
+    if (cv && document.activeElement !== cv) { cv.setAttribute('tabindex','0'); cv.focus({preventScroll:true}); }
+  };
+  // Focus on load and on click anywhere on the page (not on inputs)
+  window.addEventListener('load', () => setTimeout(_focusCanvas, 300));
+  document.addEventListener('click', (e) => { if (e.target?.tagName !== 'INPUT' && e.target?.tagName !== 'BUTTON') _focusCanvas(); });
+
+  // Listen on window so focus doesn't matter
   addEventListener('keydown', e=>{ if (_isTyping()) return; const n=keyMap[e.code]; if(n){ e.preventDefault(); if(!state.pressed.has(n)) state.pressEdge.add(n); state.pressed.add(n); pulse(n);} });
   addEventListener('keyup',   e=>{ if (_isTyping()) return; const n=keyMap[e.code]; if(n){ e.preventDefault(); state.pressed.delete(n);} });
 
