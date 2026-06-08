@@ -3125,8 +3125,30 @@ function bossCenter(){
 }
 function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (player.y+player.h/2)-py); }
 
-  function tileIsWater(tx,ty){ return ground[gi(tx,ty)]===4; }
-  function tileIsBrush(tx,ty){ return ground[gi(tx,ty)]===BRUSH; }
+  function tileInBounds(tx,ty){ return tx>=0 && ty>=0 && tx<W && ty<H; }
+  function tileIsWater(tx,ty){ return tileInBounds(tx,ty) && ground[gi(tx,ty)]===4; }
+  function tileIsBrush(tx,ty){ return tileInBounds(tx,ty) && ground[gi(tx,ty)]===BRUSH; }
+  function tileIsShoreLand(tx,ty){
+    return tileInBounds(tx,ty) && !tileIsWater(tx,ty) && !tileIsBrush(tx,ty) &&
+      (tileIsWater(tx+1,ty) || tileIsWater(tx-1,ty) || tileIsWater(tx,ty+1) || tileIsWater(tx,ty-1));
+  }
+  function findNearestShoreTile(anchorTx, anchorTy, maxRadius){
+    const limit = maxRadius || Math.max(W,H);
+    for(let r=0; r<=limit; r++){
+      let best = null, bestD = Infinity;
+      for(let dy=-r; dy<=r; dy++){
+        for(let dx=-r; dx<=r; dx++){
+          if (Math.abs(dx)!==r && Math.abs(dy)!==r) continue;
+          const tx = anchorTx + dx, ty = anchorTy + dy;
+          if (!tileIsShoreLand(tx,ty)) continue;
+          const d = dx*dx + dy*dy;
+          if (d < bestD){ best = {tx,ty}; bestD = d; }
+        }
+      }
+      if (best) return best;
+    }
+    return null;
+  }
 
 // --- Ensure spawn on land for wetlands ---
 function ensurePlayerOnLand(){
@@ -3331,15 +3353,9 @@ function seedMeadow(){
     npcs.push({x:(px-5)*TILE, y:(py-1)*TILE, w:28,h:28, name:'Market', role:'market', shopId:'meadow_village'});
     // Campfire — always at starting camp, acts as cooking bench
     npcs.push({x:(px+0)*TILE, y:(py+2)*TILE, w:28,h:28, name:'Campfire', role:'campfire'});
-    // Fishing spot — find a water-adjacent tile near player start
-    let fishTx = px-3, fishTy = py+4;
-    for(let attempt=0; attempt<40; attempt++){
-      const tx=RNG.i(px-8,px+8), ty=RNG.i(py-8,py+8);
-      if (!tileIsWater(tx,ty) && (tileIsWater(tx+1,ty)||tileIsWater(tx-1,ty)||tileIsWater(tx,ty+1)||tileIsWater(tx,ty-1))){
-        fishTx=tx; fishTy=ty; break;
-      }
-    }
-    npcs.push({x:fishTx*TILE, y:fishTy*TILE, w:28,h:28, name:'Fishing Spot', role:'fishing_spot'});
+    // Fishing spot must sit on walkable shoreline, not on arbitrary camp land.
+    const fishSpot = findNearestShoreTile(px, py);
+    if (fishSpot) npcs.push({x:fishSpot.tx*TILE, y:fishSpot.ty*TILE, w:28,h:28, name:'Fishing Spot', role:'fishing_spot'});
     // Starter food drop so player isn't immediately starving
     items.push({x:(px+1)*TILE+4, y:(py+1)*TILE+4, w:24,h:24, id:'berry_snack'});
     items.push({x:(px-1)*TILE+4, y:(py+1)*TILE+4, w:24,h:24, id:'berry'});
@@ -3364,14 +3380,8 @@ function seedMeadow(){
     npcs.push({x:(px+3)*TILE, y:(py+2)*TILE, w:28,h:28, name:'Craftsman', role:'workbench'});
     npcs.push({x:(px-5)*TILE, y:(py-1)*TILE, w:28,h:28, name:'Market', role:'market', shopId:'meadow_village'});
     npcs.push({x:(px+0)*TILE, y:(py+2)*TILE, w:28,h:28, name:'Campfire', role:'campfire'});
-    let fishTx = px-3, fishTy = py+4;
-    for(let attempt=0; attempt<40; attempt++){
-      const tx=RNG.i(px-8,px+8), ty=RNG.i(py-8,py+8);
-      if (!tileIsWater(tx,ty) && (tileIsWater(tx+1,ty)||tileIsWater(tx-1,ty)||tileIsWater(tx,ty+1)||tileIsWater(tx,ty-1))){
-        fishTx=tx; fishTy=ty; break;
-      }
-    }
-    npcs.push({x:fishTx*TILE, y:fishTy*TILE, w:28,h:28, name:'Fishing Spot', role:'fishing_spot'});
+    const fishSpot = findNearestShoreTile(px, py);
+    if (fishSpot) npcs.push({x:fishSpot.tx*TILE, y:fishSpot.ty*TILE, w:28,h:28, name:'Fishing Spot', role:'fishing_spot'});
   }
 
   function seedDesert(){
@@ -3530,13 +3540,9 @@ function seedForest(){
   npcs.push({x:(12*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Ranger', role:'ranger'});
   npcs.push({x:(16*TILE), y:(trackY-2)*TILE, w:26,h:26, name:'Trader', role:'market', shopId:'forest_camp'});
   npcs.push({x:(14*TILE), y:(trackY-1)*TILE, w:26,h:26, name:'Campfire', role:'campfire'});
-  // Fishing spot near water
-  let fTx2=14, fTy2=trackY+3;
-  for(let a=0;a<40;a++){
-    const tx=RNG.i(8,W-8), ty=RNG.i(trackY-4,trackY+8);
-    if (!tileIsWater(tx,ty)&&(tileIsWater(tx+1,ty)||tileIsWater(tx-1,ty)||tileIsWater(tx,ty+1)||tileIsWater(tx,ty-1))){ fTx2=tx; fTy2=ty; break; }
-  }
-  npcs.push({x:fTx2*TILE, y:fTy2*TILE, w:26,h:26, name:'Fishing Spot', role:'fishing_spot'});
+  // Fishing spot must sit on walkable shoreline, not on arbitrary camp land.
+  const forestFishSpot = findNearestShoreTile(14, trackY);
+  if (forestFishSpot) npcs.push({x:forestFishSpot.tx*TILE, y:forestFishSpot.ty*TILE, w:26,h:26, name:'Fishing Spot', role:'fishing_spot'});
 
   // 3) Forest pals — guarantee at least two of each species (sprite handled below)
   (function(){
