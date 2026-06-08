@@ -3696,7 +3696,9 @@ function portalUnlocked(to){
     portals.length=0;
     const trackY=(H*0.575)|0;
     if (Game.currentBiome==='meadow'){
-      pushPortal((W-10)*TILE, trackY*TILE, 28, 28, 'forest', !portalUnlocked('forest'));
+      if (portalUnlocked('forest')){
+        pushPortal((W-10)*TILE, trackY*TILE, 28, 28, 'forest', false);
+      }
     } else if (Game.currentBiome==='forest'){
       pushPortal(10*TILE, trackY*TILE, 28, 28, 'meadow', false);
       if (portalUnlocked('desert')){
