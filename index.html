@@ -3163,6 +3163,7 @@ function ensurePlayerOnLand(){
       ensurePlayerOnLand(); }
     else { seedMeadow(); }
     rebuildPortals(); ensureDesertReturnPortal();
+    sanitizePortals();
     if (typeof sanitizeBiomeEntities==='function') sanitizeBiomeEntities();
   }
 
@@ -3674,7 +3675,7 @@ function portalUnlocked(to){
     Game.unlocked = Game.unlocked || {meadow:true};
     Game.flags = Game.flags || {};
     if (to==='meadow') return true;
-    if (to==='forest') return !!(Game.flags.bridgeFixed || Game.unlocked.forest);
+    if (to==='forest') return !!Game.flags.bridgeFixed;
     if (to==='desert') return !!(Game.unlocked.desert && (Game.flags.owl_trial_pass||Game.flags.owl_trial_passed) && Game.flags.q_forest_main_done);
     if (to==='wetlands') return !!(Game.unlocked.wetlands || Game.flags.desert_guardian_portal_ready);
     return !!Game.unlocked[to];
@@ -3682,6 +3683,19 @@ function portalUnlocked(to){
 
   function pushPortal(x,y,w,h,to,locked){
     portals.push({x,y,w,h,to, locked: locked==null ? !portalUnlocked(to) : !!locked});
+  }
+
+  function portalAllowedHere(pt){
+    if (!pt) return false;
+    if (Game.currentBiome==='meadow' && pt.to==='forest') return portalUnlocked('forest');
+    if (Game.currentBiome==='meadow') return false;
+    return true;
+  }
+
+  function sanitizePortals(){
+    for(let i=portals.length-1; i>=0; i--){
+      if (!portalAllowedHere(portals[i])) portals.splice(i,1);
+    }
   }
 
   function lockedPortalMessage(pt){
@@ -4830,6 +4844,7 @@ function drawGuardianLayer(ctx, vx, vy){
     items.forEach(it=> drawItemIcon(ctx, vx, vy, it));
     npcs .forEach(n => drawNPC(ctx, vx, vy, n));
     pals.forEach(p => { if (!(Game && Game.currentBiome==='wetlands' && !Game.isNight && p && p.id==='wisp')) drawPal(ctx,p,vx,vy); });
+    sanitizePortals();
     portals.forEach(pt=> drawPortal(ctx, pt, vx, vy)); // purple swirl with glow
     // --- Day/Night overlay ---
     try{
@@ -5756,7 +5771,10 @@ toast('Cheats menu'); }
           // nearest portal?
           else if ((idx = nearest(portals,60))!==-1){
             const pt = portals[idx], to = pt.to;
-            if (pt.locked || !portalUnlocked(to)){
+            if (!portalAllowedHere(pt)){
+              portals.splice(idx,1);
+              toast('No portal is open here yet.');
+            } else if (pt.locked || !portalUnlocked(to)){
               pt.locked = true;
               toast(lockedPortalMessage(pt));
             } else {
