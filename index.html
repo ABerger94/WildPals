@@ -143,10 +143,68 @@
   @media (orientation: landscape) and (max-width: 940px){
     .gbc-shell{ display:none !important; }
     .gba-shell{ display:block; }
+    html,body{overflow:hidden;}
+    .gba-body{
+      width:100vw;
+      height:100dvh;
+      margin:0;
+      padding:8px;
+      border-radius:18px;
+      display:flex;
+      flex-direction:column;
+    }
+    .gba-topbar{margin-bottom:6px;}
+    .gba-tray{padding:8px; flex:1; min-height:0;}
+    #landscapeRow{
+      grid-template-columns: 128px minmax(0,1fr) 120px;
+      gap:8px;
+      height:100%;
+    }
+    .land-screen-bezel{padding:7px;}
+    .land-screen{padding:4px;}
+    .land-dpad{width:128px;height:128px;}
+    .land-dpad .cross{width:96px;height:96px;}
+    .land-dpad .cross::before{height:32px;}
+    .land-dpad .cross::after{width:32px;}
+    .land-dpad button{width:50px;height:50px;font-size:16px;}
+    .land-actions{gap:8px;}
+    .land-actions .ab{width:118px;height:104px;}
+    .land-actions .ab .btn{width:50px;height:50px;}
+    #lZ{width:42px;height:42px;}
+    .land-actions .start .tiny{width:56px;height:30px;font-size:10px;}
   }
   @media (min-width: 941px){
     .gba-shell{ display:none !important; }
     #mobileControls{ display:none; }
+  }
+  @media (orientation: portrait) and (max-width: 940px){
+    .gbc-shell{
+      max-width:100vw;
+      min-height:100dvh;
+      margin:0;
+      padding:8px;
+      border-radius:0;
+    }
+    .gbc-face{padding:8px;border-radius:12px;}
+    .topbar{margin-bottom:6px;font-size:13px;}
+    .gb-screen{padding:6px;border-radius:10px;}
+    #canvasBox{border-radius:8px;}
+    #mobileControls{
+      grid-template-columns: 116px 1fr 116px;
+      gap:8px;
+      padding:10px;
+      margin-top:8px;
+    }
+    .dpad{width:116px;height:116px;border-radius:12px;}
+    .dpad .cross{width:88px;height:88px;}
+    .dpad .cross::before{height:30px;}
+    .dpad .cross::after{width:30px;}
+    .dpad button{width:44px;height:44px;font-size:14px;border-radius:10px;}
+    .actCluster{width:112px;height:96px;}
+    .actCluster .btn{width:48px;height:48px;}
+    #btnZ{width:40px;height:40px;}
+    .startRow{gap:8px;}
+    .startRow .tiny{width:56px;height:30px;font-size:10px;}
   }
 
   /* Debug overlay */
@@ -2417,9 +2475,26 @@ let particles = Array.isArray(globalThis.particles) ? globalThis.particles : [];
 
   function activeCanvas(){ return state.mode==='portrait'? cvsP : cvsL; }
   function activeCtx(){ return state.mode==='portrait'? ctxP : ctxL; }
+  function setCanvasBackbuffer(canvas, ctx, width, height){
+    if (!canvas) return;
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+    if (ctx) ctx.imageSmoothingEnabled = false;
+  }
   function setModeFromMedia(){
     const isLandscapeMobile = matchMedia('(orientation: landscape) and (max-width: 940px)').matches;
     state.mode = isLandscapeMobile ? 'landscape' : 'portrait';
+    const isMobile = matchMedia('(max-width: 940px)').matches;
+    if (isMobile && isLandscapeMobile){
+      setCanvasBackbuffer(cvsL, ctxL, 720, 400);
+      setCanvasBackbuffer(cvsP, ctxP, 720, 500);
+    } else if (isMobile){
+      setCanvasBackbuffer(cvsP, ctxP, 720, 500);
+      setCanvasBackbuffer(cvsL, ctxL, 720, 400);
+    } else {
+      setCanvasBackbuffer(cvsP, ctxP, 960, 528);
+      setCanvasBackbuffer(cvsL, ctxL, 960, 528);
+    }
   }
   setModeFromMedia(); addEventListener('resize', setModeFromMedia);
 
