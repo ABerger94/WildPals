@@ -6401,7 +6401,14 @@ window.WP_Survival = (function(){
   }
   function _give(id,qty=1){ const G=_G(); if(!G) return; const ex=G.inventory.find(s=>s.id===id); if(ex) ex.qty+=qty; else G.inventory.push({id,qty}); }
   function _toast(msg){ try{ if(typeof toast==='function') toast(msg); }catch(_){} }
-  function _rod(){ const G=_G(); const t=G?.equipped?.tool; return t?.id; }
+  function _rod(){
+    const G=_G();
+    const equipped = G?.equipped?.tool?.id;
+    if (equipped==='fine_rod' || equipped==='fishing_rod') return equipped;
+    if (_has('fine_rod')) return 'fine_rod';
+    if (_has('fishing_rod')) return 'fishing_rod';
+    return equipped || null;
+  }
   function _rodTier(){ const r=_rod(); return r==='fine_rod'?2 : r==='fishing_rod'?1 : 0; }
   function _biome(){ return _G()?.currentBiome||'meadow'; }
   function _isNight(){ return _G()?.isNight||false; }
@@ -6488,7 +6495,7 @@ window.WP_Survival = (function(){
     const bait = _bestBait();
     const usedBait = bait && _use(bait);
     const f = state.fishing;
-    f.open=true; f.phase='casting'; f.bait=usedBait ? bait : 'none';
+    f.open=true; f.phase='waiting'; f.bait=usedBait ? bait : 'none';
     f.biteTimer=_biteTime(f.bait); f.biteWindowMax=_biteWindow(f.bait); f.biteWindow=f.biteWindowMax;
     f.reelTimer=0; f.reelProgress=0; f.reelPulse=0; f.fish=null;
     _toast('Cast! Bait: '+(f.bait.replace('_',' '))+'. Wait for BITE, press A, then mash A.');
@@ -6498,7 +6505,7 @@ window.WP_Survival = (function(){
   function _tickFishing(dt){
     const f = state.fishing;
     if (!f.open || f.phase==='idle') return;
-    if (f.phase==='casting'){
+    if (f.phase==='waiting' || f.phase==='casting'){
       f.biteTimer -= dt;
       if (f.biteTimer<=0){ f.phase='bite'; _toast('BITE! Press A!'); }
     } else if (f.phase==='bite'){
@@ -6752,7 +6759,7 @@ window.WP_Survival = (function(){
     ctx.strokeStyle='rgba(84,201,193,.5)'; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+.5,pw,ph);
 
     ctx.font='bold 13px ui-monospace,monospace';
-    if (f.phase==='casting'){
+    if (f.phase==='waiting' || f.phase==='casting'){
       ctx.fillStyle='#7eddd7'; ctx.fillText('🎣 Waiting for bite…', x+14, y+24);
       // Animated water line
       const t=(performance.now?performance.now():Date.now())*0.003;
