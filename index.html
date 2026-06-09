@@ -6486,23 +6486,6 @@ window.WP_Survival = (function(){
       const rows = [topTy, midTy, botTy];
       for (const ty of rows){ if (waterAt(leftTx, ty)) return 'left'; }
       for (const ty of rows){ if (waterAt(rightTx, ty)) return 'right'; }
-
-      const px = ((player.x + player.w/2) / T) | 0;
-      const py = ((player.y + player.h/2) / T) | 0;
-      for (let r=1; r<=5; r++){
-        for (let dx=-1; dx>=-r; dx--){
-          for (let dy=-r; dy<=r; dy++){
-            if (waterAt(px + dx, py + dy)) return 'left';
-          }
-        }
-      }
-      for (let r=1; r<=5; r++){
-        for (let dx=1; dx<=r; dx++){
-          for (let dy=-r; dy<=r; dy++){
-            if (waterAt(px + dx, py + dy)) return 'right';
-          }
-        }
-      }
     }catch(_){}
     return null;
   }
@@ -6601,9 +6584,9 @@ window.WP_Survival = (function(){
     const usedBait = bait && _use(bait);
     const f = state.fishing;
     f.open=true; f.phase='waiting'; f.bait=usedBait ? bait : 'none';
-    _setFishingSprite(true, _waterSideForFishing());
     f.biteTimer=_biteTime(f.bait); f.biteWindowMax=_biteWindow(f.bait); f.biteWindow=f.biteWindowMax;
     f.reelTimer=0; f.reelProgress=0; f.reelPulse=0; f.fish=null;
+    try{ _setFishingSprite(true, _waterSideForFishing()); }catch(_){ _setFishingSprite(true); }
     _toast('Cast! Bait: '+(f.bait.replace('_',' '))+'. Wait for BITE, press A, then mash A.');
   }
 
