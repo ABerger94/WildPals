@@ -1062,6 +1062,20 @@ function drawNPC(ctx, vx, vy, n){
       return;
     }
 
+    if(type==='workbench'){
+      // Crafting table: flat work surface with tools, not a humanoid NPC.
+      ctx.fillStyle='#5f3a1d'; ctx.fillRect(ax+4, ay+11, 24, 10);
+      ctx.fillStyle='#8a5a2b'; ctx.fillRect(ax+3, ay+8, 26, 7);
+      ctx.fillStyle='#3b2413'; ctx.fillRect(ax+5, ay+21, 4, 7);
+      ctx.fillRect(ax+23, ay+21, 4, 7);
+      ctx.fillStyle='#d2b06a'; ctx.fillRect(ax+7, ay+6, 9, 3);
+      ctx.fillStyle='#9fb0ba'; ctx.fillRect(ax+17, ay+5, 8, 3);
+      ctx.fillStyle='#3d4a52'; ctx.fillRect(ax+23, ay+4, 3, 6);
+      ctx.fillStyle='#c9d2d8'; ctx.fillRect(ax+11, ay+13, 9, 2);
+      ctx.fillStyle='#6b4222'; ctx.fillRect(ax+9, ay+15, 3, 3);
+      return;
+    }
+
     if(type==='market'){
       if (typeof TILE === 'number') { ctx.fillStyle = '#5a3b7a'; ctx.fillRect(ax, ay, TILE, TILE); }
       ctx.fillStyle = '#f2d3a0'; ctx.fillRect(ax+8, ay+6, 8, 8);
