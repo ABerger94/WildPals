@@ -7234,6 +7234,12 @@ window.WP_Social = (function(){
       return true;
     }
 
+    // Open incoming trade before handling input so A/B can accept/decline on this press.
+    if (state.trade.incoming && !state.trade.open) {
+      state.trade.open = true;
+      state.trade.phase = 'incoming';
+    }
+
     // Trade UI
     if (state.trade.open) {
       const offerList = _myTradeables();
@@ -7315,12 +7321,6 @@ window.WP_Social = (function(){
       }
       if (st.pressEdge.has('B') || st.pressEdge.has('Start')) state.shop.open = false;
       return true;
-    }
-
-    // Check for incoming trade offer at all times
-    if (state.trade.incoming && !state.trade.open) {
-      state.trade.open = true; state.trade.phase = 'incoming';
-      return false; // let player see it on next frame
     }
 
     return false;
