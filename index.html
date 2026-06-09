@@ -458,6 +458,11 @@ window.WP_Auth = {
 
   _presencePayload(biome) {
     const ap = window._WP_Game?.companions?.find(p => p.isActive) || window._WP_Game?.companions?.[0];
+    const G = window._WP_Game || {};
+    const tradeables = [
+      ...((G.inventory||[]).filter(s=>s && s.qty > 0).map(s=>({type:'item',id:s.id,label:s.id+' x'+s.qty}))),
+      ...((G.companions||[]).map(p=>({type:'pal',id:p.id,label:'[Pal] '+p.id})))
+    ].slice(0, 60);
     return {
       x: (window._WP_Player?.x | 0) || 0,
       y: (window._WP_Player?.y | 0) || 0,
@@ -466,7 +471,8 @@ window.WP_Auth = {
       facing: window.__WP_PlayerFacing || 'down',
       fishing: !!window.__WP_PlayerFishing,
       fishingFlipX: !!window.__WP_PlayerFishingFlipX,
-      idleSeconds: Number(window.__WP_PlayerIdleSeconds) || 0
+      idleSeconds: Number(window.__WP_PlayerIdleSeconds) || 0,
+      tradeables
     };
   },
 
@@ -7052,6 +7058,15 @@ window.WP_Social = (function(){
   function _myName() { return window.WP_Auth?.profile?.username || 'You'; }
   function _myInv()  { return window._WP_Game?.inventory || []; }
   function _myPals() { return window._WP_Game?.companions || []; }
+  function _myTradeables() {
+    return [..._myInv().filter(s=>s && s.qty > 0).map(s=>({type:'item',id:s.id,label:s.id+' x'+s.qty})),
+            ..._myPals().map(p=>({type:'pal',id:p.id,label:'[Pal] '+p.id}))];
+  }
+  function _targetTradeables(target) {
+    const fresh = target?.uid ? window._WP_OtherPlayers?.[target.uid] : null;
+    const src = fresh || target;
+    return Array.isArray(src?.tradeables) ? src.tradeables : [];
+  }
 
   // Subscribe to social messages from Ably channel
   function _subscribeSocial() {
@@ -7221,26 +7236,29 @@ window.WP_Social = (function(){
 
     // Trade UI
     if (state.trade.open) {
-      const inv   = _myInv();
-      const pals  = _myPals();
-      const all   = [...inv.map(s=>({type:'item',id:s.id,label:s.id+' x'+s.qty})), ...pals.map(p=>({type:'pal',id:p.id,label:'[Pal] '+p.id}))];
-      if (!all.length && state.trade.phase !== 'incoming') {
+      const offerList = _myTradeables();
+      const wantList = _targetTradeables(state.trade.target);
+      if (!offerList.length && state.trade.phase !== 'incoming') {
         toast('You have nothing to trade.');
         state.trade.open = false;
         return true;
       }
       if (state.trade.phase === 'offer') {
-        if (st.pressEdge.has('Up'))   state.trade.offerIdx = (state.trade.offerIdx + all.length - 1) % (all.length||1);
-        if (st.pressEdge.has('Down')) state.trade.offerIdx = (state.trade.offerIdx + 1) % (all.length||1);
+        if (st.pressEdge.has('Up'))   state.trade.offerIdx = (state.trade.offerIdx + offerList.length - 1) % (offerList.length||1);
+        if (st.pressEdge.has('Down')) state.trade.offerIdx = (state.trade.offerIdx + 1) % (offerList.length||1);
         if (st.pressEdge.has('A')) {
-          state.trade.myOffer = all[state.trade.offerIdx] || null;
+          state.trade.myOffer = offerList[state.trade.offerIdx] || null;
+          if (!state.trade.myOffer) { toast('Choose something to offer.'); return true; }
+          if (!wantList.length) { toast((state.trade.target?.username||'Player') + ' has no visible trade inventory.'); return true; }
+          state.trade.wantIdx = Math.min(state.trade.wantIdx || 0, Math.max(0, wantList.length - 1));
           state.trade.phase = 'want';
         }
       } else if (state.trade.phase === 'want') {
-        if (st.pressEdge.has('Up'))   state.trade.wantIdx = (state.trade.wantIdx + all.length - 1) % (all.length||1);
-        if (st.pressEdge.has('Down')) state.trade.wantIdx = (state.trade.wantIdx + 1) % (all.length||1);
+        if (!wantList.length) { toast('Their trade inventory is unavailable.'); state.trade.phase = 'offer'; return true; }
+        if (st.pressEdge.has('Up'))   state.trade.wantIdx = (state.trade.wantIdx + wantList.length - 1) % (wantList.length||1);
+        if (st.pressEdge.has('Down')) state.trade.wantIdx = (state.trade.wantIdx + 1) % (wantList.length||1);
         if (st.pressEdge.has('A')) {
-          state.trade.theirWant = all[state.trade.wantIdx] || null;
+          state.trade.theirWant = wantList[state.trade.wantIdx] || null;
           // Send offer
           const t = state.trade.target;
           if (!t || !t.uid) { toast('Trade target unavailable.'); state.trade.open = false; return true; }
@@ -7264,11 +7282,13 @@ window.WP_Social = (function(){
           _send('trade_accept', { to: inc.from, theyOffer: inc.want || null });
           toast('Trade complete with ' + inc.from + '!');
           state.trade.incoming = null; state.trade.open = false;
+          return true;
         }
         if (st.pressEdge.has('B')) {
           _send('trade_decline', { to: state.trade.incoming.from });
           state.trade.incoming = null; state.trade.open = false;
           toast('Trade declined.');
+          return true;
         }
       }
       if (st.pressEdge.has('B') && state.trade.phase !== 'incoming') {
@@ -7440,14 +7460,20 @@ window.WP_Social = (function(){
     ctx.fillStyle = '#ffd54a'; ctx.fillText('QUICK TRADE', x+12, y+18);
     ctx.font = '11px ui-monospace, monospace'; ctx.fillStyle = '#cfe6ff';
 
-    const inv  = _myInv();
-    const pals = _myPals();
-    const all  = [...inv.map(s=>({type:'item',id:s.id,label:s.id+' x'+s.qty})), ...pals.map(p=>({type:'pal',id:p.id,label:'[Pal] '+p.id}))];
+    const offerList = _myTradeables();
+    const wantList = _targetTradeables(state.trade.target);
+    const all = state.trade.phase === 'want' ? wantList : offerList;
 
     if (state.trade.phase === 'offer' || state.trade.phase === 'want') {
       const idx = state.trade.phase === 'offer' ? state.trade.offerIdx : state.trade.wantIdx;
-      const hdr = state.trade.phase === 'offer' ? 'Offer (your item/pal):' : 'Want (their item/pal):';
+      const hdr = state.trade.phase === 'offer'
+        ? 'Offer (your item/pal):'
+        : 'Want from ' + ((state.trade.target && state.trade.target.username) || 'player') + ':';
       ctx.fillText(hdr, x+12, y+36);
+      if (!all.length) {
+        ctx.fillStyle='#ffb3bd';
+        ctx.fillText(state.trade.phase === 'offer' ? 'Nothing available to offer.' : 'Their inventory is not visible yet.', x+14, y+60);
+      }
       const vis = 5, start = Math.max(0, idx - 2);
       for (let i = 0; i < vis; i++) {
         const ri = start + i;
