@@ -6469,7 +6469,7 @@ window.WP_Survival = (function(){
   function _setFishingSprite(on, side){
     try{
       window.__WP_PlayerFishing = !!on;
-      window.__WP_PlayerFishingFlipX = !!(on && side === 'left');
+      window.__WP_PlayerFishingFlipX = !!(on && side === 'right');
       if (on) window.__WP_PlayerIdleSeconds = 0;
     }catch(_){}
   }
