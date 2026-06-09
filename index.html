@@ -5410,10 +5410,12 @@ else { ctx.fillStyle='#ffd86b'; ctx.fillRect((px+8)|0,(py+6)|0,8,8); ctx.fillSty
           ctx.font = 'bold 9px ui-monospace, monospace';
           const tag = (op.username || '?').slice(0, 10);
           const tw = ctx.measureText(tag).width;
+          const tagX = ox + 13 - tw/2;
+          const tagY = oy - 18;
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
-          ctx.fillRect(ox + 12 - tw/2 - 3, oy - 3, tw + 6, 13);
+          ctx.fillRect(tagX - 3, tagY - 10, tw + 6, 13);
           ctx.fillStyle = '#d8f0ff';
-          ctx.fillText(tag, ox + 12 - tw/2, oy + 8);
+          ctx.fillText(tag, tagX, tagY);
           ctx.globalAlpha = 1;
         }
         ctx.restore();
