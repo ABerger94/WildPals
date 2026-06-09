@@ -462,7 +462,11 @@ window.WP_Auth = {
       x: (window._WP_Player?.x | 0) || 0,
       y: (window._WP_Player?.y | 0) || 0,
       pal: ap?.id || 'rabbit',
-      biome: biome || window._WP_Game?.currentBiome || 'meadow'
+      biome: biome || window._WP_Game?.currentBiome || 'meadow',
+      facing: window.__WP_PlayerFacing || 'down',
+      fishing: !!window.__WP_PlayerFishing,
+      fishingFlipX: !!window.__WP_PlayerFishingFlipX,
+      idleSeconds: Number(window.__WP_PlayerIdleSeconds) || 0
     };
   },
 
@@ -741,6 +745,23 @@ const PLAYER_SPRITES = (function(){
   }
   return sprites;
 })();
+const OTHER_PLAYER_SPRITES = (function(){
+  const files = {
+    down: 'assets/player/pal2_down.PNG',
+    up: 'assets/player/pal2_up.PNG',
+    left: 'assets/player/pal2_left.PNG',
+    right: 'assets/player/pal2_right.PNG',
+    fishing: 'assets/player/pal2_fishing.PNG',
+    sleeping: 'assets/player/pal2_sleeping.PNG'
+  };
+  const sprites = {};
+  for (const dir in files){
+    const img = new Image();
+    img.src = files[dir];
+    sprites[dir] = img;
+  }
+  return sprites;
+})();
 window.__WP_PlayerFacing = window.__WP_PlayerFacing || 'down';
 window.__WP_PlayerIdleSeconds = window.__WP_PlayerIdleSeconds || 0;
 
@@ -791,6 +812,30 @@ function setPlayerFacing(dir){
   if (dir === 'left' || dir === 'right' || dir === 'up' || dir === 'down'){
     window.__WP_PlayerFacing = dir;
   }
+}
+
+function drawOtherPlayer(ctx, op, ox, oy){
+  const facing = (op && ['left','right','up','down'].includes(op.facing)) ? op.facing : 'down';
+  const img = (op?.fishing && OTHER_PLAYER_SPRITES.fishing)
+    || (!op?.fishing && (Number(op?.idleSeconds)||0) >= 30 && OTHER_PLAYER_SPRITES.sleeping)
+    || OTHER_PLAYER_SPRITES[facing]
+    || OTHER_PLAYER_SPRITES.down;
+  if (img && img.complete && img.naturalWidth > 0){
+    const dw = 32, dh = 32;
+    const dx = Math.round(ox + (26 - dw) / 2);
+    const dy = Math.round(oy + 26 - dh);
+    if (op?.fishing && op?.fishingFlipX){
+      ctx.save();
+      ctx.translate(dx + dw, dy);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0, dw, dh);
+      ctx.restore();
+      return true;
+    }
+    ctx.drawImage(img, dx, dy, dw, dh);
+    return true;
+  }
+  return false;
 }
 
 // === Ground-blended, individualized icons for Items & Pals ====================
@@ -5353,15 +5398,13 @@ else { ctx.fillStyle='#ffd86b'; ctx.fillRect((px+8)|0,(py+6)|0,8,8); ctx.fillSty
           const ox = (op.x - vx) | 0, oy = (op.y - vy) | 0;
           // skip if off-screen
           if (ox < -40 || ox > w + 40 || oy < -40 || oy > h + 40) continue;
-          // Color from username hash
-          let hue = 0;
-          for (let ci = 0; ci < (op.username||'').length; ci++) hue = (hue * 31 + (op.username||'').charCodeAt(ci)) & 0xFFFF;
-          hue = (hue % 360 + 360) % 360;
           // Sprite
           ctx.globalAlpha = 0.88;
-          ctx.fillStyle = `hsl(${hue},70%,78%)`; ctx.fillRect(ox+8, oy+6, 8, 8);   // head
-          ctx.fillStyle = `hsl(${hue},60%,50%)`; ctx.fillRect(ox+6, oy+14, 12, 8); // torso
-          ctx.fillStyle = `hsl(${hue},40%,30%)`; ctx.fillRect(ox+6, oy+22, 5, 2); ctx.fillRect(ox+13, oy+22, 5, 2); // legs
+          if (typeof drawOtherPlayer !== 'function' || !drawOtherPlayer(ctx, op, ox, oy)){
+            ctx.fillStyle = '#d8f0ff'; ctx.fillRect(ox+8, oy+6, 8, 8);
+            ctx.fillStyle = '#58a6d8'; ctx.fillRect(ox+6, oy+14, 12, 8);
+            ctx.fillStyle = '#274a60'; ctx.fillRect(ox+6, oy+22, 5, 2); ctx.fillRect(ox+13, oy+22, 5, 2);
+          }
           // Name tag
           ctx.globalAlpha = 0.95;
           ctx.font = 'bold 9px ui-monospace, monospace';
@@ -5369,7 +5412,7 @@ else { ctx.fillStyle='#ffd86b'; ctx.fillRect((px+8)|0,(py+6)|0,8,8); ctx.fillSty
           const tw = ctx.measureText(tag).width;
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.fillRect(ox + 12 - tw/2 - 3, oy - 3, tw + 6, 13);
-          ctx.fillStyle = `hsl(${hue},90%,88%)`;
+          ctx.fillStyle = '#d8f0ff';
           ctx.fillText(tag, ox + 12 - tw/2, oy + 8);
           ctx.globalAlpha = 1;
         }
