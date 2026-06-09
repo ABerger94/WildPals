@@ -7065,6 +7065,7 @@ window.WP_Social = (function(){
 
   function _onMessage(msg) {
     if (!msg || msg.from === _myName()) return;
+    if (msg.to && msg.to !== _myName()) return;
     switch(msg.type) {
       case 'chat':
         state.chat.history.push({ from: msg.from, text: msg.text, ts: Date.now() });
@@ -7073,7 +7074,7 @@ window.WP_Social = (function(){
         break;
       case 'trade_offer':
         state.trade.incoming = { from: msg.from, offer: msg.offer, want: msg.want };
-        toast(msg.from + ' wants to trade! (open chat panel → Trade)');
+        toast(msg.from + ' wants to trade!');
         break;
       case 'trade_accept':
         if (state.trade.pendingId === msg.from) _completeTrade(msg);
@@ -7093,29 +7094,54 @@ window.WP_Social = (function(){
   }
 
   // ── Trade logic ──────────────────────────────────────────────
+  function _hasTradeThing(thing) {
+    if (!thing) return false;
+    const G = window._WP_Game;
+    if (!G) return false;
+    if (thing.type === 'item') return !!G.inventory.find(s => s.id === thing.id && s.qty > 0);
+    if (thing.type === 'pal') return !!G.companions.find(p => p.id === thing.id);
+    return false;
+  }
+
+  function _removeTradeThing(thing) {
+    if (!_hasTradeThing(thing)) return false;
+    const G = window._WP_Game;
+    if (thing.type === 'item') {
+      const slot = G.inventory.find(s => s.id === thing.id);
+      slot.qty--;
+      if (slot.qty <= 0) G.inventory = G.inventory.filter(s => s.qty > 0);
+      return true;
+    }
+    if (thing.type === 'pal') {
+      const pi = G.companions.findIndex(p => p.id === thing.id);
+      if (pi >= 0) { G.companions.splice(pi, 1); return true; }
+    }
+    return false;
+  }
+
+  function _addTradeThing(thing) {
+    if (!thing) return;
+    const G = window._WP_Game;
+    if (!G) return;
+    if (thing.type === 'item') {
+      const ex = G.inventory.find(s => s.id === thing.id);
+      if (ex) ex.qty++; else G.inventory.push({ id: thing.id, qty: 1 });
+    } else if (thing.type === 'pal') {
+      G.companions.push({ id: thing.id });
+      try{ G.discovered.add(thing.id); }catch(_){}
+    }
+  }
+
   function _completeTrade(msg) {
-    // Remove offered item/pal from our inventory
     const offer = state.trade.myOffer;
     if (!offer) return;
-    const G = window._WP_Game;
-    if (offer.type === 'item') {
-      const slot = G.inventory.find(s => s.id === offer.id);
-      if (slot) { slot.qty--; if (slot.qty <= 0) G.inventory = G.inventory.filter(s => s.qty > 0); }
-    } else if (offer.type === 'pal') {
-      const pi = G.companions.findIndex(p => p.id === offer.id);
-      if (pi >= 0) G.companions.splice(pi, 1);
+    if (!_removeTradeThing(offer)) {
+      toast('Trade failed: you no longer have ' + (offer.label || offer.id));
+      state.trade.pendingId = null;
+      state.trade.open = false;
+      return;
     }
-    // Add received item/pal
-    const recv = msg.theyOffer;
-    if (recv) {
-      if (recv.type === 'item') {
-        const ex = G.inventory.find(s => s.id === recv.id);
-        if (ex) ex.qty++; else G.inventory.push({ id: recv.id, qty: 1 });
-      } else if (recv.type === 'pal') {
-        G.companions.push({ id: recv.id });
-        G.discovered.add(recv.id);
-      }
-    }
+    _addTradeThing(msg.theyOffer);
     toast('Trade complete with ' + msg.from + '!');
     state.trade.myOffer = null; state.trade.pendingId = null;
     state.trade.open = false;
@@ -7198,6 +7224,11 @@ window.WP_Social = (function(){
       const inv   = _myInv();
       const pals  = _myPals();
       const all   = [...inv.map(s=>({type:'item',id:s.id,label:s.id+' x'+s.qty})), ...pals.map(p=>({type:'pal',id:p.id,label:'[Pal] '+p.id}))];
+      if (!all.length && state.trade.phase !== 'incoming') {
+        toast('You have nothing to trade.');
+        state.trade.open = false;
+        return true;
+      }
       if (state.trade.phase === 'offer') {
         if (st.pressEdge.has('Up'))   state.trade.offerIdx = (state.trade.offerIdx + all.length - 1) % (all.length||1);
         if (st.pressEdge.has('Down')) state.trade.offerIdx = (state.trade.offerIdx + 1) % (all.length||1);
@@ -7212,6 +7243,7 @@ window.WP_Social = (function(){
           state.trade.theirWant = all[state.trade.wantIdx] || null;
           // Send offer
           const t = state.trade.target;
+          if (!t || !t.uid) { toast('Trade target unavailable.'); state.trade.open = false; return true; }
           _send('trade_offer', { to: t.uid, offer: state.trade.myOffer, want: state.trade.theirWant });
           state.trade.pendingId = t.uid;
           state.trade.phase = 'waiting';
@@ -7221,8 +7253,16 @@ window.WP_Social = (function(){
         // Accept or decline incoming offer
         if (st.pressEdge.has('A')) {
           const inc = state.trade.incoming;
-          _send('trade_accept', { to: inc.from, theyOffer: inc.offer });
-          _completeTrade({ from: inc.from, theyOffer: inc.offer });
+          if (inc.want && !_hasTradeThing(inc.want)) {
+            _send('trade_decline', { to: inc.from, reason: 'Requested item unavailable' });
+            toast('You do not have ' + (inc.want.label || inc.want.id) + ' to trade.');
+            state.trade.incoming = null; state.trade.open = false;
+            return true;
+          }
+          if (inc.want) _removeTradeThing(inc.want);
+          _addTradeThing(inc.offer);
+          _send('trade_accept', { to: inc.from, theyOffer: inc.want || null });
+          toast('Trade complete with ' + inc.from + '!');
           state.trade.incoming = null; state.trade.open = false;
         }
         if (st.pressEdge.has('B')) {
