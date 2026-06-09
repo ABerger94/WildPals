@@ -3306,31 +3306,6 @@ function distToPlayer(px,py){ return Math.hypot((player.x+player.w/2)-px, (playe
     return null;
   }
 
-  function _fishingWaterSide(){
-    try{
-      const T = (typeof TILE === 'number') ? TILE : 32;
-      const px = ((player.x + player.w/2) / T) | 0;
-      const py = ((player.y + player.h/2) / T) | 0;
-      let best = null;
-      for (let r=1; r<=4; r++){
-        for (let dy=-r; dy<=r; dy++){
-          for (let dx=-r; dx<=r; dx++){
-            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-            const tx = px + dx, ty = py + dy;
-            const water = (typeof tileIsWater === 'function') ? tileIsWater(tx, ty) : (ground && ground[gi(tx,ty)] === 4);
-            if (!water) continue;
-            const d2 = dx*dx + dy*dy;
-            if (!best || d2 < best.d2) best = { dx, dy, d2 };
-          }
-        }
-        if (best) break;
-      }
-      if (best && best.dx < 0) return 'left';
-      if (best && best.dx > 0) return 'right';
-    }catch(_){}
-    try{ return playerFacingDir(); }catch(_){ return 'right'; }
-  }
-
 // --- Ensure spawn on land for wetlands ---
 function ensurePlayerOnLand(){
   try{
@@ -6499,6 +6474,30 @@ window.WP_Survival = (function(){
     }catch(_){}
   }
   function _closeFishing(){ const f = state.fishing; f.phase='idle'; f.open=false; _setFishingSprite(false); }
+  function _waterSideForFishing(){
+    try{
+      const T = (typeof TILE === 'number') ? TILE : 32;
+      const px = ((player.x + player.w/2) / T) | 0;
+      const py = ((player.y + player.h/2) / T) | 0;
+      let best = null;
+      for (let r=1; r<=4; r++){
+        for (let dy=-r; dy<=r; dy++){
+          for (let dx=-r; dx<=r; dx++){
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+            const tx = px + dx, ty = py + dy;
+            const water = (typeof tileIsWater === 'function') ? tileIsWater(tx, ty) : false;
+            if (!water) continue;
+            const d2 = dx*dx + dy*dy;
+            if (!best || d2 < best.d2) best = { dx, dy, d2 };
+          }
+        }
+        if (best) break;
+      }
+      if (best && best.dx < 0) return 'left';
+      if (best && best.dx > 0) return 'right';
+    }catch(_){}
+    return null;
+  }
   function _rod(){
     const G=_G();
     const equipped = G?.equipped?.tool?.id;
@@ -6594,7 +6593,7 @@ window.WP_Survival = (function(){
     const usedBait = bait && _use(bait);
     const f = state.fishing;
     f.open=true; f.phase='waiting'; f.bait=usedBait ? bait : 'none';
-    _setFishingSprite(true, _fishingWaterSide());
+    _setFishingSprite(true, _waterSideForFishing());
     f.biteTimer=_biteTime(f.bait); f.biteWindowMax=_biteWindow(f.bait); f.biteWindow=f.biteWindowMax;
     f.reelTimer=0; f.reelProgress=0; f.reelPulse=0; f.fish=null;
     _toast('Cast! Bait: '+(f.bait.replace('_',' '))+'. Wait for BITE, press A, then mash A.');
