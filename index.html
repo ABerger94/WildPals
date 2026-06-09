@@ -729,7 +729,9 @@ const PLAYER_SPRITES = (function(){
     down: 'assets/player/pals_down.PNG',
     up: 'assets/player/pals_up.PNG',
     left: 'assets/player/pals_left.PNG',
-    right: 'assets/player/pals_right.PNG'
+    right: 'assets/player/pals_right.PNG',
+    fishing: 'assets/player/pals_fishing.png',
+    sleeping: 'assets/player/pals_sleeping.png'
   };
   const sprites = {};
   for (const dir in files){
@@ -740,6 +742,7 @@ const PLAYER_SPRITES = (function(){
   return sprites;
 })();
 window.__WP_PlayerFacing = window.__WP_PlayerFacing || 'down';
+window.__WP_PlayerIdleSeconds = window.__WP_PlayerIdleSeconds || 0;
 
 function playerFacingDir(){
   try{
@@ -756,7 +759,10 @@ function playerFacingDir(){
 
 function drawPlayer(ctx, px, py){
   if (typeof playerInvisible !== 'undefined' && playerInvisible) return;
-  const img = PLAYER_SPRITES[playerFacingDir()] || PLAYER_SPRITES.down;
+  const img = (window.__WP_PlayerFishing && PLAYER_SPRITES.fishing)
+    || (!window.__WP_PlayerFishing && window.__WP_PlayerIdleSeconds >= 30 && PLAYER_SPRITES.sleeping)
+    || PLAYER_SPRITES[playerFacingDir()]
+    || PLAYER_SPRITES.down;
   if (img && img.complete && img.naturalWidth > 0){
     const pw = (typeof player !== 'undefined' && player && player.w) ? player.w : 26;
     const ph = (typeof player !== 'undefined' && player && player.h) ? player.h : 26;
@@ -5822,6 +5828,7 @@ animT = t; // for portal animation
       const dodgeMult = Combat.dodgeT > 0 ? 2.35 : 1.0;
       const sp = currentSpeed() * sprintMult * blockMult * dodgeMult;
       const isMoving = (ax !== 0 || ay !== 0);
+      window.__WP_PlayerIdleSeconds = isMoving ? 0 : ((window.__WP_PlayerIdleSeconds || 0) + dt);
 
       const ap=activePal(); const perks=PALS[ap?.id]?.perks||{};
       const allowWater = !!(perks.water_walk || perks.flying); const canFly = !!perks.flying;
@@ -6451,6 +6458,8 @@ window.WP_Survival = (function(){
   }
   function _give(id,qty=1){ const G=_G(); if(!G) return; const ex=G.inventory.find(s=>s.id===id); if(ex) ex.qty+=qty; else G.inventory.push({id,qty}); }
   function _toast(msg){ try{ if(typeof toast==='function') toast(msg); }catch(_){} }
+  function _setFishingSprite(on){ try{ window.__WP_PlayerFishing = !!on; if (on) window.__WP_PlayerIdleSeconds = 0; }catch(_){} }
+  function _closeFishing(){ const f = state.fishing; f.phase='idle'; f.open=false; _setFishingSprite(false); }
   function _rod(){
     const G=_G();
     const equipped = G?.equipped?.tool?.id;
@@ -6546,6 +6555,7 @@ window.WP_Survival = (function(){
     const usedBait = bait && _use(bait);
     const f = state.fishing;
     f.open=true; f.phase='waiting'; f.bait=usedBait ? bait : 'none';
+    _setFishingSprite(true);
     f.biteTimer=_biteTime(f.bait); f.biteWindowMax=_biteWindow(f.bait); f.biteWindow=f.biteWindowMax;
     f.reelTimer=0; f.reelProgress=0; f.reelPulse=0; f.fish=null;
     _toast('Cast! Bait: '+(f.bait.replace('_',' '))+'. Wait for BITE, press A, then mash A.');
@@ -6560,7 +6570,7 @@ window.WP_Survival = (function(){
       if (f.biteTimer<=0){ f.phase='bite'; _toast('BITE! Press A!'); }
     } else if (f.phase==='bite'){
       f.biteWindow -= dt;
-      if (f.biteWindow<=0){ f.phase='idle'; f.open=false; _toast('It got away! Try again.'); }
+      if (f.biteWindow<=0){ _closeFishing(); _toast('It got away! Try again.'); }
     } else if (f.phase==='reeling'){
       // Reeling minigame: mash A to fill progress bar
       f.reelTimer += dt;
@@ -6574,10 +6584,10 @@ window.WP_Survival = (function(){
         try{ _G().discovered?.add(fish.id); }catch(_){}
         // Bonus loot on golden fish
         if (fish.id==='golden_fish' && Math.random()<0.3) { _give('herb',1); _toast('Also found an herb!'); }
-        f.phase='idle'; f.open=false;
+        _closeFishing();
       }
       if (f.reelTimer > 8){ // timeout — fish escapes
-        f.phase='idle'; f.open=false; _toast('It got away while reeling!');
+        _closeFishing(); _toast('It got away while reeling!');
       }
     }
   }
@@ -6723,7 +6733,7 @@ window.WP_Survival = (function(){
     }
     // Fishing
     if (state.fishing.open){
-      if (state.fishing.phase==='idle'){ state.fishing.open=false; return false; }
+      if (state.fishing.phase==='idle'){ state.fishing.open=false; _setFishingSprite(false); return false; }
       if (st.pressEdge.has('A')) _fishingPressA();
       if (state.fishing.phase==='reeling' && st.pressed && st.pressed.has('A')){
         state.fishing.reelPulse = (state.fishing.reelPulse||0) + 1;
@@ -6731,7 +6741,7 @@ window.WP_Survival = (function(){
       } else if (state.fishing.phase==='reeling') {
         state.fishing.reelPulse = 0;
       }
-      if (st.pressEdge.has('B')||st.pressEdge.has('Start')){ state.fishing.open=false; state.fishing.phase='idle'; return true; }
+      if (st.pressEdge.has('B')||st.pressEdge.has('Start')){ _closeFishing(); return true; }
       return true;
     }
     // Seed picker
