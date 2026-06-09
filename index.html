@@ -6477,6 +6477,16 @@ window.WP_Survival = (function(){
   function _waterSideForFishing(){
     try{
       const T = (typeof TILE === 'number') ? TILE : 32;
+      const waterAt = (tx, ty) => (typeof tileIsWater === 'function') ? tileIsWater(tx, ty) : false;
+      const leftTx = ((player.x - 2) / T) | 0;
+      const rightTx = ((player.x + player.w + 2) / T) | 0;
+      const topTy = (player.y / T) | 0;
+      const midTy = ((player.y + player.h/2) / T) | 0;
+      const botTy = ((player.y + player.h - 1) / T) | 0;
+      const rows = [topTy, midTy, botTy];
+      for (const ty of rows){ if (waterAt(leftTx, ty)) return 'left'; }
+      for (const ty of rows){ if (waterAt(rightTx, ty)) return 'right'; }
+
       const px = ((player.x + player.w/2) / T) | 0;
       const py = ((player.y + player.h/2) / T) | 0;
       let best = null;
@@ -6485,8 +6495,7 @@ window.WP_Survival = (function(){
           for (let dx=-r; dx<=r; dx++){
             if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
             const tx = px + dx, ty = py + dy;
-            const water = (typeof tileIsWater === 'function') ? tileIsWater(tx, ty) : false;
-            if (!water) continue;
+            if (!waterAt(tx, ty)) continue;
             const d2 = dx*dx + dy*dy;
             if (!best || d2 < best.d2) best = { dx, dy, d2 };
           }
