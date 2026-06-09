@@ -6489,21 +6489,20 @@ window.WP_Survival = (function(){
 
       const px = ((player.x + player.w/2) / T) | 0;
       const py = ((player.y + player.h/2) / T) | 0;
-      let best = null;
-      for (let r=1; r<=4; r++){
-        for (let dy=-r; dy<=r; dy++){
-          for (let dx=-r; dx<=r; dx++){
-            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-            const tx = px + dx, ty = py + dy;
-            if (!waterAt(tx, ty)) continue;
-            const d2 = dx*dx + dy*dy;
-            if (!best || d2 < best.d2) best = { dx, dy, d2 };
+      for (let r=1; r<=5; r++){
+        for (let dx=-1; dx>=-r; dx--){
+          for (let dy=-r; dy<=r; dy++){
+            if (waterAt(px + dx, py + dy)) return 'left';
           }
         }
-        if (best) break;
       }
-      if (best && best.dx < 0) return 'left';
-      if (best && best.dx > 0) return 'right';
+      for (let r=1; r<=5; r++){
+        for (let dx=1; dx<=r; dx++){
+          for (let dy=-r; dy<=r; dy++){
+            if (waterAt(px + dx, py + dy)) return 'right';
+          }
+        }
+      }
     }catch(_){}
     return null;
   }
